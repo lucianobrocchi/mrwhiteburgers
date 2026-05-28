@@ -6,9 +6,10 @@ import { useCart, formatPrice, SIZES } from '../context/CartContext'
 
 import imgObrera    from '../assets/burgers/obrera.png'
 import imgOklahoma  from '../assets/burgers/oklahoma.png'
-import imgBigWhite  from '../assets/burgers/big_white.png'
+import imgBigWhite  from '../assets/burgers/big_white.jpg'
 import imgChesseJoa from '../assets/burgers/chesse_joa.jpg'
-import imgCurry     from '../assets/burgers/curry_white.jpg'
+import imgCurry     from '../assets/burgers/curri_white.jpg'
+import imgJoaWhite  from '../assets/burgers/joa_white.jpg'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -42,7 +43,7 @@ const burgers = [
     name: 'LA CHESSE JOA',
     description: 'Pan de papa, medallón de carne, cheddar, bacon, cebolla crispy y salsa Big White.',
     tag: 'La Bestia',
-    image: null,
+    image: imgChesseJoa,
     prices: { simple: 11500, doble: 13000, triple: 14000 },
   },
   {
@@ -58,7 +59,7 @@ const burgers = [
     name: 'LA JOA WHITE',
     description: 'Pan de papa, medallón de carne, cheddar, pepinillos, bacon y salsa Big White.',
     tag: 'Edición Joa',
-    image: imgChesseJoa,
+    image: imgJoaWhite,
     prices: { simple: 13000, doble: 14500, triple: 15500 },
   },
 ]
