@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import imgCurry from '../assets/burgers/curry_white_desglose.jpg'
+import imgBigWhite from '../assets/burgers/big_white.png'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -28,18 +29,22 @@ export default function HeroSection() {
       </motion.div>
 
       {/* Mobile: image top */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-64 bg-black">
+      <div className="md:hidden absolute top-0 left-0 right-0 h-72 bg-black overflow-hidden">
         <img
-          src={imgCurry}
-          alt="Curry White — Smash Burger Premium"
-          className="w-full h-full object-cover object-center"
+          src={imgBigWhite}
+          alt="Big White — Smash Burger Premium"
+          className="w-full h-full object-cover"
+          style={{ objectPosition: '50% 45%' }}
           loading="eager"
         />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
+        {/* Vignette top for navbar contrast */}
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none" />
+        {/* Bottom fade into page */}
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-64 md:pt-0 pb-14 md:pb-0 text-center md:text-left">
+      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-72 md:pt-0 pb-14 md:pb-0 text-center md:text-left">
 
         {/* Label */}
         <motion.div
