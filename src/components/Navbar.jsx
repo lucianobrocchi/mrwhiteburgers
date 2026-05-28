@@ -2,14 +2,20 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, useScroll } from 'framer-motion'
 import { Menu, X, ShoppingBag } from 'lucide-react'
 import { useCart } from '../context/CartContext'
+import logoUrl from '../assets/logo.jpg'
 
-function BurgerIcon() {
+function BrandLogo({ size = 32 }) {
   return (
-    <svg width="22" height="18" viewBox="0 0 22 18" fill="none" aria-hidden="true">
-      <rect x="1" y="1" width="20" height="3" rx="1.5" fill="white" />
-      <rect x="3" y="7.5" width="16" height="3" rx="1.5" fill="#F0C832" />
-      <rect x="1" y="14" width="20" height="3" rx="1.5" fill="white" />
-    </svg>
+    <img
+      src={logoUrl}
+      alt="Mr. White Burgers"
+      width={size}
+      height={size}
+      className="rounded-full object-cover"
+      style={{
+        boxShadow: '0 4px 12px -2px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(240,200,50,0.35)',
+      }}
+    />
   )
 }
 
@@ -46,10 +52,10 @@ export default function Navbar() {
         >
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 pl-3 pr-2 md:pr-4 group">
-            <BurgerIcon />
+          <a href="/" className="flex items-center gap-2.5 pl-1.5 pr-2 md:pr-4 group">
+            <BrandLogo size={32} />
             <span
-              className="text-white text-lg md:text-xl tracking-wide uppercase"
+              className="text-white text-base md:text-xl tracking-wide uppercase"
               style={{ fontFamily: 'Anton, sans-serif' }}
             >
               MR. WHITE

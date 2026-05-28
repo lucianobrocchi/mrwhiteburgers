@@ -136,7 +136,7 @@ export default function Footer() {
 
             <div className="flex items-center gap-3 mt-6">
               <motion.a
-                href="https://instagram.com"
+                href="https://www.instagram.com/mr.whiteburgers/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-11 h-11 rounded-full flex items-center justify-center text-white/65 hover:text-[#F0C832]"
