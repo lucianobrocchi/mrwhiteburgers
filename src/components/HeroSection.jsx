@@ -29,22 +29,22 @@ export default function HeroSection() {
       </motion.div>
 
       {/* Mobile: image top */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-80 bg-black overflow-hidden">
+      <div className="md:hidden absolute top-0 left-0 right-0 h-[460px] bg-black overflow-hidden">
         <img
           src={imgChesseJoa}
           alt="La Joa White — Smash Burger Premium"
           className="w-full h-full object-cover"
-          style={{ objectPosition: '50% 30%' }}
+          style={{ objectPosition: '50% 42%' }}
           loading="eager"
         />
         {/* Vignette top for navbar contrast */}
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none" />
         {/* Bottom fade into page */}
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-80 md:pt-0 pb-14 md:pb-0 text-center md:text-left">
+      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-[420px] md:pt-0 pb-14 md:pb-0 text-center md:text-left">
 
         {/* Label */}
         <motion.div
