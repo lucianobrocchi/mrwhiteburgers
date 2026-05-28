@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import imgHero from '../assets/burgers/chesse_joa_promo.jpg'
+import imgHero from '../assets/burgers/curri_white_hero.jpg'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -16,7 +16,7 @@ export default function HeroSection() {
       >
         <img
           src={imgHero}
-          alt="Chesse Joa — Smash Burger Premium"
+          alt="Curry White — Smash Burger Premium"
           className="w-full h-full object-cover"
           style={{ backgroundColor: '#000', objectPosition: '50% 35%' }}
           loading="eager"
@@ -31,7 +31,7 @@ export default function HeroSection() {
       <div className="md:hidden absolute top-0 left-0 right-0 h-[500px] bg-black overflow-hidden">
         <img
           src={imgHero}
-          alt="Chesse Joa — Smash Burger Premium"
+          alt="Curry White — Smash Burger Premium"
           className="w-full h-full object-cover"
           style={{ objectPosition: '50% 30%' }}
           loading="eager"

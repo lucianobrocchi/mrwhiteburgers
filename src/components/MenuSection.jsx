@@ -15,28 +15,20 @@ const ease = [0.16, 1, 0.3, 1]
 
 const burgers = [
   {
+    id: 5,
+    name: 'CURRI WHITE',
+    description: 'Pan de papa, medallón de carne, cheddar, bacon y salsa barbacoa.',
+    tag: 'Smash Burger',
+    image: imgCurry,
+    prices: { simple: 13500, doble: 15000, triple: 16000 },
+  },
+  {
     id: 1,
     name: 'OBRERA',
     description: 'Pan de papa, medallón de carne, queso Tybo, cebolla, lechuga, tomate y salsa Big White.',
     tag: 'La Clásica',
     image: imgObrera,
     prices: { simple: 12500, doble: 14000, triple: 15000 },
-  },
-  {
-    id: 2,
-    name: 'OKLAHOMA WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, cebolla smash, bacon y salsa Big White.',
-    tag: 'La Más Pedida',
-    image: imgOklahoma,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
-  },
-  {
-    id: 3,
-    name: 'BIG WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, pepinillos y salsa Big White.',
-    tag: 'La Contundente',
-    image: imgBigWhite,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
   },
   {
     id: 4,
@@ -47,17 +39,25 @@ const burgers = [
     prices: { simple: 11500, doble: 13000, triple: 14000 },
   },
   {
-    id: 5,
-    name: 'CURRI WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, bacon y salsa barbacoa.',
-    tag: 'Smash Burger',
-    image: imgCurry,
-    prices: { simple: 13500, doble: 15000, triple: 16000 },
+    id: 3,
+    name: 'BIG WHITE',
+    description: 'Pan de papa, medallón de carne, cheddar, pepinillos y salsa Big White.',
+    tag: 'La Contundente',
+    image: imgBigWhite,
+    prices: { simple: 13000, doble: 14500, triple: 15500 },
+  },
+  {
+    id: 2,
+    name: 'OKLAHOMA WHITE',
+    description: 'Pan de papa, medallón de carne, cheddar, cebolla smash, bacon y salsa Big White.',
+    tag: 'La Más Pedida',
+    image: imgOklahoma,
+    prices: { simple: 13000, doble: 14500, triple: 15500 },
   },
   {
     id: 6,
     name: 'LA JOA WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, pepinillos, bacon y salsa Big White.',
+    description: 'Pan de papa, medallón de carne, cheddar, bacon, cebolla crispy y salsa Big White.',
     tag: 'Edición Joa',
     image: imgJoaWhite,
     prices: { simple: 13000, doble: 14500, triple: 15500 },
@@ -389,7 +389,7 @@ export default function MenuSection() {
           animate={headerInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.7, delay: 0.4 }}
         >
-          Todas las hamburguesas vienen con papas fritas. Sin excepciones. Precios por transferencia — consultanos el precio en efectivo.
+          Todas las hamburguesas vienen con papas fritas. Precios por transferencia.
         </motion.p>
 
         {/* Grid */}

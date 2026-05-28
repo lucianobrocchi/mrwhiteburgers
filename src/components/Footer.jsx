@@ -126,14 +126,6 @@ export default function Footer() {
               Pedir por WhatsApp
             </motion.a>
 
-            <a
-              href="mailto:hola@mrwhiteburgers.com"
-              className="block text-sm text-white/55 hover:text-white transition-colors mt-5"
-              style={{ fontFamily: 'DM Sans, sans-serif' }}
-            >
-              hola@mrwhiteburgers.com
-            </a>
-
             <div className="flex items-center gap-3 mt-6">
               <motion.a
                 href="https://www.instagram.com/mr.whiteburgers/"
