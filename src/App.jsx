@@ -10,6 +10,8 @@ import MenuSection from './components/MenuSection'
 import MarqueeStrip from './components/MarqueeStrip'
 import StatementSection from './components/StatementSection'
 import Footer from './components/Footer'
+import CartFab from './components/CartFab'
+import DiscountTicker from './components/DiscountTicker'
 
 function AddedToast() {
   const { toast, setIsOpen } = useCart()
@@ -45,9 +47,11 @@ function AddedToast() {
 
 function Inner() {
   return (
-    <main className="bg-black min-h-screen">
+    <main className="bg-black min-h-screen pt-9">
+      <DiscountTicker />
       <Navbar />
       <CartDrawer />
+      <CartFab />
       <AddedToast />
       <HeroSection />
       <OrderBanner />

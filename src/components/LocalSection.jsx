@@ -50,9 +50,7 @@ export default function LocalSection() {
             className="text-[#888888] text-base mt-6"
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
-            Av. Corrientes 1234, Buenos Aires
-            <br />
-            Ciudad Autónoma de Buenos Aires
+            La Plata, Buenos Aires
           </p>
 
           <div

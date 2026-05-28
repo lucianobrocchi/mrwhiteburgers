@@ -44,12 +44,13 @@ export function CartProvider({ children }) {
   const [isOpen, setIsOpen]   = useState(false)
   const [toast, setToast]     = useState(null) // { name, id }
 
-  const addItem = useCallback((burger, size = 'doble') => {
+  const addItem = useCallback((burger, size = 'doble', qty = 1) => {
+    const n = Math.max(1, Math.floor(qty))
     const lineKey = `${burger.id}-${size}`
     const price = burger.prices[size]
     setItems(prev => {
       const existing = prev.find(i => i.key === lineKey)
-      if (existing) return prev.map(i => i.key === lineKey ? { ...i, qty: i.qty + 1 } : i)
+      if (existing) return prev.map(i => i.key === lineKey ? { ...i, qty: i.qty + n } : i)
       return [...prev, {
         key: lineKey,
         id: burger.id,
@@ -58,10 +59,11 @@ export function CartProvider({ children }) {
         size,
         sizeLabel: SIZE_LABEL[size],
         price,
-        qty: 1,
+        qty: n,
       }]
     })
-    setToast({ name: `${burger.name} ${SIZE_LABEL[size]}`, id: Date.now() })
+    const suffix = n > 1 ? ` × ${n}` : ''
+    setToast({ name: `${burger.name} ${SIZE_LABEL[size]}${suffix}`, id: Date.now() })
     setTimeout(() => setToast(null), 2200)
   }, [])
 

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Plus, UtensilsCrossed } from 'lucide-react'
+import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice, SIZES } from '../context/CartContext'
 
@@ -42,7 +42,7 @@ const burgers = [
     name: 'LA CHESSE JOA',
     description: 'Pan de papa, medallón de carne, cheddar, bacon, cebolla crispy y salsa Big White.',
     tag: 'La Bestia',
-    image: imgChesseJoa,
+    image: null,
     prices: { simple: 11500, doble: 13000, triple: 14000 },
   },
   {
@@ -58,12 +58,12 @@ const burgers = [
     name: 'LA JOA WHITE',
     description: 'Pan de papa, medallón de carne, cheddar, pepinillos, bacon y salsa Big White.',
     tag: 'Edición Joa',
-    image: null,
+    image: imgChesseJoa,
     prices: { simple: 13000, doble: 14500, triple: 15500 },
   },
 ]
 
-function SizeSelector({ size, setSize }) {
+function SizeSelector({ cardId, size, setSize }) {
   return (
     <div
       className="grid grid-cols-3 gap-1 p-1 rounded-full"
@@ -83,7 +83,7 @@ function SizeSelector({ size, setSize }) {
           >
             {active && (
               <motion.span
-                layoutId={`size-pill-${s.key}-active`}
+                layoutId={`size-pill-${cardId}-${s.key}-active`}
                 className="absolute inset-0 rounded-full bg-[#F0C832]"
                 transition={{ duration: 0.25, ease }}
               />
@@ -98,28 +98,102 @@ function SizeSelector({ size, setSize }) {
   )
 }
 
-function AddButton({ burger, size }) {
+function CartControls({ burger, size }) {
   const { addItem } = useCart()
+  const [qty, setQty] = useState(1)
+  const price = burger.prices[size]
+  const subtotal = qty * price
+  const discount = Math.floor(qty / 2) * (price / 2)
+  const total = subtotal - discount
+
+  const handleAdd = () => {
+    addItem(burger, size, qty)
+    setQty(1)
+  }
+
   return (
-    <motion.button
-      onClick={() => addItem(burger, size)}
-      className="group/btn w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-full text-sm tracking-widest uppercase mt-2"
-      style={{
-        fontFamily: 'Anton, sans-serif',
-        backgroundColor: '#F0C832',
-        color: '#000',
-        boxShadow: '0 8px 24px -10px rgba(240, 200, 50, 0.5), inset 0 1px 0 0 rgba(255,255,255,0.3)',
-      }}
-      whileHover={{
-        y: -2,
-        boxShadow: '0 14px 32px -10px rgba(240, 200, 50, 0.7), inset 0 1px 0 0 rgba(255,255,255,0.4)',
-      }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.2, ease }}
-    >
-      <Plus size={16} strokeWidth={3} className="group-hover/btn:rotate-90 transition-transform duration-300" />
-      Agregar al carrito
-    </motion.button>
+    <div className="flex flex-col gap-2 mt-2">
+      <div className="flex items-center gap-2">
+        {/* Qty stepper */}
+        <div
+          className="flex items-center gap-0.5 p-1 rounded-full"
+          style={{
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <motion.button
+            onClick={() => setQty(q => Math.max(1, q - 1))}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10"
+            whileTap={{ scale: 0.9 }}
+            aria-label="Restar"
+          >
+            <Minus size={14} strokeWidth={3} />
+          </motion.button>
+          <span
+            className="w-7 text-center text-white text-sm tabular-nums"
+            style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+          >
+            {qty}
+          </span>
+          <motion.button
+            onClick={() => setQty(q => q + 1)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#F0C832] hover:bg-[#F0C832]/15"
+            whileTap={{ scale: 0.9 }}
+            aria-label="Sumar"
+          >
+            <Plus size={14} strokeWidth={3} />
+          </motion.button>
+        </div>
+
+        {/* Add button */}
+        <motion.button
+          onClick={handleAdd}
+          className="group/btn flex-1 flex items-center justify-center gap-2 py-3.5 px-5 rounded-full text-sm tracking-widest uppercase"
+          style={{
+            fontFamily: 'Anton, sans-serif',
+            backgroundColor: '#F0C832',
+            color: '#000',
+            boxShadow: '0 8px 24px -10px rgba(240, 200, 50, 0.5), inset 0 1px 0 0 rgba(255,255,255,0.3)',
+          }}
+          whileHover={{
+            y: -2,
+            boxShadow: '0 14px 32px -10px rgba(240, 200, 50, 0.7), inset 0 1px 0 0 rgba(255,255,255,0.4)',
+          }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ duration: 0.2, ease }}
+        >
+          <ShoppingBag size={15} strokeWidth={2.5} />
+          Agregar
+        </motion.button>
+      </div>
+
+      {/* Discount preview when qty>=2 */}
+      {qty >= 2 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="flex items-center justify-between px-3 py-2 rounded-xl"
+          style={{
+            backgroundColor: 'rgba(240, 200, 50, 0.08)',
+            border: '1px solid rgba(240, 200, 50, 0.22)',
+          }}
+        >
+          <span
+            className="text-[10px] tracking-[0.18em] uppercase text-[#F0C832]"
+            style={{ fontFamily: 'DM Sans, sans-serif' }}
+          >
+            ★ 2da con 50% off
+          </span>
+          <span
+            className="text-[#F0C832] text-sm"
+            style={{ fontFamily: 'Anton, sans-serif' }}
+          >
+            Total: {formatPrice(total)}
+          </span>
+        </motion.div>
+      )}
+    </div>
   )
 }
 
@@ -238,7 +312,7 @@ function BurgerCard({ burger, index }) {
         </div>
 
         {/* Size selector */}
-        <SizeSelector size={size} setSize={setSize} />
+        <SizeSelector cardId={burger.id} size={size} setSize={setSize} />
 
         {/* Price */}
         <div className="flex items-baseline justify-between">
@@ -262,7 +336,7 @@ function BurgerCard({ burger, index }) {
           </div>
         </div>
 
-        <AddButton burger={burger} size={size} />
+        <CartControls burger={burger} size={size} />
       </div>
     </motion.div>
   )

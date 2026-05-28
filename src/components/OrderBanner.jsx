@@ -5,7 +5,7 @@ const ease = [0.16, 1, 0.3, 1]
 
 const chips = [
   { Icon: Package,          label: 'Retiro en local',     sub: 'Listo en 15 min' },
-  { Icon: Bike,             label: 'Envíos a domicilio',  sub: 'Zona Buenos Aires' },
+  { Icon: Bike,             label: 'Envíos a domicilio',  sub: 'Zona La Plata' },
   { Icon: UtensilsCrossed,  label: 'Con papas',           sub: 'Todas las burger' },
 ]
 
