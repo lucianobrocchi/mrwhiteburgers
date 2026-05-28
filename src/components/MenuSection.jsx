@@ -264,18 +264,6 @@ function BurgerCard({ burger, index }) {
         )}
         {/* Subtle gradient at bottom for text contrast */}
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-        {/* Tag pill */}
-        <span
-          className="absolute top-4 left-4 px-3 py-1.5 text-[10px] tracking-[0.18em] uppercase text-[#F0C832] rounded-full"
-          style={{
-            fontFamily: 'DM Sans, sans-serif',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(240, 200, 50, 0.25)',
-          }}
-        >
-          {burger.tag}
-        </span>
       </div>
 
       {/* Info */}
