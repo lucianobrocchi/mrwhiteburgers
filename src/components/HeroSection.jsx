@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
-import imgCurry from '../assets/burgers/curry_white_desglose.jpg'
-import imgChesseJoa from '../assets/burgers/chesse_joa.jpg'
+import imgHero from '../assets/burgers/chesse_joa_promo.jpg'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -16,10 +15,10 @@ export default function HeroSection() {
         transition={{ duration: 1.4, ease, delay: 0.4 }}
       >
         <img
-          src={imgCurry}
-          alt="Curry White — Smash Burger Premium"
-          className="w-full h-full object-cover object-center"
-          style={{ backgroundColor: '#000' }}
+          src={imgHero}
+          alt="Chesse Joa — Smash Burger Premium"
+          className="w-full h-full object-cover"
+          style={{ backgroundColor: '#000', objectPosition: '50% 35%' }}
           loading="eager"
         />
         {/* Fade left edge so image bleeds into the black left side */}
@@ -29,26 +28,26 @@ export default function HeroSection() {
       </motion.div>
 
       {/* Mobile: image top */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-[460px] bg-black overflow-hidden">
+      <div className="md:hidden absolute top-0 left-0 right-0 h-[500px] bg-black overflow-hidden">
         <img
-          src={imgChesseJoa}
-          alt="La Joa White — Smash Burger Premium"
+          src={imgHero}
+          alt="Chesse Joa — Smash Burger Premium"
           className="w-full h-full object-cover"
-          style={{ objectPosition: '50% 42%' }}
+          style={{ objectPosition: '50% 30%' }}
           loading="eager"
         />
         {/* Vignette top for navbar contrast */}
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none" />
         {/* Bottom fade into page */}
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-[420px] md:pt-0 pb-14 md:pb-0 text-center md:text-left">
+      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-[460px] md:pt-0 pb-14 md:pb-0 text-center md:text-left">
 
         {/* Label */}
         <motion.div
-          className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full"
+          className="inline-flex items-center gap-2 px-4 py-1.5 mb-4 md:mb-8 rounded-full"
           style={{
             backgroundColor: 'rgba(240, 200, 50, 0.08)',
             border: '1px solid rgba(240, 200, 50, 0.25)',
@@ -70,7 +69,7 @@ export default function HeroSection() {
         {/* Headline */}
         <div className="overflow-hidden leading-none">
           <motion.h1
-            className="text-[3.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
+            className="text-[3rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -79,7 +78,7 @@ export default function HeroSection() {
             MR.
           </motion.h1>
           <motion.h1
-            className="text-[3.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-[#F0C832] uppercase"
+            className="text-[3rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-[#F0C832] uppercase"
             style={{
               fontFamily: 'Anton, sans-serif',
               letterSpacing: '-0.02em',
@@ -92,7 +91,7 @@ export default function HeroSection() {
             WHITE
           </motion.h1>
           <motion.h1
-            className="text-[3.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
+            className="text-[3rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -104,7 +103,7 @@ export default function HeroSection() {
 
         {/* Divider */}
         <motion.div
-          className="w-20 h-[2px] bg-gradient-to-r from-[#F0C832] to-transparent my-6 md:my-8 mx-auto md:mx-0 rounded-full"
+          className="w-20 h-[2px] bg-gradient-to-r from-[#F0C832] to-transparent my-4 md:my-8 mx-auto md:mx-0 rounded-full"
           initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
           style={{ originX: 0 }}
@@ -151,24 +150,6 @@ export default function HeroSection() {
             </motion.svg>
           </motion.a>
 
-          {/* SECONDARY pill — glass */}
-          <motion.a
-            href="https://wa.me/5492213034143"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full sm:w-auto px-8 py-4 md:px-9 md:py-5 rounded-full text-sm tracking-widest uppercase text-white/90 hover:text-white text-center"
-            style={{
-              fontFamily: 'Anton, sans-serif',
-              backgroundColor: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(12px)',
-            }}
-            whileHover={{ y: -3, backgroundColor: 'rgba(255,255,255,0.08)' }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.25, ease }}
-          >
-            Pedí ahora
-          </motion.a>
         </motion.div>
       </div>
     </section>
