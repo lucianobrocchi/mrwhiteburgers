@@ -7,34 +7,42 @@ export default function HeroSection() {
   return (
     <section className="relative w-full min-h-screen bg-black overflow-hidden flex items-center">
 
-      {/* Desktop: product image — right 55% */}
+      {/* Desktop: product video — right 55% */}
       <motion.div
         className="hidden md:block absolute right-0 top-0 w-[55%] h-full"
         initial={{ opacity: 0, x: 30 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 1.4, ease, delay: 0.4 }}
       >
-        <img
-          src={imgHero}
-          alt="Curry White — Smash Burger Premium"
+        <video
+          src="/videos/hero.mp4"
+          poster={imgHero}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
           className="w-full h-full object-cover"
           style={{ backgroundColor: '#000', objectPosition: '50% 35%' }}
-          loading="eager"
         />
-        {/* Fade left edge so image bleeds into the black left side */}
+        {/* Fade left edge so video bleeds into the black left side */}
         <div className="absolute inset-y-0 left-0 w-48 bg-gradient-to-r from-black via-black/80 to-transparent" />
         {/* Soft vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
       </motion.div>
 
-      {/* Mobile: image top */}
+      {/* Mobile: video top */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-[500px] bg-black overflow-hidden">
-        <img
-          src={imgHero}
-          alt="Curry White — Smash Burger Premium"
+        <video
+          src="/videos/hero.mp4"
+          poster={imgHero}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
           className="w-full h-full object-cover"
           style={{ objectPosition: '50% 30%' }}
-          loading="eager"
         />
         {/* Vignette top for navbar contrast */}
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none" />
