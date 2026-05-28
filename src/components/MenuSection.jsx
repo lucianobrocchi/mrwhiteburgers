@@ -275,7 +275,7 @@ export default function MenuSection() {
   const isOdd = burgers.length % 2 !== 0
 
   return (
-    <section id="menu" className="relative bg-black py-32 md:py-40 px-6 md:px-12 lg:px-24 overflow-hidden">
+    <section id="menu" className="relative bg-black py-20 md:py-40 px-6 md:px-12 lg:px-24 overflow-hidden">
       {/* Decorative ambient glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] pointer-events-none"
@@ -308,7 +308,7 @@ export default function MenuSection() {
           </motion.div>
 
           <motion.h2
-            className="text-7xl md:text-9xl text-white uppercase leading-[0.9]"
+            className="text-6xl md:text-9xl text-white uppercase leading-[0.9]"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
             initial={{ opacity: 0, y: 50 }}
             animate={headerInView ? { opacity: 1, y: 0 } : {}}
@@ -320,7 +320,7 @@ export default function MenuSection() {
 
         {/* Sub note */}
         <motion.p
-          className="text-white/50 text-base md:text-lg mb-16 max-w-xl"
+          className="text-white/50 text-sm md:text-lg mb-10 md:mb-16 max-w-xl"
           style={{ fontFamily: 'DM Sans, sans-serif' }}
           initial={{ opacity: 0 }}
           animate={headerInView ? { opacity: 1 } : {}}

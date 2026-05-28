@@ -26,7 +26,7 @@ export default function PromoBanner() {
   return (
     <section
       ref={ref}
-      className="relative px-6 md:px-12 lg:px-24 py-10 md:py-12 overflow-hidden"
+      className="relative px-5 md:px-12 lg:px-24 py-8 md:py-12 overflow-hidden"
       style={{
         background:
           'linear-gradient(135deg, #4A1311 0%, #6B1F1A 45%, #4A1311 100%)',

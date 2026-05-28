@@ -5,7 +5,7 @@ const ease = [0.16, 1, 0.3, 1]
 
 export default function HeroSection() {
   return (
-    <section className="relative w-full h-screen bg-black overflow-hidden flex items-center">
+    <section className="relative w-full min-h-screen bg-black overflow-hidden flex items-center">
 
       {/* Desktop: product image — right 55% */}
       <motion.div
@@ -28,7 +28,7 @@ export default function HeroSection() {
       </motion.div>
 
       {/* Mobile: image top */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-80 bg-black">
+      <div className="md:hidden absolute top-0 left-0 right-0 h-64 bg-black">
         <img
           src={imgCurry}
           alt="Curry White — Smash Burger Premium"
@@ -39,7 +39,7 @@ export default function HeroSection() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-80 md:pt-0 pb-16 md:pb-0 text-center md:text-left">
+      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-64 md:pt-0 pb-14 md:pb-0 text-center md:text-left">
 
         {/* Label */}
         <motion.div
@@ -65,7 +65,7 @@ export default function HeroSection() {
         {/* Headline */}
         <div className="overflow-hidden leading-none">
           <motion.h1
-            className="text-[4.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
+            className="text-[3.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -74,7 +74,7 @@ export default function HeroSection() {
             MR.
           </motion.h1>
           <motion.h1
-            className="text-[4.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-[#F0C832] uppercase"
+            className="text-[3.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-[#F0C832] uppercase"
             style={{
               fontFamily: 'Anton, sans-serif',
               letterSpacing: '-0.02em',
@@ -87,7 +87,7 @@ export default function HeroSection() {
             WHITE
           </motion.h1>
           <motion.h1
-            className="text-[4.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
+            className="text-[3.5rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -99,7 +99,7 @@ export default function HeroSection() {
 
         {/* Divider */}
         <motion.div
-          className="w-20 h-[2px] bg-gradient-to-r from-[#F0C832] to-transparent my-8 mx-auto md:mx-0 rounded-full"
+          className="w-20 h-[2px] bg-gradient-to-r from-[#F0C832] to-transparent my-6 md:my-8 mx-auto md:mx-0 rounded-full"
           initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
           style={{ originX: 0 }}
@@ -108,7 +108,7 @@ export default function HeroSection() {
 
         {/* Tagline */}
         <motion.p
-          className="text-gray-300/80 text-lg md:text-xl mb-10 max-w-md mx-auto md:mx-0 leading-relaxed"
+          className="text-gray-300/80 text-base md:text-xl mb-8 md:mb-10 max-w-md mx-auto md:mx-0 leading-relaxed"
           style={{ fontFamily: 'DM Sans, sans-serif' }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -127,7 +127,7 @@ export default function HeroSection() {
           {/* PRIMARY pill */}
           <motion.a
             href="#menu"
-            className="group relative w-full sm:w-auto px-9 py-5 rounded-full text-base tracking-widest uppercase text-black flex items-center justify-center gap-3"
+            className="group relative w-full sm:w-auto px-8 py-4 md:px-9 md:py-5 rounded-full text-base tracking-widest uppercase text-black flex items-center justify-center gap-3"
             style={{
               fontFamily: 'Anton, sans-serif',
               backgroundColor: '#F0C832',
@@ -162,7 +162,7 @@ export default function HeroSection() {
             href="https://wa.me/5492213034143"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto px-9 py-5 rounded-full text-sm tracking-widest uppercase text-white/90 hover:text-white text-center"
+            className="w-full sm:w-auto px-8 py-4 md:px-9 md:py-5 rounded-full text-sm tracking-widest uppercase text-white/90 hover:text-white text-center"
             style={{
               fontFamily: 'Anton, sans-serif',
               backgroundColor: 'rgba(255,255,255,0.04)',
