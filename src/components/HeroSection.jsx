@@ -15,7 +15,7 @@ export default function HeroSection() {
         transition={{ duration: 1.4, ease, delay: 0.4 }}
       >
         <video
-          src="/videos/hero.mp4"
+          src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
           poster={imgHero}
           autoPlay
           loop
@@ -34,7 +34,7 @@ export default function HeroSection() {
       {/* Mobile: video top */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-[500px] bg-black overflow-hidden">
         <video
-          src="/videos/hero.mp4"
+          src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
           poster={imgHero}
           autoPlay
           loop
