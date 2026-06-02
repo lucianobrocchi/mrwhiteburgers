@@ -6,7 +6,7 @@ export const WHATSAPP_NUMBER = '5492213034143'
 export const WHATSAPP_DISPLAY = '221 303-4143'
 
 export const PROMO = {
-  active: true,
+  active: false,
   date: '28 DE MAYO',
   title: 'Día Mundial de la Hamburguesa',
   headline: '50% OFF',
