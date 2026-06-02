@@ -1,9 +1,5 @@
-import { PROMO } from '../context/CartContext'
-
 export default function DiscountTicker() {
-  if (!PROMO.active) return null
-
-  const message = '★  50% OFF EN LA 2DA HAMBURGUESA  ·  28 DE MAYO  ·  PEDÍ POR WHATSAPP'
+  const message = '★  SMASH BURGERS PREMIUM  ·  PAN DE PAPA ARTESANAL  ·  CARNE FRESCA TODOS LOS DÍAS'
 
   return (
     <div

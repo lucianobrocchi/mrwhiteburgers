@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
-import { CartProvider, useCart, PROMO } from './context/CartContext'
+import { CartProvider, useCart } from './context/CartContext'
 import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
 import HeroSection from './components/HeroSection'
@@ -47,7 +47,7 @@ function AddedToast() {
 
 function Inner() {
   return (
-    <main className={`bg-black min-h-screen ${PROMO.active ? 'pt-9' : ''}`}>
+    <main className="bg-black min-h-screen pt-9">
       <DiscountTicker />
       <Navbar />
       <CartDrawer />
