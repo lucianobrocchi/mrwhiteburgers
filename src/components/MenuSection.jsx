@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Plus, Minus, UtensilsCrossed, ShoppingBag, Eye } from 'lucide-react'
+import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice, SIZES } from '../context/CartContext'
 
@@ -112,7 +112,7 @@ function SizeSelector({ cardId, size, setSize }) {
   )
 }
 
-function CartControls({ burger, size }) {
+function CartControls({ burger, size, onAdded }) {
   const { addItem } = useCart()
   const [qty, setQty] = useState(1)
   const price = burger.prices[size]
@@ -123,6 +123,7 @@ function CartControls({ burger, size }) {
   const handleAdd = () => {
     addItem(burger, size, qty)
     setQty(1)
+    onAdded?.()
   }
 
   return (
@@ -216,7 +217,17 @@ function BurgerCard({ burger, index }) {
   const inView = useInView(ref, { once: true, margin: '-80px' })
   const [size, setSize] = useState('doble')
   const [showAlt, setShowAlt] = useState(false)
+  const [justAdded, setJustAdded] = useState(false)
+  const addedTimer = useRef(null)
+  const revealed = showAlt || justAdded
   const price = burger.prices[size]
+
+  const handleAdded = () => {
+    if (!burger.imageAlt) return
+    setJustAdded(true)
+    clearTimeout(addedTimer.current)
+    addedTimer.current = setTimeout(() => setJustAdded(false), 1600)
+  }
 
   return (
     <motion.div
@@ -265,24 +276,26 @@ function BurgerCard({ burger, index }) {
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
               initial={false}
-              animate={{ opacity: showAlt ? 1 : 0, scale: showAlt ? 1.04 : 1 }}
+              animate={{ opacity: revealed ? 1 : 0, scale: revealed ? 1.04 : 1 }}
               transition={{ duration: 0.6, ease }}
             />
-            {/* Chip de pista */}
-            <div
-              className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full pointer-events-none select-none backdrop-blur-md"
-              style={{
-                backgroundColor: 'rgba(0,0,0,0.55)',
-                border: '1px solid rgba(240,200,50,0.3)',
-              }}
-            >
-              <Eye size={11} className="text-[#F0C832]" />
-              <span
-                className="text-[9px] tracking-[0.14em] uppercase text-white/85"
-                style={{ fontFamily: 'DM Sans, sans-serif' }}
-              >
-                {showAlt ? 'Real' : 'Ver real'}
-              </span>
+            {/* Indicador tipo carrusel — 2 fotos */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 pointer-events-none">
+              {[false, true].map((alt) => {
+                const active = revealed === alt
+                return (
+                  <motion.span
+                    key={String(alt)}
+                    className="rounded-full"
+                    style={{ height: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.55)' }}
+                    animate={{
+                      width: active ? 18 : 6,
+                      backgroundColor: active ? '#F0C832' : 'rgba(255,255,255,0.55)',
+                    }}
+                    transition={{ duration: 0.3, ease }}
+                  />
+                )
+              })}
             </div>
           </>
         ) : burger.image ? (
@@ -378,7 +391,7 @@ function BurgerCard({ burger, index }) {
           </div>
         </div>
 
-        <CartControls burger={burger} size={size} />
+        <CartControls burger={burger} size={size} onAdded={handleAdded} />
       </div>
     </motion.div>
   )
