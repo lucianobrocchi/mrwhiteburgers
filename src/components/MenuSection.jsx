@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
-import { useCart, formatPrice, SIZES } from '../context/CartContext'
+import { useCart, formatPrice, SIZES, PROMO } from '../context/CartContext'
 
 // Foto base (fondo negro, default) + alternativa (con papel, se revela con tap/hover)
 import imgObreraNegro    from '../assets/burgers/obrera_negro.jpeg'
@@ -183,8 +183,8 @@ function CartControls({ burger, size, onAdded }) {
         </motion.button>
       </div>
 
-      {/* Discount preview when qty>=2 */}
-      {qty >= 2 && (
+      {/* Discount preview when qty>=2 (solo con promo activa) */}
+      {PROMO.active && qty >= 2 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
