@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
+import { Analytics } from '@vercel/analytics/react'
 import { CartProvider, useCart } from './context/CartContext'
 import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
@@ -68,6 +69,7 @@ export default function App() {
   return (
     <CartProvider>
       <Inner />
+      <Analytics />
     </CartProvider>
   )
 }
