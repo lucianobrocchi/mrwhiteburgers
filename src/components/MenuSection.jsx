@@ -1,15 +1,22 @@
 import { useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
+import { Plus, Minus, UtensilsCrossed, ShoppingBag, Eye } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice, SIZES } from '../context/CartContext'
 
-import imgObrera    from '../assets/burgers/obrera.png'
-import imgOklahoma  from '../assets/burgers/oklahoma.png'
-import imgBigWhite  from '../assets/burgers/big_white.jpg'
-import imgChesseJoa from '../assets/burgers/chesse_joa.jpg'
-import imgCurry     from '../assets/burgers/curri_white.jpg'
-import imgJoaWhite  from '../assets/burgers/joa_white.jpg'
+// Foto base (fondo negro, default) + alternativa (con papel, se revela con tap/hover)
+import imgObreraNegro    from '../assets/burgers/obrera_negro.jpeg'
+import imgObreraPapel    from '../assets/burgers/obrera_papel.jpeg'
+import imgOklahomaNegro  from '../assets/burgers/oklahoma_negro.jpeg'
+import imgOklahomaPapel  from '../assets/burgers/oklahoma_papel.jpeg'
+import imgBigWhiteNegro  from '../assets/burgers/big_white_negro.jpeg'
+import imgBigWhitePapel  from '../assets/burgers/big_white_papel.jpeg'
+import imgChesseJoaNegro from '../assets/burgers/chesse_joa_negro.jpeg'
+import imgChesseJoaPapel from '../assets/burgers/chesse_joa_papel.jpeg'
+import imgCurryNegro     from '../assets/burgers/curri_white_negro.jpeg'
+import imgCurryPapel     from '../assets/burgers/curri_white_papel.jpeg'
+import imgJoaWhiteNegro  from '../assets/burgers/joa_white_negro.jpeg'
+import imgJoaWhitePapel  from '../assets/burgers/joa_white_papel.jpeg'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -19,7 +26,8 @@ const burgers = [
     name: 'CURRI WHITE',
     description: 'Pan de papa, medallón de carne, cheddar, bacon y salsa barbacoa.',
     tag: 'Smash Burger',
-    image: imgCurry,
+    image: imgCurryNegro,
+    imageAlt: imgCurryPapel,
     prices: { simple: 13500, doble: 15000, triple: 16000 },
   },
   {
@@ -27,7 +35,8 @@ const burgers = [
     name: 'OBRERA',
     description: 'Pan de papa, medallón de carne, queso Tybo, cebolla, lechuga, tomate y salsa Big White.',
     tag: 'La Clásica',
-    image: imgObrera,
+    image: imgObreraNegro,
+    imageAlt: imgObreraPapel,
     prices: { simple: 12500, doble: 14000, triple: 15000 },
   },
   {
@@ -35,7 +44,8 @@ const burgers = [
     name: 'LA CHESSE JOA',
     description: 'Pan de papa, medallón de carne, cheddar, bacon, cebolla crispy y salsa Big White.',
     tag: 'La Bestia',
-    image: imgChesseJoa,
+    image: imgChesseJoaNegro,
+    imageAlt: imgChesseJoaPapel,
     prices: { simple: 11500, doble: 13000, triple: 14000 },
   },
   {
@@ -43,7 +53,8 @@ const burgers = [
     name: 'BIG WHITE',
     description: 'Pan de papa, medallón de carne, cheddar, pepinillos y salsa Big White.',
     tag: 'La Contundente',
-    image: imgBigWhite,
+    image: imgBigWhiteNegro,
+    imageAlt: imgBigWhitePapel,
     prices: { simple: 13000, doble: 14500, triple: 15500 },
   },
   {
@@ -51,7 +62,8 @@ const burgers = [
     name: 'OKLAHOMA WHITE',
     description: 'Pan de papa, medallón de carne, cheddar, cebolla smash, bacon y salsa Big White.',
     tag: 'La Más Pedida',
-    image: imgOklahoma,
+    image: imgOklahomaNegro,
+    imageAlt: imgOklahomaPapel,
     prices: { simple: 13000, doble: 14500, triple: 15500 },
   },
   {
@@ -59,7 +71,8 @@ const burgers = [
     name: 'LA JOA WHITE',
     description: 'Pan de papa, medallón de carne, cheddar, bacon, cebolla crispy y salsa Big White.',
     tag: 'Edición Joa',
-    image: imgJoaWhite,
+    image: imgJoaWhiteNegro,
+    imageAlt: imgJoaWhitePapel,
     prices: { simple: 13000, doble: 14500, triple: 15500 },
   },
 ]
@@ -202,6 +215,7 @@ function BurgerCard({ burger, index }) {
   const ref    = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
   const [size, setSize] = useState('doble')
+  const [showAlt, setShowAlt] = useState(false)
   const price = burger.prices[size]
 
   return (
@@ -231,8 +245,47 @@ function BurgerCard({ burger, index }) {
       <div
         className="relative overflow-hidden rounded-t-[28px]"
         style={{ aspectRatio: '4/3', backgroundColor: '#0A0A0A' }}
+        onMouseEnter={() => burger.imageAlt && setShowAlt(true)}
+        onMouseLeave={() => burger.imageAlt && setShowAlt(false)}
+        onClick={() => burger.imageAlt && setShowAlt(v => !v)}
       >
-        {burger.image ? (
+        {burger.image && burger.imageAlt ? (
+          <>
+            {/* Foto base (fondo negro) */}
+            <img
+              src={burger.image}
+              alt={burger.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+            {/* Foto alternativa (con papel) — crossfade */}
+            <motion.img
+              src={burger.imageAlt}
+              alt={`${burger.name} — servida`}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              initial={false}
+              animate={{ opacity: showAlt ? 1 : 0, scale: showAlt ? 1.04 : 1 }}
+              transition={{ duration: 0.6, ease }}
+            />
+            {/* Chip de pista */}
+            <div
+              className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full pointer-events-none select-none backdrop-blur-md"
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                border: '1px solid rgba(240,200,50,0.3)',
+              }}
+            >
+              <Eye size={11} className="text-[#F0C832]" />
+              <span
+                className="text-[9px] tracking-[0.14em] uppercase text-white/85"
+                style={{ fontFamily: 'DM Sans, sans-serif' }}
+              >
+                {showAlt ? 'Real' : 'Ver real'}
+              </span>
+            </div>
+          </>
+        ) : burger.image ? (
           <motion.img
             src={burger.image}
             alt={burger.name}
