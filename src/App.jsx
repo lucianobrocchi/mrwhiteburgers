@@ -12,6 +12,7 @@ import MarqueeStrip from './components/MarqueeStrip'
 import StatementSection from './components/StatementSection'
 import Footer from './components/Footer'
 import CartFab from './components/CartFab'
+import BackToTop from './components/BackToTop'
 import DiscountTicker from './components/DiscountTicker'
 
 function AddedToast() {
@@ -53,6 +54,7 @@ function Inner() {
       <Navbar />
       <CartDrawer />
       <CartFab />
+      <BackToTop />
       <AddedToast />
       <HeroSection />
       <OrderBanner />
