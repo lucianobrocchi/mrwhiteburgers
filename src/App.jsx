@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { CartProvider, useCart } from './context/CartContext'
+import Admin from './components/Admin'
 import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
 import HeroSection from './components/HeroSection'
@@ -67,7 +69,23 @@ function Inner() {
   )
 }
 
+function useIsAdmin() {
+  const [isAdmin, setIsAdmin] = useState(
+    () => window.location.hash.replace(/^#\/?/, '') === 'admin',
+  )
+  useEffect(() => {
+    const onHash = () => setIsAdmin(window.location.hash.replace(/^#\/?/, '') === 'admin')
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  return isAdmin
+}
+
 export default function App() {
+  const isAdmin = useIsAdmin()
+
+  if (isAdmin) return <Admin />
+
   return (
     <CartProvider>
       <Inner />

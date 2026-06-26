@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice, SIZES, PROMO } from '../context/CartContext'
+import { supabase } from '../lib/supabase'
+import { trackBurgerClick } from '../lib/track'
 
 // Foto base (fondo negro, default) + alternativa (con papel, se revela con tap/hover)
 import imgObreraNegro    from '../assets/burgers/obrera_negro.jpeg'
@@ -20,7 +22,33 @@ import imgJoaWhitePapel  from '../assets/burgers/joa_white_papel.jpeg'
 
 const ease = [0.16, 1, 0.3, 1]
 
-const burgers = [
+// Mapea la image_key de la base a las fotos (negro/papel) que vienen en el bundle
+const IMAGE_MAP = {
+  curri_white: { image: imgCurryNegro,    imageAlt: imgCurryPapel },
+  obrera:      { image: imgObreraNegro,   imageAlt: imgObreraPapel },
+  chesse_joa:  { image: imgChesseJoaNegro, imageAlt: imgChesseJoaPapel },
+  big_white:   { image: imgBigWhiteNegro, imageAlt: imgBigWhitePapel },
+  oklahoma:    { image: imgOklahomaNegro, imageAlt: imgOklahomaPapel },
+  joa_white:   { image: imgJoaWhiteNegro, imageAlt: imgJoaWhitePapel },
+}
+
+// Convierte una fila de Supabase al formato que usa la card
+function mapRow(row) {
+  const imgs = IMAGE_MAP[row.image_key] || {}
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    tag: row.tag,
+    prices: row.prices,
+    image: imgs.image,
+    imageAlt: imgs.imageAlt,
+    fromDb: true,
+  }
+}
+
+// Datos por defecto (fallback si Supabase no responde)
+const FALLBACK_BURGERS = [
   {
     id: 5,
     name: 'CURRI WHITE',
@@ -124,6 +152,7 @@ function CartControls({ burger, size, onAdded }) {
     addItem(burger, size, qty)
     setQty(1)
     onAdded?.()
+    trackBurgerClick(burger)
   }
 
   return (
@@ -400,6 +429,21 @@ function BurgerCard({ burger, index }) {
 export default function MenuSection() {
   const headerRef    = useRef(null)
   const headerInView = useInView(headerRef, { once: true, margin: '-60px' })
+  const [burgers, setBurgers] = useState(FALLBACK_BURGERS)
+
+  useEffect(() => {
+    let alive = true
+    supabase
+      .from('burgers')
+      .select('*')
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data, error }) => {
+        if (!alive || error || !data || !data.length) return
+        setBurgers(data.map(mapRow))
+      })
+    return () => { alive = false }
+  }, [])
 
   const isOdd = burgers.length % 2 !== 0
 
