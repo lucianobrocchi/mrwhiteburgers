@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import logoFull from '../assets/logo_full.jpg'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -33,22 +34,12 @@ export default function Footer() {
 
           {/* Col 1 — Brand */}
           <div>
-            <span
-              className="block text-5xl text-white uppercase leading-none"
-              style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
-            >
-              MR. WHITE
-            </span>
-            <span
-              className="block text-5xl text-[#F0C832] uppercase leading-none"
-              style={{
-                fontFamily: 'Anton, sans-serif',
-                letterSpacing: '-0.02em',
-                textShadow: '0 0 40px rgba(240, 200, 50, 0.2)',
-              }}
-            >
-              BURGERS
-            </span>
+            <img
+              src={logoFull}
+              alt="Mr. White Burgers"
+              className="w-56 md:w-64 h-auto select-none"
+              draggable={false}
+            />
             <p
               className="text-sm text-white/55 mt-5 max-w-xs leading-relaxed"
               style={{ fontFamily: 'DM Sans, sans-serif' }}

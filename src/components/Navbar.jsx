@@ -2,19 +2,15 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, useScroll } from 'framer-motion'
 import { Menu, X, ShoppingBag } from 'lucide-react'
 import { useCart } from '../context/CartContext'
-import logoUrl from '../assets/logo.jpg'
+import logoChars from '../assets/logo_chars.jpg'
 
-function BrandLogo({ size = 32 }) {
+function BrandLogo() {
   return (
     <img
-      src={logoUrl}
+      src={logoChars}
       alt="Mr. White Burgers"
-      width={size}
-      height={size}
-      className="rounded-full object-cover"
-      style={{
-        boxShadow: '0 4px 12px -2px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(240,200,50,0.35)',
-      }}
+      className="h-8 md:h-9 w-auto object-contain select-none"
+      draggable={false}
     />
   )
 }
@@ -52,8 +48,8 @@ export default function Navbar() {
         >
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 pl-1.5 pr-2 md:pr-4 group">
-            <BrandLogo size={32} />
+          <a href="/" className="flex items-center gap-2 pl-1.5 pr-2 md:pr-4 group">
+            <BrandLogo />
             <span
               className="text-white text-base md:text-xl tracking-wide uppercase"
               style={{ fontFamily: 'Anton, sans-serif' }}

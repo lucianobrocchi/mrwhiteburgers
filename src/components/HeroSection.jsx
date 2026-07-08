@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import imgHero from '../assets/burgers/curri_white_hero.jpg'
+import logoFull from '../assets/logo_full.jpg'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -74,40 +75,16 @@ export default function HeroSection() {
           </p>
         </motion.div>
 
-        {/* Headline */}
-        <div className="overflow-hidden leading-none">
-          <motion.h1
-            className="text-[3rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
-            style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, ease, delay: 0.3 }}
-          >
-            MR.
-          </motion.h1>
-          <motion.h1
-            className="text-[3rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-[#F0C832] uppercase"
-            style={{
-              fontFamily: 'Anton, sans-serif',
-              letterSpacing: '-0.02em',
-              textShadow: '0 0 60px rgba(240, 200, 50, 0.25)',
-            }}
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, ease, delay: 0.45 }}
-          >
-            WHITE
-          </motion.h1>
-          <motion.h1
-            className="text-[3rem] md:text-[6rem] lg:text-[7.5rem] leading-[0.95] text-white uppercase"
-            style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.02em' }}
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, ease, delay: 0.6 }}
-          >
-            BURGERS
-          </motion.h1>
-        </div>
+        {/* Logo */}
+        <motion.img
+          src={logoFull}
+          alt="Mr. White Burgers"
+          className="w-full max-w-[340px] md:max-w-[440px] h-auto mx-auto md:mx-0 select-none"
+          draggable={false}
+          initial={{ y: 40, opacity: 0, scale: 0.96 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease, delay: 0.3 }}
+        />
 
         {/* Divider */}
         <motion.div
