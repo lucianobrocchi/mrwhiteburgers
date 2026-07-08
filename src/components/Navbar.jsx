@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, useScroll } from 'framer-motion'
 import { Menu, X, ShoppingBag } from 'lucide-react'
 import { useCart } from '../context/CartContext'
-import logoChars from '../assets/logo_chars.jpg'
+import logoBadge from '../assets/logo_badge.jpg'
 
 function BrandLogo() {
   return (
     <img
-      src={logoChars}
+      src={logoBadge}
       alt="Mr. White Burgers"
-      className="h-8 md:h-9 w-auto object-contain select-none"
+      className="w-9 h-9 md:w-10 md:h-10 rounded-xl object-cover select-none"
       draggable={false}
+      style={{ boxShadow: 'inset 0 0 0 1px rgba(240,200,50,0.35)' }}
     />
   )
 }
