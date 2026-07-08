@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
-import { useCart, formatPrice, SIZES, PROMO } from '../context/CartContext'
+import { useCart, formatPrice, SIZES, PROMO, PROMO_ACTIVE } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
 import { trackBurgerClick } from '../lib/track'
 
@@ -145,7 +145,13 @@ function CartControls({ burger, size, onAdded }) {
   const [qty, setQty] = useState(1)
   const price = burger.prices[size]
   const subtotal = qty * price
-  const discount = Math.floor(qty / 2) * (price / 2)
+  // Promo del viernes: pares de simples a $15.000; en el resto, 20% off el 2do
+  const pairs = Math.floor(qty / 2)
+  const discount = !PROMO_ACTIVE
+    ? 0
+    : size === 'simple'
+      ? pairs * Math.max(0, price * 2 - PROMO.bundlePrice)
+      : pairs * price * PROMO.secondPct
   const total = subtotal - discount
 
   const handleAdd = () => {
@@ -213,7 +219,7 @@ function CartControls({ burger, size, onAdded }) {
       </div>
 
       {/* Discount preview when qty>=2 (solo con promo activa) */}
-      {PROMO.active && qty >= 2 && (
+      {PROMO_ACTIVE && qty >= 2 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -227,7 +233,7 @@ function CartControls({ burger, size, onAdded }) {
             className="text-[10px] tracking-[0.18em] uppercase text-[#F0C832]"
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
-            ★ 2da con 50% off
+            ★ {size === 'simple' ? '2 simples x $15.000' : '2do combo con 20% off'}
           </span>
           <span
             className="text-[#F0C832] text-sm"

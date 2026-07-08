@@ -5,14 +5,40 @@ const CartContext = createContext()
 export const WHATSAPP_NUMBER = '5492213034143'
 export const WHATSAPP_DISPLAY = '221 303-4143'
 
+// ─── Promo del Viernes (3 de julio 2026) ─────────────────────────────────
+// Se maneja sola por fecha: jueves 2/7 = anticipo (cartel sin descuento),
+// viernes 3/7 = activa (cartel + descuentos), después = apagada.
+// Para probar otro estado sin esperar: agregar ?promo=live | preview | off a la URL.
 export const PROMO = {
-  active: false,
-  date: '28 DE MAYO',
-  title: 'Día Mundial de la Hamburguesa',
-  headline: '50% OFF',
-  subline: 'en la 2da hamburguesa',
-  short: '50% off en la 2da burger',
+  dateStr: '2026-07-03',
+  dateLabel: 'VIERNES 3 DE JULIO',
+  title: 'Promo del Viernes',
+  bundlePrice: 15000,
+  bundleLabel: '2 simples x $15.000',
+  secondPct: 0.2,
+  secondLabel: '20% off en el 2do combo',
+  short: '2 simples x $15.000 + 20% off en el 2do combo',
 }
+
+function localDateStr(d) {
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+function computePromoPhase() {
+  try {
+    const forced = new URLSearchParams(window.location.search).get('promo')
+    if (forced === 'live' || forced === 'preview' || forced === 'off') return forced
+  } catch { /* sin window/URL rara — seguimos por fecha */ }
+  const now = new Date()
+  if (localDateStr(now) === PROMO.dateStr) return 'live'
+  const tomorrow = new Date(now.getTime() + 86400000)
+  if (localDateStr(tomorrow) === PROMO.dateStr) return 'preview'
+  return 'off'
+}
+
+export const PROMO_PHASE = computePromoPhase()
+export const PROMO_ACTIVE = PROMO_PHASE === 'live'
 
 export const SIZES = [
   { key: 'simple', label: 'Simple' },
@@ -25,16 +51,27 @@ const SIZE_LABEL = Object.fromEntries(SIZES.map(s => [s.key, s.label]))
 export const formatPrice = (n) => '$' + Math.round(n).toLocaleString('es-AR')
 
 function calcPromoDiscount(items) {
-  if (!PROMO.active) return 0
-  const units = []
+  if (!PROMO_ACTIVE) return 0
+  const simples = []
+  const others = []
   for (const it of items) {
-    for (let i = 0; i < it.qty; i++) units.push(it.price)
+    for (let i = 0; i < it.qty; i++) {
+      ;(it.size === 'simple' ? simples : others).push(it.price)
+    }
   }
-  units.sort((a, b) => a - b) // cheapest first
   let discount = 0
-  // 50% off the cheaper unit of each pair
-  for (let i = 0; i + 1 < units.length; i += 2) {
-    discount += units[i] / 2
+  // Cada par de simples sale $15.000 (no se acumula con el 20%)
+  simples.sort((a, b) => b - a)
+  const pairs = Math.floor(simples.length / 2)
+  for (let p = 0; p < pairs; p++) {
+    discount += Math.max(0, simples[p * 2] + simples[p * 2 + 1] - PROMO.bundlePrice)
+  }
+  // La simple suelta puede entrar como "2do combo" al 20%
+  if (simples.length % 2) others.push(simples[simples.length - 1])
+  // 20% off en el 2do combo: el más barato de cada par restante
+  others.sort((a, b) => b - a)
+  for (let i = 1; i < others.length; i += 2) {
+    discount += others[i] * PROMO.secondPct
   }
   return discount
 }

@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Sparkles, Bike, Package } from 'lucide-react'
-import { PROMO, WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from '../context/CartContext'
+import { PROMO, PROMO_PHASE, WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from '../context/CartContext'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -17,10 +17,11 @@ export default function PromoBanner() {
   const ref    = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
 
-  if (!PROMO.active) return null
+  if (PROMO_PHASE === 'off') return null
 
+  const isLive = PROMO_PHASE === 'live'
   const waMsg = encodeURIComponent(
-    `Hola! Quiero aprovechar la promo del ${PROMO.title} (${PROMO.short}).`
+    `Hola! Quiero aprovechar la ${PROMO.title} (${PROMO.short}).`
   )
 
   return (
@@ -47,7 +48,7 @@ export default function PromoBanner() {
 
       <div className="relative w-full flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
 
-        {/* Left — big 50% mark */}
+        {/* Left — big price mark */}
         <motion.div
           className="flex items-center gap-5 flex-shrink-0"
           initial={{ opacity: 0, scale: 0.85 }}
@@ -55,7 +56,7 @@ export default function PromoBanner() {
           transition={{ duration: 0.7, ease, delay: 0.1 }}
         >
           <div
-            className="relative flex items-baseline px-6 py-3 rounded-2xl"
+            className="relative flex flex-col items-center px-6 py-3 rounded-2xl"
             style={{
               backgroundColor: '#F0C832',
               boxShadow: '0 14px 40px -10px rgba(240, 200, 50, 0.4), inset 0 1px 0 0 rgba(255,255,255,0.4)',
@@ -63,16 +64,16 @@ export default function PromoBanner() {
           >
             <Sparkles size={20} className="absolute -top-2 -right-2 text-white" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }} />
             <span
-              className="text-6xl md:text-7xl leading-none text-black"
+              className="text-5xl md:text-6xl leading-none text-black"
               style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.03em' }}
             >
-              50
+              $15.000
             </span>
             <span
-              className="text-3xl md:text-4xl leading-none text-black ml-1"
+              className="text-sm md:text-base leading-none text-black mt-1.5 tracking-[0.18em] uppercase"
               style={{ fontFamily: 'Anton, sans-serif' }}
             >
-              %
+              2 simples
             </span>
           </div>
         </motion.div>
@@ -96,7 +97,7 @@ export default function PromoBanner() {
               className="text-[#F0C832] text-[10px] tracking-[0.22em] uppercase"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
-              Solo {PROMO.date}
+              {isLive ? 'Solo hoy' : `Mañana · ${PROMO.dateLabel}`}
             </p>
           </div>
 
@@ -104,14 +105,14 @@ export default function PromoBanner() {
             className="text-3xl md:text-4xl lg:text-5xl text-white uppercase leading-[0.95]"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
           >
-            Día Mundial<br className="hidden sm:block" /> de la Hamburguesa
+            {PROMO.title}
           </h2>
 
           <p
             className="text-[#F0C832] text-base md:text-lg mt-3"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '0.02em' }}
           >
-            {PROMO.headline} {PROMO.subline} — aplica en todas
+            {PROMO.bundleLabel} <span className="text-white/40 mx-1">·</span> {PROMO.secondLabel}
           </p>
 
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 mt-3">
