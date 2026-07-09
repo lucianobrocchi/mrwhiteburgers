@@ -2,8 +2,8 @@ import { PROMO_PHASE } from '../context/CartContext'
 
 const MESSAGES = {
   off:     '★  SMASH BURGERS PREMIUM  ·  PAN DE PAPA ARTESANAL  ·  CARNE FRESCA TODOS LOS DÍAS',
-  preview: '★  MAÑANA VIERNES  ·  2 SIMPLES X $15.000  ·  20% OFF EN EL 2DO COMBO',
-  live:    '★  SOLO HOY  ·  2 SIMPLES X $15.000  ·  20% OFF EN EL 2DO COMBO',
+  preview: '★  MAÑANA  ·  2 SIMPLES X $15.000  ·  PEDÍ POR WHATSAPP',
+  live:    '★  SOLO HOY  ·  2 SIMPLES X $15.000  ·  PEDÍ POR WHATSAPP',
 }
 
 export default function DiscountTicker() {

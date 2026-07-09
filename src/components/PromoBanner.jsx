@@ -112,7 +112,12 @@ export default function PromoBanner() {
             className="text-[#F0C832] text-base md:text-lg mt-3"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '0.02em' }}
           >
-            {PROMO.bundleLabel} <span className="text-white/40 mx-1">·</span> {PROMO.secondLabel}
+            {PROMO.bundleLabel}
+            {PROMO.secondLabel && (
+              <>
+                <span className="text-white/40 mx-1">·</span> {PROMO.secondLabel}
+              </>
+            )}
           </p>
 
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 mt-3">

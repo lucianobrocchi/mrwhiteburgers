@@ -218,8 +218,8 @@ function CartControls({ burger, size, onAdded }) {
         </motion.button>
       </div>
 
-      {/* Discount preview when qty>=2 (solo con promo activa) */}
-      {PROMO_ACTIVE && qty >= 2 && (
+      {/* Discount preview when qty>=2 (solo con promo activa y con descuento real) */}
+      {PROMO_ACTIVE && qty >= 2 && discount > 0 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -233,7 +233,7 @@ function CartControls({ burger, size, onAdded }) {
             className="text-[10px] tracking-[0.18em] uppercase text-[#F0C832]"
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
-            ★ {size === 'simple' ? '2 simples x $15.000' : '2do combo con 20% off'}
+            ★ 2 simples x $15.000
           </span>
           <span
             className="text-[#F0C832] text-sm"

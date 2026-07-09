@@ -5,19 +5,19 @@ const CartContext = createContext()
 export const WHATSAPP_NUMBER = '5492213034143'
 export const WHATSAPP_DISPLAY = '221 303-4143'
 
-// ─── Promo del Viernes (3 de julio 2026) ─────────────────────────────────
-// Se maneja sola por fecha: jueves 2/7 = anticipo (cartel sin descuento),
-// viernes 3/7 = activa (cartel + descuentos), después = apagada.
-// Para probar otro estado sin esperar: agregar ?promo=live | preview | off a la URL.
+// ─── Promo del día ───────────────────────────────────────────────────────
+// Se maneja sola por fecha: se activa el día de dateStr y se apaga sola al
+// día siguiente. Para cambiar de día, editar dateStr (formato AAAA-MM-DD).
+// Para probar sin esperar: agregar ?promo=live | preview | off a la URL.
 export const PROMO = {
-  dateStr: '2026-07-03',
-  dateLabel: 'VIERNES 3 DE JULIO',
-  title: 'Promo del Viernes',
+  dateStr: '2026-07-09',
+  dateLabel: 'HOY',
+  title: 'Promo de Hoy',
   bundlePrice: 15000,
   bundleLabel: '2 simples x $15.000',
-  secondPct: 0.2,
-  secondLabel: '20% off en el 2do combo',
-  short: '2 simples x $15.000 + 20% off en el 2do combo',
+  secondPct: 0,
+  secondLabel: '',
+  short: '2 simples x $15.000',
 }
 
 function localDateStr(d) {
