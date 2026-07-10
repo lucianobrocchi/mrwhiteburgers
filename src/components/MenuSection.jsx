@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
-import { useCart, formatPrice, SIZES, PROMO, PROMO_ACTIVE } from '../context/CartContext'
+import { useCart, formatPrice, SIZES, ACTIVE_PROMO, PROMO_ACTIVE, itemPromoPrice } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
 import { trackBurgerClick } from '../lib/track'
 
@@ -70,7 +70,7 @@ const FALLBACK_BURGERS = [
   {
     id: 4,
     name: 'LA CHESSE JOA',
-    description: 'Pan de papa, medallón de carne, cheddar, bacon, cebolla crispy y salsa Big White.',
+    description: 'Pan de papa, medallón de carne, queso cheddar y salsa Big White.',
     tag: 'La Bestia',
     image: imgChesseJoaNegro,
     imageAlt: imgChesseJoaPapel,
@@ -145,13 +145,10 @@ function CartControls({ burger, size, onAdded }) {
   const [qty, setQty] = useState(1)
   const price = burger.prices[size]
   const subtotal = qty * price
-  // Promo del viernes: pares de simples a $15.000; en el resto, 20% off el 2do
+  // Preview del descuento "2 simples x $15.000" (solo aplica a simples)
+  const isBundle = ACTIVE_PROMO?.kind === 'simplesBundle' && size === 'simple'
   const pairs = Math.floor(qty / 2)
-  const discount = !PROMO_ACTIVE
-    ? 0
-    : size === 'simple'
-      ? pairs * Math.max(0, price * 2 - PROMO.bundlePrice)
-      : pairs * price * PROMO.secondPct
+  const discount = isBundle ? pairs * Math.max(0, price * 2 - ACTIVE_PROMO.bundlePrice) : 0
   const total = subtotal - discount
 
   const handleAdd = () => {
@@ -256,6 +253,9 @@ function BurgerCard({ burger, index }) {
   const addedTimer = useRef(null)
   const revealed = showAlt || justAdded
   const price = burger.prices[size]
+  const promoPrice = itemPromoPrice(burger.name, size, price)  // precio especial del tamaño elegido (o null)
+  const itemPromo = ACTIVE_PROMO?.kind === 'itemPrice' && ACTIVE_PROMO.itemName === burger.name
+    ? ACTIVE_PROMO : null  // esta burger tiene promo puntual hoy
 
   const handleAdded = () => {
     if (!burger.imageAlt) return
@@ -295,6 +295,19 @@ function BurgerCard({ burger, index }) {
         onMouseLeave={() => burger.imageAlt && setShowAlt(false)}
         onClick={() => burger.imageAlt && setShowAlt(v => !v)}
       >
+        {itemPromo && (
+          <div
+            className="absolute top-3 left-3 z-20 inline-flex items-center px-2.5 py-1 rounded-full pointer-events-none"
+            style={{ backgroundColor: '#F0C832', boxShadow: '0 6px 18px -6px rgba(240,200,50,0.6)' }}
+          >
+            <span
+              className="text-[10px] tracking-[0.12em] uppercase text-black"
+              style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 700 }}
+            >
+              ★ Hoy {itemPromo.itemSize} {formatPrice(itemPromo.specialPrice)}
+            </span>
+          </div>
+        )}
         {burger.image && burger.imageAlt ? (
           <>
             {/* Foto base (fondo negro) */}
@@ -412,16 +425,24 @@ function BurgerCard({ burger, index }) {
           >
             Precio
           </span>
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-2">
+            {promoPrice != null && (
+              <span
+                className="text-lg text-white/35 line-through"
+                style={{ fontFamily: 'Anton, sans-serif' }}
+              >
+                {formatPrice(price)}
+              </span>
+            )}
             <motion.span
-              key={price}
+              key={promoPrice ?? price}
               className="text-3xl text-[#F0C832]"
               style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease }}
             >
-              {formatPrice(price)}
+              {formatPrice(promoPrice ?? price)}
             </motion.span>
           </div>
         </div>

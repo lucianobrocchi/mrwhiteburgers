@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Sparkles, Bike, Package } from 'lucide-react'
-import { PROMO, PROMO_PHASE, WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from '../context/CartContext'
+import { ACTIVE_PROMO, PREVIEW_PROMO, WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from '../context/CartContext'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -17,11 +17,12 @@ export default function PromoBanner() {
   const ref    = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
 
-  if (PROMO_PHASE === 'off') return null
+  const promo = ACTIVE_PROMO || PREVIEW_PROMO
+  if (!promo) return null
 
-  const isLive = PROMO_PHASE === 'live'
+  const isLive = !!ACTIVE_PROMO
   const waMsg = encodeURIComponent(
-    `Hola! Quiero aprovechar la ${PROMO.title} (${PROMO.short}).`
+    `Hola! Quiero aprovechar la ${promo.title} (${promo.short}).`
   )
 
   return (
@@ -67,13 +68,13 @@ export default function PromoBanner() {
               className="text-5xl md:text-6xl leading-none text-black"
               style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.03em' }}
             >
-              $15.000
+              {promo.bigPrice}
             </span>
             <span
               className="text-sm md:text-base leading-none text-black mt-1.5 tracking-[0.18em] uppercase"
               style={{ fontFamily: 'Anton, sans-serif' }}
             >
-              2 simples
+              {promo.bigSub}
             </span>
           </div>
         </motion.div>
@@ -97,7 +98,7 @@ export default function PromoBanner() {
               className="text-[#F0C832] text-[10px] tracking-[0.22em] uppercase"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
-              {isLive ? 'Solo hoy' : `Mañana · ${PROMO.dateLabel}`}
+              {isLive ? 'Solo hoy' : `Mañana · ${promo.dateLabel}`}
             </p>
           </div>
 
@@ -105,19 +106,14 @@ export default function PromoBanner() {
             className="text-3xl md:text-4xl lg:text-5xl text-white uppercase leading-[0.95]"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
           >
-            {PROMO.title}
+            {promo.title}
           </h2>
 
           <p
             className="text-[#F0C832] text-base md:text-lg mt-3"
             style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '0.02em' }}
           >
-            {PROMO.bundleLabel}
-            {PROMO.secondLabel && (
-              <>
-                <span className="text-white/40 mx-1">·</span> {PROMO.secondLabel}
-              </>
-            )}
+            {promo.headline}
           </p>
 
           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 mt-3">

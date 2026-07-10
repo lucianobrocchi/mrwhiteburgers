@@ -1,13 +1,13 @@
-import { PROMO_PHASE } from '../context/CartContext'
+import { ACTIVE_PROMO, PREVIEW_PROMO } from '../context/CartContext'
 
-const MESSAGES = {
-  off:     '★  SMASH BURGERS PREMIUM  ·  PAN DE PAPA ARTESANAL  ·  CARNE FRESCA TODOS LOS DÍAS',
-  preview: '★  MAÑANA  ·  2 SIMPLES X $15.000  ·  PEDÍ POR WHATSAPP',
-  live:    '★  SOLO HOY  ·  2 SIMPLES X $15.000  ·  PEDÍ POR WHATSAPP',
-}
+const BRAND = '★  SMASH BURGERS PREMIUM  ·  PAN DE PAPA ARTESANAL  ·  CARNE FRESCA TODOS LOS DÍAS'
 
 export default function DiscountTicker() {
-  const message = MESSAGES[PROMO_PHASE] || MESSAGES.off
+  const message = ACTIVE_PROMO
+    ? `★  SOLO HOY  ·  ${ACTIVE_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
+    : PREVIEW_PROMO
+      ? `★  MAÑANA  ·  ${PREVIEW_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
+      : BRAND
 
   return (
     <div

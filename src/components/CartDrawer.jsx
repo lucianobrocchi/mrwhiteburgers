@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Minus, ShoppingBag, Trash2 } from 'lucide-react'
-import { useCart, formatPrice, PROMO } from '../context/CartContext'
+import { useCart, formatPrice, ACTIVE_PROMO } from '../context/CartContext'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -220,7 +220,7 @@ export default function CartDrawer() {
                         className="text-[#F0C832] text-[10px] tracking-[0.15em] uppercase"
                         style={{ fontFamily: 'DM Sans, sans-serif' }}
                       >
-                        ★ {PROMO.short}
+                        ★ {ACTIVE_PROMO?.short || 'Descuento'}
                       </span>
                       <span
                         className="text-[#F0C832] text-base"
