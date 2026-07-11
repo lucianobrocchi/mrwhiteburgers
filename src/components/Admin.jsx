@@ -184,7 +184,97 @@ function BurgerEditor({ burger, onChanged }) {
   )
 }
 
+const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR')
+const localDay = (iso) => {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function OrdersView() {
+  const [orders, setOrders] = useState(null) // null = cargando
+  const [err, setErr] = useState('')
+
+  const load = useCallback(async () => {
+    setErr('')
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500)
+    if (error) { setErr(error.message); setOrders([]); return }
+    setOrders(data || [])
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  if (orders === null) return <p className="text-white/50">Cargando pedidos…</p>
+  if (err) {
+    return (
+      <p className="text-red-300 text-sm">
+        No se pudieron cargar los pedidos. ¿Creaste la tabla “orders” en Supabase? <br />
+        <span className="text-white/40">({err})</span>
+      </p>
+    )
+  }
+  if (!orders.length) return <p className="text-white/50">Todavía no hay pedidos registrados. Aparecen acá cuando un cliente toca “Pedir por WhatsApp”.</p>
+
+  // Agrupar por día (hora local)
+  const byDay = {}
+  for (const o of orders) {
+    const key = localDay(o.created_at)
+    if (!byDay[key]) byDay[key] = { orders: [], total: 0 }
+    byDay[key].orders.push(o)
+    byDay[key].total += o.total || 0
+  }
+  const days = Object.keys(byDay).sort().reverse()
+  const granTotal = orders.reduce((s, o) => s + (o.total || 0), 0)
+
+  return (
+    <div className="flex flex-col gap-7">
+      <div className="flex items-center justify-between">
+        <p className="text-white/45 text-sm">{orders.length} pedidos · {money(granTotal)} en total</p>
+        <button onClick={load} className="text-sm text-[#F0C832]/80 hover:text-[#F0C832]">↻ Actualizar</button>
+      </div>
+      {days.map((key) => {
+        const day = byDay[key]
+        const label = new Date(`${key}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+        return (
+          <div key={key}>
+            <div className="flex items-baseline justify-between mb-3 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <h3 className="text-lg text-white uppercase" style={{ fontFamily: 'Anton, sans-serif' }}>{label}</h3>
+              <span className="text-[#F0C832]" style={{ fontFamily: 'Anton, sans-serif' }}>
+                {day.orders.length} {day.orders.length === 1 ? 'pedido' : 'pedidos'} · {money(day.total)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {day.orders.map((o) => (
+                <div key={o.id} className="rounded-xl p-3.5" style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/45 text-xs">
+                      {new Date(o.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                    </span>
+                    <span className="text-[#F0C832] text-lg" style={{ fontFamily: 'Anton, sans-serif' }}>{money(o.total)}</span>
+                  </div>
+                  <p className="text-white/75 text-sm mt-1.5">
+                    {(o.items || []).map((i) => `${i.qty}× ${i.name} (${i.size})`).join('  ·  ')}
+                  </p>
+                  {o.discount > 0 && (
+                    <p className="text-white/40 text-xs mt-1">
+                      Subtotal {money(o.subtotal)} · desc −{money(o.discount)}{o.promo ? ` (${o.promo})` : ''}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Admin() {
+  const [tab, setTab] = useState('menu')
   const [session, setSession] = useState(undefined) // undefined = cargando
   const [burgers, setBurgers] = useState([])
   const [loading, setLoading] = useState(false)
@@ -241,23 +331,48 @@ export default function Admin() {
           </div>
         </div>
 
-        <button
-          onClick={addNew}
-          className="mb-6 px-5 py-2.5 rounded-full text-sm tracking-widest uppercase text-[#F0C832]"
-          style={{ border: '1px solid rgba(240,200,50,0.4)', fontFamily: 'Anton, sans-serif' }}
-        >
-          + Agregar burger
-        </button>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          {[['menu', 'Menú'], ['ventas', 'Ventas']].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className="px-5 py-2 rounded-full text-sm tracking-widest uppercase transition-colors"
+              style={{
+                fontFamily: 'Anton, sans-serif',
+                backgroundColor: tab === key ? '#F0C832' : 'transparent',
+                color: tab === key ? '#000' : 'rgba(255,255,255,0.6)',
+                border: tab === key ? 'none' : '1px solid rgba(255,255,255,0.15)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        {loading ? (
-          <p className="text-white/50">Cargando burgers…</p>
+        {tab === 'ventas' ? (
+          <OrdersView />
         ) : (
-          <div className="flex flex-col gap-5">
-            {burgers.map((b) => <BurgerEditor key={b.id} burger={b} onChanged={load} />)}
-            {!burgers.length && (
-              <p className="text-white/50">No hay burgers todavía. Corré el SQL de seed o tocá “Agregar burger”.</p>
+          <>
+            <button
+              onClick={addNew}
+              className="mb-6 px-5 py-2.5 rounded-full text-sm tracking-widest uppercase text-[#F0C832]"
+              style={{ border: '1px solid rgba(240,200,50,0.4)', fontFamily: 'Anton, sans-serif' }}
+            >
+              + Agregar burger
+            </button>
+
+            {loading ? (
+              <p className="text-white/50">Cargando burgers…</p>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {burgers.map((b) => <BurgerEditor key={b.id} burger={b} onChanged={load} />)}
+                {!burgers.length && (
+                  <p className="text-white/50">No hay burgers todavía. Corré el SQL de seed o tocá “Agregar burger”.</p>
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react'
+import { recordOrder } from '../lib/orders'
 
 const CartContext = createContext()
 
@@ -156,6 +157,8 @@ export function CartProvider({ children }) {
 
   const sendToWhatsApp = () => {
     if (!items.length) return
+    // Registrar el pedido para las ventas del panel (no bloquea)
+    recordOrder({ items, subtotal, discount, total: totalPrice, promo: ACTIVE_PROMO?.title })
     const lines = items
       .map(i => `• ${i.qty}x ${i.name} (${i.sizeLabel}) — ${formatPrice(i.price * i.qty)}`)
       .join('\n')
