@@ -96,6 +96,7 @@ export default function Navbar() {
                 {totalItems > 0 && (
                   <motion.span
                     key="badge"
+                    data-cart-badge
                     className="absolute -top-1 -right-1 bg-[#F0C832] text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center"
                     style={{
                       fontFamily: 'DM Sans, sans-serif',
@@ -126,6 +127,7 @@ export default function Navbar() {
                 {totalItems > 0 && (
                   <motion.span
                     key="badge-m"
+                    data-cart-badge
                     className="absolute -top-0.5 -right-0.5 bg-[#F0C832] text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center"
                     style={{ fontFamily: 'DM Sans, sans-serif' }}
                     initial={{ scale: 0 }}

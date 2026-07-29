@@ -5,6 +5,7 @@ import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice, SIZES, ACTIVE_PROMO, PROMO_ACTIVE, itemPromoPrice } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
 import { trackBurgerClick } from '../lib/track'
+import { flyToCart, popCartBadge } from '../lib/flyToCart'
 
 // Foto base (fondo negro, default) + alternativa (con papel, se revela con tap/hover)
 import imgObreraNegro    from '../assets/burgers/obrera_negro.jpeg'
@@ -140,8 +141,8 @@ function SizeSelector({ cardId, size, setSize }) {
   )
 }
 
-function CartControls({ burger, size, onAdded }) {
-  const { addItem } = useCart()
+function CartControls({ burger, size, onAdded, imgRef }) {
+  const { addItem, totalItems } = useCart()
   const [qty, setQty] = useState(1)
   const price = burger.prices[size]
   const subtotal = qty * price
@@ -152,10 +153,19 @@ function CartControls({ burger, size, onAdded }) {
   const total = subtotal - discount
 
   const handleAdd = () => {
-    addItem(burger, size, qty)
+    const n = qty
+    const wasEmpty = totalItems === 0
     setQty(1)
     onAdded?.()
     trackBurgerClick(burger)
+    // La foto vuela al carrito y el ítem se suma al aterrizar, así el contador
+    // sube justo cuando llega (con reduced-motion se suma al instante).
+    flyToCart(imgRef?.current, () => {
+      addItem(burger, size, n)
+      // El badge lo pinta React: le damos un tick para que exista y ahí el pop.
+      // Si el carrito estaba vacío, el badge ya entra con su propio spring.
+      if (!wasEmpty) setTimeout(popCartBadge, 0)
+    })
   }
 
   return (
@@ -251,6 +261,7 @@ function BurgerCard({ burger, index }) {
   const [showAlt, setShowAlt] = useState(false)
   const [justAdded, setJustAdded] = useState(false)
   const addedTimer = useRef(null)
+  const imgWrapRef = useRef(null)   // origen del vuelo al carrito
   const revealed = showAlt || justAdded
   const price = burger.prices[size]
   const promoPrice = itemPromoPrice(burger.name, size, price)  // precio especial del tamaño elegido (o null)
@@ -289,6 +300,7 @@ function BurgerCard({ burger, index }) {
 
       {/* Image */}
       <div
+        ref={imgWrapRef}
         className="relative overflow-hidden rounded-t-[28px]"
         style={{ aspectRatio: '4/3', backgroundColor: '#0A0A0A' }}
         onMouseEnter={() => burger.imageAlt && setShowAlt(true)}
@@ -447,7 +459,7 @@ function BurgerCard({ burger, index }) {
           </div>
         </div>
 
-        <CartControls burger={burger} size={size} onAdded={handleAdded} />
+        <CartControls burger={burger} size={size} onAdded={handleAdded} imgRef={imgWrapRef} />
       </div>
     </motion.div>
   )
