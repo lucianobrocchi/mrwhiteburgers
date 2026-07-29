@@ -14,9 +14,26 @@ const CONFIG = {
   landAt: 0.8,                      // % del vuelo en que aterriza (sube el contador)
 }
 
-const prefersReduced = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+// Por defecto se respeta el "reducir movimiento" del sistema. Con ?fly=1 en la URL
+// se fuerza el vuelo igual (útil para verlo en una máquina que tiene las
+// animaciones de Windows apagadas); con ?fly=off se apaga a mano.
+function flyOverride() {
+  try {
+    return new URLSearchParams(window.location.search).get('fly')
+  } catch {
+    return null
+  }
+}
+
+const prefersReduced = () => {
+  const forced = flyOverride()
+  if (forced === '1' || forced === 'force') return false
+  if (forced === 'off') return true
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
 
 // De los carritos que hay en el DOM (desktop / mobile), devuelve el que está
 // realmente visible: Tailwind oculta uno con hidden/md:hidden → offsetParent null.
