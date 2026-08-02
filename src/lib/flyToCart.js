@@ -10,9 +10,9 @@ const CONFIG = {
   // Selectores del markup que YA existe:
   cart:  '[aria-label="Carrito"]',  // botones del carrito (navbar desktop + mobile)
   badge: '[data-cart-badge]',       // contador dentro de ese botón
-  duration: 750,                    // ms del vuelo
+  duration: 820,                    // ms del vuelo
   landAt: 0.8,                      // % del vuelo en que aterriza (sube el contador)
-  spin: 380,                        // grados de voltereta en el aire
+  spin: 400,                        // grados de voltereta en el aire
   volume: 0.09,                     // volumen del sonido (0 = mudo)
 }
 
@@ -172,20 +172,36 @@ export function flyToCart(sourceEl, onLand) {
   // Altura del arco: proporcional a la distancia pero con tope, así un recorrido
   // largo (card abajo + carrito arriba) no dispara un arco desmedido.
   const lift = -Math.max(50, Math.min(Math.abs(dy) * 0.35, 180))
+  // Amague hacia abajo antes de salir disparada: da el envión de "tiro al aro".
+  const dip = Math.max(26, Math.min(Math.abs(dy) * 0.1, 64))
 
   // La voltereta gira hacia el lado del vuelo (como algo que rueda hacia allá).
   const spin = (dx >= 0 ? 1 : -1) * CONFIG.spin
 
-  // El arco lo da el keyframe del medio (desplazado hacia arriba por lift) y el
-  // ritmo un ease-in-out suave: arranca, sube en curva y entra al carrito
-  // desacelerando. Un easing muy cargado a un lado deja la foto trabada.
+  // Tres tramos, como un tiro al aro:
+  //  1) amague: baja un poco y gira apenas al revés (toma envión)
+  //  2) tiro: sale disparada hacia arriba en arco, girando y encogiéndose
+  //  3) entrada: cae dentro del carrito desacelerando
+  // El ritmo va en el easing de cada tramo (el general queda lineal).
   const anim = flyer.animate(
     [
-      { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1, offset: 0 },
       {
-        transform: `translate(${dx * 0.5}px, ${dy * 0.5 + lift}px) scale(0.55) rotate(${spin * 0.5}deg)`,
+        transform: 'translate(0,0) scale(1) rotate(0deg)',
+        opacity: 1,
+        offset: 0,
+        easing: 'cubic-bezier(0.35, 0, 0.5, 1)',
+      },
+      {
+        transform: `translate(${dx * 0.03}px, ${dip}px) scale(0.9) rotate(${-spin * 0.06}deg)`,
+        opacity: 1,
+        offset: 0.17,
+        easing: 'cubic-bezier(0.3, 0, 0.3, 1)',
+      },
+      {
+        transform: `translate(${dx * 0.52}px, ${dy * 0.52 + lift}px) scale(0.5) rotate(${spin * 0.58}deg)`,
         opacity: 0.95,
-        offset: 0.5,
+        offset: 0.6,
+        easing: 'cubic-bezier(0.45, 0, 0.5, 1)',
       },
       {
         transform: `translate(${dx}px, ${dy}px) scale(0.12) rotate(${spin}deg)`,
@@ -193,10 +209,11 @@ export function flyToCart(sourceEl, onLand) {
         offset: 1,
       },
     ],
-    { duration: CONFIG.duration, easing: 'cubic-bezier(0.42, 0, 0.58, 1)', fill: 'forwards' },
+    { duration: CONFIG.duration, easing: 'linear', fill: 'forwards' },
   )
 
-  playWhoosh()
+  // El whoosh entra con el envión, no con el amague.
+  setTimeout(playWhoosh, CONFIG.duration * 0.15)
 
   let landed = false
   let cleaned = false
