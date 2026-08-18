@@ -48,10 +48,10 @@ export default function Navbar() {
         >
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2 pl-1.5 pr-2 md:pr-4 group">
+          <a href="/" className="flex items-center gap-2 pl-1.5 pr-2 md:pr-4 group shrink-0">
             <BrandLogo />
             <span
-              className="text-white text-base md:text-xl tracking-wide uppercase"
+              className="text-white text-base md:text-xl tracking-wide uppercase whitespace-nowrap"
               style={{ fontFamily: 'Anton, sans-serif' }}
             >
               MR. WHITE

@@ -69,6 +69,10 @@ function Inner() {
   )
 }
 
+// Panel de admin desactivado: /#admin no abre nada y muestra el sitio normal.
+// Para volver a habilitarlo, poner esto en true.
+const ADMIN_ENABLED = false
+
 function useIsAdmin() {
   const [isAdmin, setIsAdmin] = useState(
     () => window.location.hash.replace(/^#\/?/, '') === 'admin',
@@ -84,7 +88,7 @@ function useIsAdmin() {
 export default function App() {
   const isAdmin = useIsAdmin()
 
-  if (isAdmin) return <Admin />
+  if (ADMIN_ENABLED && isAdmin) return <Admin />
 
   return (
     <CartProvider>
