@@ -15,28 +15,28 @@ export const ZONES = [
     id: 'cerca',
     name: 'Zona 1 · Cerca',
     price: 800,
-    blocks: 10,               // ~1 km a la redonda
+    blocks: 15,               // ~1,5 km a la redonda
     color: '#4ADE80',
-    hint: 'Hasta 10 cuadras del local',
-    areas: ['Altos de San Lorenzo', 'Barrio Jardín', 'Villa Elvira (parte)'],
+    hint: 'Hasta 15 cuadras del local',
+    areas: ['Altos de San Lorenzo', 'Barrio Jardín'],
   },
   {
     id: 'media',
-    name: 'Zona 2 · Media',
+    name: 'Zona 2 · Casco sur',
     price: 1200,
-    blocks: 20,               // ~2 km
+    blocks: 35,               // ~3,5 km — entra al casco por Av. 72
     color: '#F0C832',
-    hint: 'Entre 10 y 20 cuadras',
-    areas: ['Los Hornos', 'San Carlos', 'Villa Elvira'],
+    hint: 'Del local hasta el sur del casco',
+    areas: ['Los Hornos', 'San Carlos', 'Villa Elvira', 'Casco hasta Av. 60'],
   },
   {
-    id: 'lejos',
-    name: 'Zona 3 · Lejos',
+    id: 'casco',
+    name: 'Zona 3 · Todo el casco',
     price: 1800,
-    blocks: 35,               // ~3.5 km
+    blocks: 60,               // ~6 km — cubre el casco urbano completo
     color: '#FB923C',
-    hint: 'Entre 20 y 35 cuadras',
-    areas: ['Casco urbano', 'Tolosa', 'Ringuelet'],
+    hint: 'Casco urbano completo',
+    areas: ['Centro', 'Plaza Moreno', 'Plaza Italia', 'hasta Av. 32 / Av. 122'],
   },
 ]
 
