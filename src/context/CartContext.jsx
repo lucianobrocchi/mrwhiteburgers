@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import { recordOrder } from '../lib/orders'
+import { findZone } from '../lib/zones'
+import { getStatus } from '../lib/schedule'
 
 const CartContext = createContext()
 
@@ -114,6 +116,9 @@ export function CartProvider({ children }) {
   const [items, setItems]     = useState([])
   const [isOpen, setIsOpen]   = useState(false)
   const [toast, setToast]     = useState(null) // { name, id }
+  const [zone, setZoneState]  = useState(null) // zona de envío elegida
+
+  const setZone = useCallback((id) => setZoneState(findZone(id)), [])
 
   const addItem = useCallback((burger, size = 'doble', qty = 1) => {
     const n = Math.max(1, Math.floor(qty))
@@ -153,7 +158,8 @@ export function CartProvider({ children }) {
   const totalItems = items.reduce((acc, i) => acc + i.qty, 0)
   const subtotal   = items.reduce((acc, i) => acc + i.price * i.qty, 0)
   const discount   = calcPromoDiscount(items)
-  const totalPrice = subtotal - discount
+  const shipping   = zone?.price || 0
+  const totalPrice = subtotal - discount + shipping
 
   const sendToWhatsApp = () => {
     if (!items.length) return
@@ -165,17 +171,28 @@ export function CartProvider({ children }) {
     const promoLine = discount > 0 && ACTIVE_PROMO
       ? `\nSubtotal: ${formatPrice(subtotal)}\nDescuento ${ACTIVE_PROMO.title} (${ACTIVE_PROMO.short}): -${formatPrice(discount)}`
       : ''
+    const zoneLine = zone
+      ? `\n${zone.price ? `Envío ${zone.name}: ${formatPrice(zone.price)}` : zone.name}`
+      : ''
+    // Si está cerrado, se avisa que el pedido es para cuando abran.
+    const st = getStatus()
+    const closedLine = st.open
+      ? ''
+      : `\n\n(Sé que están cerrados — lo dejo pedido para cuando abran${
+          st.opensAt ? `, ${st.opensLabel} ${st.opensAt}` : ''
+        }.)`
+    const tail = zone ? '' : '\n\n¿Hacen entrega o retiro en local?'
     const msg =
-      `Hola! Quiero hacer un pedido:\n\n${lines}\n${promoLine}\n` +
-      `Total: ${formatPrice(totalPrice)} (precio transferencia)\n\n` +
-      `¿Hacen entrega o retiro en local?`
+      `Hola! Quiero hacer un pedido:\n\n${lines}\n${promoLine}${zoneLine}\n` +
+      `Total: ${formatPrice(totalPrice)} (precio transferencia)${tail}${closedLine}`
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   return (
     <CartContext.Provider value={{
       items, addItem, removeItem, updateQty,
-      totalItems, subtotal, discount, totalPrice,
+      totalItems, subtotal, discount, shipping, totalPrice,
+      zone, setZone,
       isOpen, setIsOpen, clear, sendToWhatsApp, toast,
     }}>
       {children}

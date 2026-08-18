@@ -1,8 +1,44 @@
 import { motion } from 'framer-motion'
 import imgHero from '../assets/burgers/curri_white_hero.jpg'
 import logoFull from '../assets/logo_full.jpg'
+import { getStatus } from '../lib/schedule'
 
 const ease = [0.16, 1, 0.3, 1]
+
+// Chip de abierto/cerrado. Si está cerrado, dice cuándo abre y lleva a los horarios.
+function StatusChip() {
+  const s = getStatus()
+  const color = s.open ? '#4ADE80' : '#F87171'
+  return (
+    <motion.a
+      href="#envios"
+      className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
+      style={{
+        backgroundColor: s.open ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
+        border: `1px solid ${s.open ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.32)'}`,
+        backdropFilter: 'blur(8px)',
+      }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease, delay: 0.28 }}
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full"
+        style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }}
+      />
+      <p
+        className="text-[11px] tracking-[0.14em] uppercase"
+        style={{ fontFamily: 'DM Sans, sans-serif', color }}
+      >
+        {s.open
+          ? `Abierto ahora · hasta ${s.closesAt}`
+          : s.opensAt
+            ? `Cerrado · abre ${s.opensLabel} ${s.opensAt}`
+            : 'Cerrado'}
+      </p>
+    </motion.a>
+  )
+}
 
 export default function HeroSection() {
   return (
@@ -74,6 +110,11 @@ export default function HeroSection() {
             Smash Burger · Premium
           </p>
         </motion.div>
+
+        {/* Estado del local */}
+        <div className="mb-4 md:mb-8 -mt-2 md:-mt-6">
+          <StatusChip />
+        </div>
 
         {/* Logo */}
         <motion.img
