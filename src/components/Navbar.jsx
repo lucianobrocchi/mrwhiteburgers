@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, useScroll } from 'framer-motion'
 import { Menu, X, ShoppingBag } from 'lucide-react'
 import { useCart } from '../context/CartContext'
-import logoChars from '../assets/logo_chars.jpg'
+// Los personajes recortados con fondo transparente: sobre la píldora
+// translúcida del nav, la versión .jpg dejaba ver su recuadro negro.
+import logoChars from '../assets/logo_chars.webp'
 
 function BrandLogo() {
   return (

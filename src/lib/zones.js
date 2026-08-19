@@ -17,7 +17,6 @@ export const ZONES = [
     price: 2000,
     color: '#4ADE80',
     bounds: 'De 22 a 31 · de 72 a 80',
-    areas: ['Altos de San Lorenzo'],
     // 31y80 → 22y80 → 22y72 → 31y72
     polygon: [
       [-34.959602, -57.944318],
@@ -32,7 +31,6 @@ export const ZONES = [
     price: 4000,
     color: '#F0C832',
     bounds: 'De 13 a 22 · de 72 a 80',
-    areas: ['Villa Elvira'],
     // 22y80 → 13y80 → 13y72 → 22y72
     polygon: [
       [-34.951252, -57.935049],

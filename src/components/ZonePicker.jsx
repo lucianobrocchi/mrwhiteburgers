@@ -156,7 +156,7 @@ export default function ZonePicker() {
               className="text-white/40 text-[11px] mt-1 pl-[22px]"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
-              {isPickup ? '27 esq. 80 · Altos de San Lorenzo' : `${z.bounds} · ${z.areas.join(', ')}`}
+              {isPickup ? '27 esq. 80 · Altos de San Lorenzo' : z.bounds}
             </p>
           </button>
         )
