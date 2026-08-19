@@ -10,6 +10,15 @@ export const LOCAL = { lat: -34.955912, lng: -57.940273 } // 27 esq. 80
 
 export const PICKUP = { id: 'retiro', name: 'Retiro en el local', price: 0 }
 
+// Para el que vive fuera de las zonas ya definidas: no inventamos un precio,
+// se arregla por WhatsApp. price: null = "a coordinar".
+export const OTHER = {
+  id: 'otra',
+  name: 'Otra zona',
+  price: null,
+  bounds: 'Fuera de estas zonas · lo coordinamos por WhatsApp',
+}
+
 export const ZONES = [
   {
     id: 'z1',
@@ -42,7 +51,7 @@ export const ZONES = [
 ]
 
 export const findZone = (id) =>
-  id === PICKUP.id ? PICKUP : ZONES.find((z) => z.id === id) || null
+  id === PICKUP.id ? PICKUP : id === OTHER.id ? OTHER : ZONES.find((z) => z.id === id) || null
 
 export const formatZonePrice = (z) =>
-  !z ? '' : z.price === 0 ? 'Sin cargo' : '$' + z.price.toLocaleString('es-AR')
+  !z ? '' : z.price == null ? 'A coordinar' : z.price === 0 ? 'Sin cargo' : '$' + z.price.toLocaleString('es-AR')

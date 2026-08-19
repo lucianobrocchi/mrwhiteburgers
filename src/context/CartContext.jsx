@@ -171,9 +171,13 @@ export function CartProvider({ children }) {
     const promoLine = discount > 0 && ACTIVE_PROMO
       ? `\nSubtotal: ${formatPrice(subtotal)}\nDescuento ${ACTIVE_PROMO.title} (${ACTIVE_PROMO.short}): -${formatPrice(discount)}`
       : ''
-    const zoneLine = zone
-      ? `\n${zone.price ? `Envío ${zone.name}: ${formatPrice(zone.price)}` : zone.name}`
-      : ''
+    const zoneLine = !zone
+      ? ''
+      : zone.price == null
+        ? `\nEnvío ${zone.name}: a coordinar`
+        : zone.price
+          ? `\nEnvío ${zone.name}: ${formatPrice(zone.price)}`
+          : `\n${zone.name}`
     // Si está cerrado, se avisa que el pedido es para cuando abran.
     const st = getStatus()
     const closedLine = st.open

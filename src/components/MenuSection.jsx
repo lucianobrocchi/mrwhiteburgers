@@ -23,6 +23,9 @@ import imgJoaWhitePapel  from '../assets/burgers/joa_white_papel.jpeg'
 
 const ease = [0.16, 1, 0.3, 1]
 
+// El menú se lee de Supabase solo si el panel de admin está en uso.
+const USE_DB = false
+
 // Mapea la image_key de la base a las fotos (negro/papel) que vienen en el bundle
 const IMAGE_MAP = {
   curri_white: { image: imgCurryNegro,    imageAlt: imgCurryPapel },
@@ -70,7 +73,7 @@ const FALLBACK_BURGERS = [
   },
   {
     id: 4,
-    name: 'LA CHESSE JOA',
+    name: 'LA CHEESE JOA',
     description: 'Pan de papa, medallón de carne, queso cheddar y salsa Big White.',
     tag: 'La Bestia',
     image: imgChesseJoaNegro,
@@ -471,6 +474,10 @@ export default function MenuSection() {
   const [burgers, setBurgers] = useState(FALLBACK_BURGERS)
 
   useEffect(() => {
+    // Con el panel de admin apagado nadie edita la base, así que el menú sale
+    // del código (FALLBACK_BURGERS) y el sitio no depende de que Supabase
+    // responda. Al reactivar el panel, poner esto en true.
+    if (!USE_DB) return
     let alive = true
     supabase
       .from('burgers')
