@@ -11,7 +11,7 @@ import OrderBanner from './components/OrderBanner'
 import PromoBanner from './components/PromoBanner'
 import MenuSection from './components/MenuSection'
 import MarqueeStrip from './components/MarqueeStrip'
-import DeliverySection from './components/DeliverySection'
+import HoursSection from './components/HoursSection'
 import StatementSection from './components/StatementSection'
 import Footer from './components/Footer'
 import CartFab from './components/CartFab'
@@ -63,9 +63,9 @@ function Inner() {
       <OrderBanner />
       <PromoBanner />
       <MenuSection />
-      <DeliverySection />
       <MarqueeStrip />
       <StatementSection />
+      <HoursSection />
       <Footer />
     </main>
   )

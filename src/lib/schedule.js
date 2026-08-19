@@ -5,12 +5,12 @@
 // Días: 0 = domingo, 1 = lunes … 6 = sábado.
 
 export const ADDRESS = {
-  label: '27 y 82',
+  label: '27 esq. 80',
+  barrio: 'Altos de San Lorenzo',
   city: 'La Plata',
-  // Coordenadas APROXIMADAS de la esquina — ajustar con el pin exacto:
-  // Google Maps → clic derecho sobre el local → "Copiar coordenadas".
-  lat: -34.949,
-  lng: -57.967,
+  // Cruce real de calle 27 y calle 80, medido sobre OpenStreetMap.
+  lat: -34.955912,
+  lng: -57.940273,
 }
 
 export const SCHEDULE = {

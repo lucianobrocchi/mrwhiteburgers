@@ -1,49 +1,47 @@
-import { ADDRESS } from './schedule'
-
 // ─── Zonas de envío ──────────────────────────────────────────────────────
-// ⚠️ VALORES DE EJEMPLO — a ojo, para mostrar cómo queda. Joaco pasa los reales.
+// Cada zona es el rectángulo real de la grilla de La Plata: sus esquinas son
+// cruces de calles medidos sobre OpenStreetMap, así que el dibujo del mapa
+// coincide con las calles de verdad.
 //
-// Cada zona es un anillo de distancia alrededor del local (en cuadras de ~100m).
-// Para cambiar precios: tocá `price`. Para cambiar tamaño: `blocks`.
-// Si más adelante querés zonas con forma real (no círculos), se reemplaza
-// `blocks` por una lista de coordenadas y el mapa las dibuja igual.
+// Para agregar una zona nueva hacen falta las 4 esquinas (calle x calle).
+// Para cambiar un precio alcanza con tocar `price`.
+
+export const LOCAL = { lat: -34.955912, lng: -57.940273 } // 27 esq. 80
 
 export const PICKUP = { id: 'retiro', name: 'Retiro en el local', price: 0 }
 
 export const ZONES = [
   {
-    id: 'cerca',
-    name: 'Zona 1 · Cerca',
-    price: 800,
-    blocks: 15,               // ~1,5 km a la redonda
+    id: 'z1',
+    name: 'Zona 1',
+    price: 2000,
     color: '#4ADE80',
-    hint: 'Hasta 15 cuadras del local',
-    areas: ['Altos de San Lorenzo', 'Barrio Jardín'],
+    bounds: 'De 22 a 31 · de 72 a 80',
+    areas: ['Altos de San Lorenzo'],
+    // 31y80 → 22y80 → 22y72 → 31y72
+    polygon: [
+      [-34.959602, -57.944318],
+      [-34.951252, -57.935049],
+      [-34.945357, -57.943190],
+      [-34.953869, -57.951956],
+    ],
   },
   {
-    id: 'media',
-    name: 'Zona 2 · Casco sur',
-    price: 1200,
-    blocks: 35,               // ~3,5 km — entra al casco por Av. 72
+    id: 'z2',
+    name: 'Zona 2',
+    price: 4000,
     color: '#F0C832',
-    hint: 'Del local hasta el sur del casco',
-    areas: ['Los Hornos', 'San Carlos', 'Villa Elvira', 'Casco hasta Av. 60'],
-  },
-  {
-    id: 'casco',
-    name: 'Zona 3 · Todo el casco',
-    price: 1800,
-    blocks: 60,               // ~6 km — cubre el casco urbano completo
-    color: '#FB923C',
-    hint: 'Casco urbano completo',
-    areas: ['Centro', 'Plaza Moreno', 'Plaza Italia', 'hasta Av. 32 / Av. 122'],
+    bounds: 'De 13 a 22 · de 72 a 80',
+    areas: ['Villa Elvira'],
+    // 22y80 → 13y80 → 13y72 → 22y72
+    polygon: [
+      [-34.951252, -57.935049],
+      [-34.942819, -57.925812],
+      [-34.936862, -57.933808],
+      [-34.945357, -57.943190],
+    ],
   },
 ]
-
-export const LOCAL = { lat: ADDRESS.lat, lng: ADDRESS.lng }
-
-// 1 cuadra de La Plata ≈ 100 m
-export const blocksToMeters = (b) => b * 100
 
 export const findZone = (id) =>
   id === PICKUP.id ? PICKUP : ZONES.find((z) => z.id === id) || null

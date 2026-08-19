@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Minus, ShoppingBag, Trash2, Clock } from 'lucide-react'
 import { useCart, formatPrice, ACTIVE_PROMO } from '../context/CartContext'
 import { getStatus } from '../lib/schedule'
+import ZonePicker from './ZonePicker'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -233,25 +234,10 @@ export default function CartDrawer() {
                     </div>
                   </>
                 )}
-                {/* Zona de envío elegida */}
-                <div className="flex items-baseline justify-between">
-                  <a
-                    href="#envios"
-                    onClick={() => setIsOpen(false)}
-                    className="text-white/45 text-[11px] tracking-[0.15em] uppercase hover:text-white/70 transition-colors"
-                    style={{ fontFamily: 'DM Sans, sans-serif' }}
-                  >
-                    {zone ? zone.name : 'Elegí tu zona de envío →'}
-                  </a>
-                  <span
-                    className="text-white/70 text-base"
-                    style={{ fontFamily: 'DM Sans, sans-serif' }}
-                  >
-                    {zone ? (zone.price ? '+ ' + formatPrice(zone.price) : 'Sin cargo') : '—'}
-                  </span>
-                </div>
+                {/* Elegir zona de envío — acá, ya con el pedido armado */}
+                <ZonePicker />
 
-                <div className="flex items-baseline justify-between">
+                <div className="flex items-baseline justify-between mt-1">
                   <span
                     className="text-white/55 text-xs tracking-[0.18em] uppercase"
                     style={{ fontFamily: 'DM Sans, sans-serif' }}
