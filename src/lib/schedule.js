@@ -1,6 +1,6 @@
 // ─── Horarios del local ──────────────────────────────────────────────────
 // Editá SOLO este bloque para cambiar los horarios. Formato 24hs.
-// Un turno que cruza la medianoche se escribe { from: '20:00', to: '22:30' }
+// Un turno que cruza la medianoche se escribe { from: '19:30', to: '22:30' }
 // y se entiende que cierra a las 00:00 del día siguiente.
 // Días: 0 = domingo, 1 = lunes … 6 = sábado.
 
@@ -14,13 +14,13 @@ export const ADDRESS = {
 }
 
 export const SCHEDULE = {
-  0: [{ from: '20:00', to: '22:30' }], // domingo
-  1: [{ from: '20:00', to: '22:30' }], // lunes
+  0: [{ from: '19:30', to: '22:30' }], // domingo
+  1: [{ from: '19:30', to: '22:30' }], // lunes
   2: [],                               // martes — CERRADO
-  3: [{ from: '20:00', to: '22:30' }], // miércoles
-  4: [{ from: '20:00', to: '22:30' }], // jueves
-  5: [{ from: '20:00', to: '22:30' }], // viernes
-  6: [{ from: '20:00', to: '22:30' }], // sábado
+  3: [{ from: '19:30', to: '22:30' }], // miércoles
+  4: [{ from: '19:30', to: '22:30' }], // jueves
+  5: [{ from: '19:30', to: '22:30' }], // viernes
+  6: [{ from: '19:30', to: '22:30' }], // sábado
 }
 
 const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
