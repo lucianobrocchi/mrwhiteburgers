@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import imgHero from '../assets/burgers/curri_white_hero.jpg'
 import logoFull from '../assets/logo_full.jpg'
@@ -5,13 +6,66 @@ import { getStatus } from '../lib/schedule'
 
 const ease = [0.16, 1, 0.3, 1]
 
+// Video del hero. React setea `muted` como propiedad pero NO como atributo del
+// HTML, y iOS mira el atributo para permitir el autoplay: sin él, Safari se
+// planta y deja el póster. Acá lo forzamos y, si igual lo bloquean (modo de
+// bajo consumo, ahorro de datos), reintentamos al primer toque del usuario.
+function HeroVideo({ className, style }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const v = ref.current
+    if (!v) return
+
+    v.muted = true
+    v.defaultMuted = true
+    v.setAttribute('muted', '')
+    v.setAttribute('playsinline', '')
+    v.setAttribute('webkit-playsinline', '')
+
+    const intentar = () => {
+      const p = v.play()
+      if (p && p.catch) p.catch(() => {})
+    }
+    intentar()
+
+    // Si quedó pausado, el primer gesto del usuario lo destraba.
+    const alTocar = () => {
+      if (v.paused) intentar()
+      if (!v.paused) quitar()
+    }
+    const quitar = () => {
+      document.removeEventListener('touchstart', alTocar)
+      document.removeEventListener('click', alTocar)
+    }
+    document.addEventListener('touchstart', alTocar, { passive: true })
+    document.addEventListener('click', alTocar)
+    return quitar
+  }, [])
+
+  return (
+    <video
+      ref={ref}
+      src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
+      poster={imgHero}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="auto"
+      className={className}
+      style={style}
+    />
+  )
+}
+
 // Chip de abierto/cerrado. Si está cerrado, dice cuándo abre y lleva a los horarios.
 function StatusChip() {
   const s = getStatus()
   const color = s.open ? '#4ADE80' : '#F87171'
   return (
     <motion.a
-      href="#envios"
+      href="#horarios"
       className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
       style={{
         backgroundColor: s.open ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
@@ -51,14 +105,7 @@ export default function HeroSection() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 1.4, ease, delay: 0.4 }}
       >
-        <video
-          src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
-          poster={imgHero}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
+        <HeroVideo
           className="w-full h-full object-cover"
           style={{ backgroundColor: '#000', objectPosition: '50% 35%' }}
         />
@@ -70,14 +117,7 @@ export default function HeroSection() {
 
       {/* Mobile: video top */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-[500px] bg-black overflow-hidden">
-        <video
-          src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
-          poster={imgHero}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
+        <HeroVideo
           className="w-full h-full object-cover"
           style={{ objectPosition: '50% 30%' }}
         />
