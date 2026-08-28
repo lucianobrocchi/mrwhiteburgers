@@ -124,6 +124,7 @@ export function CartProvider({ children }) {
     const n = Math.max(1, Math.floor(qty))
     const lineKey = `${burger.id}-${size}`
     const price = burger.prices[size]
+    const priceEf = burger.pricesEf?.[size] ?? price  // efectivo (cae en transferencia si no hay)
     setItems(prev => {
       const existing = prev.find(i => i.key === lineKey)
       if (existing) return prev.map(i => i.key === lineKey ? { ...i, qty: i.qty + n } : i)
@@ -135,6 +136,7 @@ export function CartProvider({ children }) {
         size,
         sizeLabel: SIZE_LABEL[size],
         price,
+        priceEf,
         qty: n,
       }]
     })
@@ -157,9 +159,14 @@ export function CartProvider({ children }) {
 
   const totalItems = items.reduce((acc, i) => acc + i.qty, 0)
   const subtotal   = items.reduce((acc, i) => acc + i.price * i.qty, 0)
+  const subtotalEf = items.reduce((acc, i) => acc + (i.priceEf ?? i.price) * i.qty, 0)
   const discount   = calcPromoDiscount(items)
   const shipping   = zone?.price || 0
   const totalPrice = subtotal - discount + shipping
+  // El envío es igual para los dos medios; el descuento de promo (definido en
+  // transferencia) se aplica también en efectivo para que ambos totales bajen
+  // lo mismo y efectivo nunca quede por encima de transferencia.
+  const totalPriceEf = subtotalEf - discount + shipping
 
   const sendToWhatsApp = () => {
     if (!items.length) return
@@ -188,14 +195,15 @@ export function CartProvider({ children }) {
     const tail = zone ? '' : '\n\n¿Hacen entrega o retiro en local?'
     const msg =
       `Hola! Quiero hacer un pedido:\n\n${lines}\n${promoLine}${zoneLine}\n` +
-      `Total: ${formatPrice(totalPrice)} (precio transferencia)${tail}${closedLine}`
+      `Total transferencia: ${formatPrice(totalPrice)}\n` +
+      `Total efectivo: ${formatPrice(totalPriceEf)}${tail}${closedLine}`
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   return (
     <CartContext.Provider value={{
       items, addItem, removeItem, updateQty,
-      totalItems, subtotal, discount, shipping, totalPrice,
+      totalItems, subtotal, subtotalEf, discount, shipping, totalPrice, totalPriceEf,
       zone, setZone,
       isOpen, setIsOpen, clear, sendToWhatsApp, toast,
     }}>

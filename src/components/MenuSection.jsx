@@ -60,7 +60,8 @@ const FALLBACK_BURGERS = [
     tag: 'Smash Burger',
     image: imgCurryNegro,
     imageAlt: imgCurryPapel,
-    prices: { simple: 13500, doble: 15000, triple: 16000 },
+    prices:   { simple: 13500, doble: 15000, triple: 16500 },
+    pricesEf: { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 1,
@@ -69,7 +70,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Clásica',
     image: imgObreraNegro,
     imageAlt: imgObreraPapel,
-    prices: { simple: 12500, doble: 14000, triple: 15000 },
+    prices:   { simple: 12500, doble: 14000, triple: 15500 },
+    pricesEf: { simple: 12000, doble: 13500, triple: 15000 },
   },
   {
     id: 4,
@@ -78,7 +80,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Bestia',
     image: imgChesseJoaNegro,
     imageAlt: imgChesseJoaPapel,
-    prices: { simple: 11500, doble: 13000, triple: 14000 },
+    prices:   { simple: 12000, doble: 13000, triple: 15000 },
+    pricesEf: { simple: 11500, doble: 12500, triple: 14500 },
   },
   {
     id: 3,
@@ -87,7 +90,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Contundente',
     image: imgBigWhiteNegro,
     imageAlt: imgBigWhitePapel,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
+    prices:   { simple: 13500, doble: 15000, triple: 16500 },
+    pricesEf: { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 2,
@@ -96,7 +100,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Más Pedida',
     image: imgOklahomaNegro,
     imageAlt: imgOklahomaPapel,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
+    prices:   { simple: 13500, doble: 15000, triple: 16500 },
+    pricesEf: { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 6,
@@ -105,7 +110,8 @@ const FALLBACK_BURGERS = [
     tag: 'Edición Joa',
     image: imgJoaWhiteNegro,
     imageAlt: imgJoaWhitePapel,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
+    prices:   { simple: 13500, doble: 15000, triple: 16000 },
+    pricesEf: { simple: 13000, doble: 14500, triple: 15500 },
   },
 ]
 
@@ -267,6 +273,7 @@ function BurgerCard({ burger, index }) {
   const imgWrapRef = useRef(null)   // origen del vuelo al carrito
   const revealed = showAlt || justAdded
   const price = burger.prices[size]
+  const priceEf = burger.pricesEf?.[size]  // precio en efectivo del tamaño elegido (o undefined)
   const promoPrice = itemPromoPrice(burger.name, size, price)  // precio especial del tamaño elegido (o null)
   const itemPromo = ACTIVE_PROMO?.kind === 'itemPrice' && ACTIVE_PROMO.itemName === burger.name
     ? ACTIVE_PROMO : null  // esta burger tiene promo puntual hoy
@@ -432,34 +439,56 @@ function BurgerCard({ burger, index }) {
         {/* Size selector */}
         <SizeSelector cardId={burger.id} size={size} setSize={setSize} />
 
-        {/* Price */}
-        <div className="flex items-baseline justify-between">
-          <span
-            className="text-[10px] tracking-[0.18em] uppercase text-white/40"
-            style={{ fontFamily: 'DM Sans, sans-serif' }}
-          >
-            Precio
-          </span>
-          <div className="flex items-baseline gap-2">
-            {promoPrice != null && (
-              <span
-                className="text-lg text-white/35 line-through"
-                style={{ fontFamily: 'Anton, sans-serif' }}
-              >
-                {formatPrice(price)}
-              </span>
-            )}
-            <motion.span
-              key={promoPrice ?? price}
-              className="text-3xl text-[#F0C832]"
-              style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease }}
+        {/* Price — transferencia (grande) + efectivo (línea abajo) */}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between">
+            <span
+              className="text-[10px] tracking-[0.18em] uppercase text-white/40"
+              style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
-              {formatPrice(promoPrice ?? price)}
-            </motion.span>
+              Transferencia
+            </span>
+            <div className="flex items-baseline gap-2">
+              {promoPrice != null && (
+                <span
+                  className="text-lg text-white/35 line-through"
+                  style={{ fontFamily: 'Anton, sans-serif' }}
+                >
+                  {formatPrice(price)}
+                </span>
+              )}
+              <motion.span
+                key={promoPrice ?? price}
+                className="text-3xl text-[#F0C832]"
+                style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease }}
+              >
+                {formatPrice(promoPrice ?? price)}
+              </motion.span>
+            </div>
           </div>
+          {priceEf != null && (
+            <div className="flex items-baseline justify-between">
+              <span
+                className="text-[10px] tracking-[0.18em] uppercase text-white/40"
+                style={{ fontFamily: 'DM Sans, sans-serif' }}
+              >
+                Efectivo
+              </span>
+              <motion.span
+                key={priceEf}
+                className="text-lg text-white/70"
+                style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease }}
+              >
+                {formatPrice(priceEf)}
+              </motion.span>
+            </div>
+          )}
         </div>
 
         <CartControls burger={burger} size={size} onAdded={handleAdded} imgRef={imgWrapRef} />
@@ -545,7 +574,7 @@ export default function MenuSection() {
           animate={headerInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.7, delay: 0.4 }}
         >
-          Todas las hamburguesas vienen con papas fritas. Precios por transferencia.
+          Todas las hamburguesas vienen con papas fritas. Cada tamaño muestra su precio por transferencia y en efectivo.
         </motion.p>
 
         {/* Grid */}
