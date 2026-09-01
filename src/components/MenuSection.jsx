@@ -52,6 +52,7 @@ function mapRow(row) {
 }
 
 // Datos por defecto (fallback si Supabase no responde)
+// `prices` = precio por transferencia · `cash` = precio en efectivo
 const FALLBACK_BURGERS = [
   {
     id: 5,
@@ -60,7 +61,8 @@ const FALLBACK_BURGERS = [
     tag: 'Smash Burger',
     image: imgCurryNegro,
     imageAlt: imgCurryPapel,
-    prices: { simple: 13500, doble: 15000, triple: 16000 },
+    prices: { simple: 13500, doble: 15000, triple: 16500 },
+    cash:   { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 1,
@@ -69,7 +71,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Clásica',
     image: imgObreraNegro,
     imageAlt: imgObreraPapel,
-    prices: { simple: 12500, doble: 14000, triple: 15000 },
+    prices: { simple: 12500, doble: 14000, triple: 15500 },
+    cash:   { simple: 12000, doble: 13500, triple: 15000 },
   },
   {
     id: 4,
@@ -78,7 +81,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Bestia',
     image: imgChesseJoaNegro,
     imageAlt: imgChesseJoaPapel,
-    prices: { simple: 11500, doble: 13000, triple: 14000 },
+    prices: { simple: 12000, doble: 13000, triple: 15000 },
+    cash:   { simple: 11500, doble: 12500, triple: 14500 },
   },
   {
     id: 3,
@@ -87,7 +91,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Contundente',
     image: imgBigWhiteNegro,
     imageAlt: imgBigWhitePapel,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
+    prices: { simple: 13500, doble: 15000, triple: 16500 },
+    cash:   { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 2,
@@ -96,7 +101,8 @@ const FALLBACK_BURGERS = [
     tag: 'La Más Pedida',
     image: imgOklahomaNegro,
     imageAlt: imgOklahomaPapel,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
+    prices: { simple: 13500, doble: 15000, triple: 16500 },
+    cash:   { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 6,
@@ -105,7 +111,8 @@ const FALLBACK_BURGERS = [
     tag: 'Edición Joa',
     image: imgJoaWhiteNegro,
     imageAlt: imgJoaWhitePapel,
-    prices: { simple: 13000, doble: 14500, triple: 15500 },
+    prices: { simple: 13500, doble: 15000, triple: 16000 },
+    cash:   { simple: 13000, doble: 14500, triple: 15500 },
   },
 ]
 
@@ -267,6 +274,7 @@ function BurgerCard({ burger, index }) {
   const imgWrapRef = useRef(null)   // origen del vuelo al carrito
   const revealed = showAlt || justAdded
   const price = burger.prices[size]
+  const cashPrice = burger.cash?.[size] ?? null                // precio en efectivo
   const promoPrice = itemPromoPrice(burger.name, size, price)  // precio especial del tamaño elegido (o null)
   const itemPromo = ACTIVE_PROMO?.kind === 'itemPrice' && ACTIVE_PROMO.itemName === burger.name
     ? ACTIVE_PROMO : null  // esta burger tiene promo puntual hoy
@@ -440,25 +448,35 @@ function BurgerCard({ burger, index }) {
           >
             Precio
           </span>
-          <div className="flex items-baseline gap-2">
-            {promoPrice != null && (
-              <span
-                className="text-lg text-white/35 line-through"
-                style={{ fontFamily: 'Anton, sans-serif' }}
+          <div className="flex flex-col items-end">
+            <div className="flex items-baseline gap-2">
+              {promoPrice != null && (
+                <span
+                  className="text-lg text-white/35 line-through"
+                  style={{ fontFamily: 'Anton, sans-serif' }}
+                >
+                  {formatPrice(price)}
+                </span>
+              )}
+              <motion.span
+                key={promoPrice ?? price}
+                className="text-3xl text-[#F0C832]"
+                style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, ease }}
               >
-                {formatPrice(price)}
+                {formatPrice(promoPrice ?? price)}
+              </motion.span>
+            </div>
+            {cashPrice != null && promoPrice == null && (
+              <span
+                className="text-white/45 text-[11px] leading-tight"
+                style={{ fontFamily: 'DM Sans, sans-serif' }}
+              >
+                Efectivo {formatPrice(cashPrice)}
               </span>
             )}
-            <motion.span
-              key={promoPrice ?? price}
-              className="text-3xl text-[#F0C832]"
-              style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease }}
-            >
-              {formatPrice(promoPrice ?? price)}
-            </motion.span>
           </div>
         </div>
 

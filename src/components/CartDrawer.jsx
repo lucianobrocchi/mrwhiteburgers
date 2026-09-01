@@ -7,7 +7,7 @@ import ZonePicker from './ZonePicker'
 const ease = [0.16, 1, 0.3, 1]
 
 export default function CartDrawer() {
-  const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, zone, sendToWhatsApp, clear } = useCart()
+  const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, cashTotal, zone, sendToWhatsApp, clear } = useCart()
   const status = getStatus()
 
   return (
@@ -251,12 +251,20 @@ export default function CartDrawer() {
                     {formatPrice(totalPrice)}
                   </span>
                 </div>
-                <p
-                  className="text-white/40 text-[11px] text-center tracking-wide"
-                  style={{ fontFamily: 'DM Sans, sans-serif' }}
-                >
-                  Precios por transferencia · Consultá precio en efectivo
-                </p>
+                <div className="flex items-baseline justify-between">
+                  <span
+                    className="text-white/45 text-[11px] tracking-[0.15em] uppercase"
+                    style={{ fontFamily: 'DM Sans, sans-serif' }}
+                  >
+                    En efectivo
+                  </span>
+                  <span
+                    className="text-white/75 text-xl"
+                    style={{ fontFamily: 'Anton, sans-serif' }}
+                  >
+                    {formatPrice(cashTotal)}
+                  </span>
+                </div>
                 <p
                   className="text-white/45 text-xs text-center tracking-wide"
                   style={{ fontFamily: 'DM Sans, sans-serif' }}
