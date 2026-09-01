@@ -1,329 +1,183 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { Check, AlertTriangle, RefreshCw, ExternalLink, Clock, Ban } from 'lucide-react'
+import { getToken, setToken, checkToken, readConfigFile, saveConfigFile, configHistory } from '../lib/github'
+import { DEFAULT_CONFIG } from '../lib/config'
+import { SCHEDULE, scheduleSummary } from '../lib/schedule'
+import { ZONES, formatZonePrice } from '../lib/zones'
+import { SIZES } from '../context/CartContext'
 
-const IMAGE_KEYS = ['curri_white', 'obrera', 'chesse_joa', 'big_white', 'oklahoma', 'joa_white']
 const inputCls =
-  'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors'
-const labelCls = 'text-[10px] tracking-[0.18em] uppercase text-white/40'
+  'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors'
+const labelCls = 'text-[10px] tracking-[0.16em] uppercase text-white/40'
+const font = { fontFamily: 'DM Sans, sans-serif' }
+const anton = { fontFamily: 'Anton, sans-serif' }
 
-function Centered({ children }) {
-  return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-6" style={{ fontFamily: 'DM Sans, sans-serif' }}>
-      {children}
-    </div>
-  )
+// Las burgers y sus valores por defecto salen del código; el panel solo guarda
+// lo que se cambió. Esta lista se pasa desde MenuSection para no duplicarla.
+import { FALLBACK_BURGERS } from './MenuSection'
+
+const hoyStr = () => {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-function Field({ label, children }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className={labelCls} style={{ fontFamily: 'DM Sans, sans-serif' }}>{label}</span>
-      {children}
-    </label>
-  )
-}
-
-function Login() {
-  const [email, setEmail] = useState('')
-  const [pass, setPass] = useState('')
+function Login({ onOk }) {
+  const [t, setT] = useState('')
   const [err, setErr] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [cargando, setCargando] = useState(false)
 
-  const submit = async (e) => {
+  const entrar = async (e) => {
     e.preventDefault()
-    setErr('')
-    setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass })
-    setLoading(false)
-    if (error) setErr('Email o contraseña incorrectos.')
+    setErr(''); setCargando(true)
+    try {
+      await checkToken(t.trim())
+      setToken(t.trim())
+      onOk()
+    } catch (ex) {
+      setErr(ex.message)
+    }
+    setCargando(false)
   }
 
   return (
-    <Centered>
-      <form onSubmit={submit} className="w-full max-w-sm">
-        <h1 className="text-4xl text-white uppercase mb-1" style={{ fontFamily: 'Anton, sans-serif' }}>
-          Mr. White <span className="text-[#F0C832]">Admin</span>
+    <div className="min-h-screen bg-black flex items-center justify-center px-6" style={font}>
+      <form onSubmit={entrar} className="w-full max-w-md">
+        <h1 className="text-4xl text-white uppercase mb-1" style={anton}>
+          Mr. White <span className="text-[#F0C832]">Panel</span>
         </h1>
-        <p className="text-white/50 text-sm mb-8">Ingresá para editar el menú.</p>
-        <div className="flex flex-col gap-4">
-          <Field label="Email">
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} autoComplete="username" />
-          </Field>
-          <Field label="Contraseña">
-            <input type="password" required value={pass} onChange={(e) => setPass(e.target.value)} className={inputCls} autoComplete="current-password" />
-          </Field>
-          {err && <p className="text-red-400 text-sm">{err}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 py-3 rounded-full text-black text-sm tracking-widest uppercase disabled:opacity-60"
-            style={{ fontFamily: 'Anton, sans-serif', backgroundColor: '#F0C832' }}
+        <p className="text-white/50 text-sm mb-6">Pegá tu token de GitHub para entrar.</p>
+
+        <label className="flex flex-col gap-1.5 mb-3">
+          <span className={labelCls}>Token</span>
+          <input
+            type="password"
+            value={t}
+            onChange={(e) => setT(e.target.value)}
+            className={inputCls}
+            placeholder="github_pat_..."
+            autoComplete="off"
+          />
+        </label>
+
+        {err && (
+          <p className="text-red-300 text-sm mb-3 flex items-start gap-2">
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {err}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={cargando || !t.trim()}
+          className="w-full py-3 rounded-full text-black text-sm tracking-widest uppercase disabled:opacity-50"
+          style={{ ...anton, backgroundColor: '#F0C832' }}
+        >
+          {cargando ? 'Verificando…' : 'Entrar'}
+        </button>
+
+        <div className="mt-6 text-white/45 text-xs leading-relaxed">
+          <p className="mb-2">El token queda guardado solo en este dispositivo. Para crear uno:</p>
+          <ol className="list-decimal ml-4 space-y-1">
+            <li>Entrá a github.com → Settings → Developer settings</li>
+            <li>Fine-grained tokens → Generate new token</li>
+            <li>Repository access: solo <b>mrwhiteburgers</b></li>
+            <li>Permissions → Contents: <b>Read and write</b></li>
+          </ol>
+          <a
+            href="https://github.com/settings/personal-access-tokens/new"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 mt-3 text-[#F0C832]/80 hover:text-[#F0C832]"
           >
-            {loading ? 'Entrando…' : 'Entrar'}
-          </button>
+            Crear token <ExternalLink size={12} />
+          </a>
         </div>
       </form>
-    </Centered>
-  )
-}
-
-function BurgerEditor({ burger, onChanged }) {
-  const [form, setForm] = useState({
-    name: burger.name || '',
-    tag: burger.tag || '',
-    description: burger.description || '',
-    image_key: burger.image_key || '',
-    simple: burger.prices?.simple ?? 0,
-    doble: burger.prices?.doble ?? 0,
-    triple: burger.prices?.triple ?? 0,
-    sort_order: burger.sort_order ?? 0,
-    active: burger.active ?? true,
-  })
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setSaved(false) }
-
-  const save = async () => {
-    setSaving(true)
-    const payload = {
-      name: form.name,
-      tag: form.tag,
-      description: form.description,
-      image_key: form.image_key || null,
-      prices: { simple: Number(form.simple), doble: Number(form.doble), triple: Number(form.triple) },
-      sort_order: Number(form.sort_order),
-      active: form.active,
-    }
-    const { error } = await supabase.from('burgers').update(payload).eq('id', burger.id)
-    setSaving(false)
-    if (error) { alert('Error al guardar: ' + error.message); return }
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
-    onChanged?.()
-  }
-
-  const del = async () => {
-    if (!window.confirm(`¿Borrar "${form.name}"? No se puede deshacer.`)) return
-    const { error } = await supabase.from('burgers').delete().eq('id', burger.id)
-    if (error) { alert('Error al borrar: ' + error.message); return }
-    onChanged?.()
-  }
-
-  return (
-    <div
-      className="rounded-2xl p-5 md:p-6"
-      style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)', opacity: form.active ? 1 : 0.6 }}
-    >
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <span className="text-2xl text-white uppercase truncate" style={{ fontFamily: 'Anton, sans-serif' }}>
-          {form.name || '—'}
-        </span>
-        <span
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs"
-          style={{ backgroundColor: 'rgba(240,200,50,0.1)', border: '1px solid rgba(240,200,50,0.3)', color: '#F0C832', fontFamily: 'DM Sans, sans-serif' }}
-          title="Clics en Agregar"
-        >
-          👆 {burger.clicks ?? 0} clics
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Nombre">
-          <input value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} />
-        </Field>
-        <Field label="Tag (ej. La Más Pedida)">
-          <input value={form.tag} onChange={(e) => set('tag', e.target.value)} className={inputCls} />
-        </Field>
-        <div className="sm:col-span-2">
-          <Field label="Descripción">
-            <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={2} className={inputCls + ' resize-y'} />
-          </Field>
-        </div>
-        <Field label="Precio simple">
-          <input type="number" value={form.simple} onChange={(e) => set('simple', e.target.value)} className={inputCls} />
-        </Field>
-        <Field label="Precio doble">
-          <input type="number" value={form.doble} onChange={(e) => set('doble', e.target.value)} className={inputCls} />
-        </Field>
-        <Field label="Precio triple">
-          <input type="number" value={form.triple} onChange={(e) => set('triple', e.target.value)} className={inputCls} />
-        </Field>
-        <Field label="Orden">
-          <input type="number" value={form.sort_order} onChange={(e) => set('sort_order', e.target.value)} className={inputCls} />
-        </Field>
-        <Field label="Foto">
-          <select value={form.image_key} onChange={(e) => set('image_key', e.target.value)} className={inputCls}>
-            <option value="">(sin foto)</option>
-            {IMAGE_KEYS.map((k) => <option key={k} value={k}>{k}</option>)}
-          </select>
-        </Field>
-        <label className="flex items-center gap-2.5 mt-1">
-          <input type="checkbox" checked={form.active} onChange={(e) => set('active', e.target.checked)} className="w-4 h-4 accent-[#F0C832]" />
-          <span className="text-sm text-white/80" style={{ fontFamily: 'DM Sans, sans-serif' }}>Visible en el sitio</span>
-        </label>
-      </div>
-
-      <div className="flex items-center gap-3 mt-5">
-        <button
-          onClick={save}
-          disabled={saving}
-          className="px-6 py-2.5 rounded-full text-black text-sm tracking-widest uppercase disabled:opacity-60"
-          style={{ fontFamily: 'Anton, sans-serif', backgroundColor: saved ? '#4ade80' : '#F0C832' }}
-        >
-          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar'}
-        </button>
-        <button
-          onClick={del}
-          className="px-4 py-2.5 rounded-full text-sm tracking-wide uppercase text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-colors"
-          style={{ fontFamily: 'DM Sans, sans-serif' }}
-        >
-          Borrar
-        </button>
-      </div>
     </div>
   )
 }
 
-const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR')
-const localDay = (iso) => {
-  const d = new Date(iso)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function OrdersView() {
-  const [orders, setOrders] = useState(null) // null = cargando
-  const [err, setErr] = useState('')
-
-  const load = useCallback(async () => {
-    setErr('')
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500)
-    if (error) { setErr(error.message); setOrders([]); return }
-    setOrders(data || [])
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  if (orders === null) return <p className="text-white/50">Cargando pedidos…</p>
-  if (err) {
-    return (
-      <p className="text-red-300 text-sm">
-        No se pudieron cargar los pedidos. ¿Creaste la tabla “orders” en Supabase? <br />
-        <span className="text-white/40">({err})</span>
-      </p>
-    )
-  }
-  if (!orders.length) return <p className="text-white/50">Todavía no hay pedidos registrados. Aparecen acá cuando un cliente toca “Pedir por WhatsApp”.</p>
-
-  // Agrupar por día (hora local)
-  const byDay = {}
-  for (const o of orders) {
-    const key = localDay(o.created_at)
-    if (!byDay[key]) byDay[key] = { orders: [], total: 0 }
-    byDay[key].orders.push(o)
-    byDay[key].total += o.total || 0
-  }
-  const days = Object.keys(byDay).sort().reverse()
-  const granTotal = orders.reduce((s, o) => s + (o.total || 0), 0)
-
+function Seccion({ titulo, children, extra }) {
   return (
-    <div className="flex flex-col gap-7">
-      <div className="flex items-center justify-between">
-        <p className="text-white/45 text-sm">{orders.length} pedidos · {money(granTotal)} en total</p>
-        <button onClick={load} className="text-sm text-[#F0C832]/80 hover:text-[#F0C832]">↻ Actualizar</button>
+    <div
+      className="rounded-2xl p-5 mb-4"
+      style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)' }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl text-white uppercase" style={anton}>{titulo}</h2>
+        {extra}
       </div>
-      {days.map((key) => {
-        const day = byDay[key]
-        const label = new Date(`${key}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
-        return (
-          <div key={key}>
-            <div className="flex items-baseline justify-between mb-3 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <h3 className="text-lg text-white uppercase" style={{ fontFamily: 'Anton, sans-serif' }}>{label}</h3>
-              <span className="text-[#F0C832]" style={{ fontFamily: 'Anton, sans-serif' }}>
-                {day.orders.length} {day.orders.length === 1 ? 'pedido' : 'pedidos'} · {money(day.total)}
-              </span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {day.orders.map((o) => (
-                <div key={o.id} className="rounded-xl p-3.5" style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/45 text-xs">
-                      {new Date(o.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
-                    </span>
-                    <span className="text-[#F0C832] text-lg" style={{ fontFamily: 'Anton, sans-serif' }}>{money(o.total)}</span>
-                  </div>
-                  <p className="text-white/75 text-sm mt-1.5">
-                    {(o.items || []).map((i) => `${i.qty}× ${i.name} (${i.size})`).join('  ·  ')}
-                  </p>
-                  {o.discount > 0 && (
-                    <p className="text-white/40 text-xs mt-1">
-                      Subtotal {money(o.subtotal)} · desc −{money(o.discount)}{o.promo ? ` (${o.promo})` : ''}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })}
+      {children}
     </div>
   )
 }
 
 export default function Admin() {
-  const [tab, setTab] = useState('menu')
-  const [session, setSession] = useState(undefined) // undefined = cargando
-  const [burgers, setBurgers] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [logueado, setLogueado] = useState(!!getToken())
+  const [cfg, setCfg] = useState(null)
+  const [sha, setSha] = useState(null)
+  const [tab, setTab] = useState('hoy')
+  const [estado, setEstado] = useState('')   // '', 'guardando', 'ok', mensaje de error
+  const [historial, setHistorial] = useState([])
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
+  const cargar = useCallback(async () => {
+    const token = getToken()
+    try {
+      const { sha, content } = await readConfigFile(token)
+      setSha(sha)
+      setCfg({ ...DEFAULT_CONFIG, ...(content || {}), today: { ...DEFAULT_CONFIG.today, ...(content?.today || {}) } })
+      setHistorial(await configHistory(token))
+    } catch (e) {
+      setEstado(e.message)
+    }
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const { data } = await supabase.from('burgers').select('*').order('sort_order', { ascending: true })
-    setBurgers(data || [])
-    setLoading(false)
-  }, [])
+  useEffect(() => { if (logueado) cargar() }, [logueado, cargar])
 
-  useEffect(() => { if (session) load() }, [session, load])
-
-  if (session === undefined) return <Centered><p className="text-white/60">Cargando…</p></Centered>
-  if (!session) return <Login />
-
-  const addNew = async () => {
-    const maxOrder = burgers.reduce((m, b) => Math.max(m, b.sort_order || 0), 0)
-    const { error } = await supabase.from('burgers').insert({
-      name: 'NUEVA BURGER', description: '', prices: { simple: 0, doble: 0, triple: 0 },
-      sort_order: maxOrder + 1, active: false,
-    })
-    if (error) { alert(error.message); return }
-    load()
+  if (!logueado) return <Login onOk={() => setLogueado(true)} />
+  if (!cfg) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center" style={font}>
+        <p className="text-white/60">{estado || 'Cargando…'}</p>
+      </div>
+    )
   }
 
-  const totalClicks = burgers.reduce((s, b) => s + (b.clicks || 0), 0)
+  const set = (patch) => setCfg((c) => ({ ...c, ...patch }))
+  const setHoy = (patch) => setCfg((c) => ({ ...c, today: { ...c.today, ...patch, date: hoyStr() } }))
+  const setBurger = (id, patch) =>
+    setCfg((c) => ({ ...c, burgers: { ...c.burgers, [id]: { ...(c.burgers?.[id] || {}), ...patch } } }))
+
+  const guardar = async (mensaje) => {
+    setEstado('guardando')
+    try {
+      const nuevo = { ...cfg, updatedAt: new Date().toISOString() }
+      const nuevoSha = await saveConfigFile(getToken(), nuevo, sha, mensaje)
+      setSha(nuevoSha)
+      setCfg(nuevo)
+      setEstado('ok')
+      setTimeout(() => setEstado(''), 3000)
+      configHistory(getToken()).then(setHistorial)
+    } catch (e) {
+      setEstado(e.message)
+    }
+  }
+
+  const TABS = [['hoy', 'Hoy'], ['menu', 'Menú'], ['envios', 'Envíos'], ['stats', 'Números']]
 
   return (
-    <div className="min-h-screen bg-black px-5 md:px-10 py-8" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+    <div className="min-h-screen bg-black px-4 md:px-8 py-6" style={font}>
       <div className="max-w-3xl mx-auto">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-4xl text-white uppercase leading-none" style={{ fontFamily: 'Anton, sans-serif' }}>
-              Mr. White <span className="text-[#F0C832]">Admin</span>
-            </h1>
-            <p className="text-white/45 text-sm mt-2">{burgers.length} burgers · {totalClicks} clics totales</p>
-          </div>
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <h1 className="text-3xl text-white uppercase leading-none" style={anton}>
+            Mr. White <span className="text-[#F0C832]">Panel</span>
+          </h1>
           <div className="flex items-center gap-3">
-            <a href="/" className="text-sm text-white/60 hover:text-white transition-colors">Ver sitio →</a>
+            <a href="/" className="text-sm text-white/55 hover:text-white">Ver sitio →</a>
             <button
-              onClick={() => supabase.auth.signOut()}
-              className="px-4 py-2 rounded-full text-sm uppercase tracking-wide text-white/70 hover:text-white"
+              onClick={() => { setToken(''); setLogueado(false) }}
+              className="px-4 py-2 rounded-full text-sm uppercase tracking-wide text-white/65 hover:text-white"
               style={{ border: '1px solid rgba(255,255,255,0.15)' }}
             >
               Salir
@@ -332,17 +186,17 @@ export default function Admin() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          {[['menu', 'Menú'], ['ventas', 'Ventas']].map(([key, label]) => (
+        <div className="flex gap-2 mb-5 flex-wrap">
+          {TABS.map(([k, label]) => (
             <button
-              key={key}
-              onClick={() => setTab(key)}
-              className="px-5 py-2 rounded-full text-sm tracking-widest uppercase transition-colors"
+              key={k}
+              onClick={() => setTab(k)}
+              className="px-4 py-2 rounded-full text-sm tracking-widest uppercase"
               style={{
-                fontFamily: 'Anton, sans-serif',
-                backgroundColor: tab === key ? '#F0C832' : 'transparent',
-                color: tab === key ? '#000' : 'rgba(255,255,255,0.6)',
-                border: tab === key ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                ...anton,
+                backgroundColor: tab === k ? '#F0C832' : 'transparent',
+                color: tab === k ? '#000' : 'rgba(255,255,255,0.6)',
+                border: tab === k ? 'none' : '1px solid rgba(255,255,255,0.15)',
               }}
             >
               {label}
@@ -350,29 +204,276 @@ export default function Admin() {
           ))}
         </div>
 
-        {tab === 'ventas' ? (
-          <OrdersView />
-        ) : (
+        {/* ─── HOY ─────────────────────────────────────────────── */}
+        {tab === 'hoy' && (
           <>
-            <button
-              onClick={addNew}
-              className="mb-6 px-5 py-2.5 rounded-full text-sm tracking-widest uppercase text-[#F0C832]"
-              style={{ border: '1px solid rgba(240,200,50,0.4)', fontFamily: 'Anton, sans-serif' }}
-            >
-              + Agregar burger
-            </button>
+            <Seccion titulo="Hoy">
+              <p className="text-white/45 text-xs mb-4">
+                Excepciones solo para hoy. Mañana vuelve al horario de siempre
+                ({scheduleSummary().filter((h) => !h.closed)[0]?.hours}).
+              </p>
 
-            {loading ? (
-              <p className="text-white/50">Cargando burgers…</p>
-            ) : (
-              <div className="flex flex-col gap-5">
-                {burgers.map((b) => <BurgerEditor key={b.id} burger={b} onChanged={load} />)}
-                {!burgers.length && (
-                  <p className="text-white/50">No hay burgers todavía. Corré el SQL de seed o tocá “Agregar burger”.</p>
-                )}
+              <label className="flex items-center gap-3 mb-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!cfg.today.closed}
+                  onChange={(e) => setHoy({ closed: e.target.checked })}
+                  className="w-5 h-5 accent-[#F0C832]"
+                />
+                <span className="text-white text-sm flex items-center gap-2">
+                  <Ban size={15} className="text-red-400" /> Hoy cerramos
+                </span>
+              </label>
+
+              <label className="flex items-center gap-3 mb-5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!cfg.today.deliveryOff}
+                  onChange={(e) => setHoy({ deliveryOff: e.target.checked })}
+                  className="w-5 h-5 accent-[#F0C832]"
+                />
+                <span className="text-white text-sm">Hoy sin envíos (solo retiro)</span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelCls}>Hoy abrimos</span>
+                  <input
+                    type="time"
+                    value={cfg.today.opensAt || ''}
+                    onChange={(e) => setHoy({ opensAt: e.target.value || null })}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelCls}>Hoy cerramos</span>
+                  <input
+                    type="time"
+                    value={cfg.today.closesAt || ''}
+                    onChange={(e) => setHoy({ closesAt: e.target.value || null })}
+                    className={inputCls}
+                  />
+                </label>
               </div>
-            )}
+
+              <label className="flex flex-col gap-1.5 mb-4">
+                <span className={labelCls}>Aviso (opcional)</span>
+                <input
+                  value={cfg.today.note || ''}
+                  onChange={(e) => setHoy({ note: e.target.value })}
+                  className={inputCls}
+                  placeholder="Ej: hoy demoras de 40 min"
+                />
+              </label>
+
+              <button
+                onClick={() => setCfg((c) => ({ ...c, today: { ...DEFAULT_CONFIG.today } }))}
+                className="text-xs text-white/40 hover:text-white/70"
+              >
+                Limpiar excepciones de hoy
+              </button>
+            </Seccion>
+
+            <Seccion titulo="Sin stock">
+              <p className="text-white/45 text-xs mb-4">
+                Lo que marques acá aparece tachado en el menú y no se puede pedir.
+              </p>
+              {FALLBACK_BURGERS.map((b) => {
+                const agotada = !!cfg.burgers?.[b.id]?.soldOut
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => setBurger(b.id, { soldOut: !agotada })}
+                    className="w-full flex items-center justify-between px-3 py-3 rounded-xl mb-2"
+                    style={{
+                      backgroundColor: agotada ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${agotada ? 'rgba(248,113,113,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    }}
+                  >
+                    <span className="text-white text-sm uppercase" style={anton}>{b.name}</span>
+                    <span
+                      className="text-xs px-3 py-1 rounded-full"
+                      style={{
+                        color: agotada ? '#F87171' : 'rgba(255,255,255,0.45)',
+                        border: `1px solid ${agotada ? 'rgba(248,113,113,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                      }}
+                    >
+                      {agotada ? 'SIN STOCK' : 'disponible'}
+                    </span>
+                  </button>
+                )
+              })}
+            </Seccion>
           </>
+        )}
+
+        {/* ─── MENÚ ────────────────────────────────────────────── */}
+        {tab === 'menu' && (
+          <Seccion titulo="Precios y textos">
+            <p className="text-white/45 text-xs mb-4">
+              Los precios vacíos usan el valor del código. T = transferencia · E = efectivo.
+            </p>
+            {FALLBACK_BURGERS.map((b) => {
+              const c = cfg.burgers?.[b.id] || {}
+              return (
+                <div
+                  key={b.id}
+                  className="rounded-xl p-4 mb-3"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <p className="text-white uppercase mb-3" style={anton}>{b.name}</p>
+                  {SIZES.map((s) => (
+                    <div key={s.key} className="grid grid-cols-[70px_1fr_1fr] gap-2 items-center mb-2">
+                      <span className="text-white/50 text-xs">{s.label}</span>
+                      <input
+                        type="number"
+                        className={inputCls}
+                        placeholder={`T ${b.prices[s.key]}`}
+                        value={c.prices?.[s.key] ?? ''}
+                        onChange={(e) =>
+                          setBurger(b.id, {
+                            prices: { ...(c.prices || {}), [s.key]: e.target.value ? Number(e.target.value) : undefined },
+                          })
+                        }
+                      />
+                      <input
+                        type="number"
+                        className={inputCls}
+                        placeholder={`E ${b.cash[s.key]}`}
+                        value={c.cash?.[s.key] ?? ''}
+                        onChange={(e) =>
+                          setBurger(b.id, {
+                            cash: { ...(c.cash || {}), [s.key]: e.target.value ? Number(e.target.value) : undefined },
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+                  <label className="flex flex-col gap-1.5 mt-3">
+                    <span className={labelCls}>Descripción</span>
+                    <textarea
+                      rows={2}
+                      className={inputCls + ' resize-y'}
+                      placeholder={b.description}
+                      value={c.description || ''}
+                      onChange={(e) => setBurger(b.id, { description: e.target.value })}
+                    />
+                  </label>
+                </div>
+              )
+            })}
+          </Seccion>
+        )}
+
+        {/* ─── ENVÍOS ──────────────────────────────────────────── */}
+        {tab === 'envios' && (
+          <Seccion titulo="Zonas de envío">
+            <p className="text-white/45 text-xs mb-4">
+              Cambiá el precio de cada zona. Para agregar zonas nuevas hace falta
+              dibujarlas en el mapa — pedímelo y las sumo.
+            </p>
+            {ZONES.map((z) => (
+              <div key={z.id} className="flex items-center gap-3 mb-3">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: z.color }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm uppercase truncate" style={anton}>{z.name}</p>
+                  <p className="text-white/40 text-xs">{z.bounds}</p>
+                </div>
+                <input
+                  type="number"
+                  className={inputCls + ' w-32 shrink-0'}
+                  placeholder={String(z.price)}
+                  value={cfg.zones?.[z.id]?.price ?? ''}
+                  onChange={(e) =>
+                    set({
+                      zones: {
+                        ...cfg.zones,
+                        [z.id]: { price: e.target.value ? Number(e.target.value) : undefined },
+                      },
+                    })
+                  }
+                />
+              </div>
+            ))}
+            <p className="text-white/35 text-[11px] mt-3">
+              Precio actual en el sitio: {ZONES.map((z) => `${z.name} ${formatZonePrice(z)}`).join(' · ')}
+            </p>
+          </Seccion>
+        )}
+
+        {/* ─── NÚMEROS ─────────────────────────────────────────── */}
+        {tab === 'stats' && (
+          <Seccion titulo="Números">
+            <div
+              className="rounded-xl p-4 mb-4"
+              style={{ backgroundColor: 'rgba(240,200,50,0.08)', border: '1px solid rgba(240,200,50,0.28)' }}
+            >
+              <p className="text-[#F0C832] text-sm leading-relaxed">
+                <strong>Falta un paso.</strong> El sitio ya manda el evento de cada
+                burger agregada, pero <b>Web Analytics está apagado</b> en Vercel, así
+                que todavía no se guarda nada. Se activa con un clic y es gratis.
+              </p>
+              <a
+                href="https://vercel.com/lucianobrocchi-2489s-projects/mrwhiteburgers/analytics"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 mt-3 text-[#F0C832] text-sm"
+              >
+                Activar Analytics <ExternalLink size={13} />
+              </a>
+            </div>
+            <p className="text-white/50 text-sm">
+              Una vez activo vas a ver, por burger, cuántas veces la agregaron al
+              pedido, y de dónde entra la gente. Cuando lo prendas avisame y lo
+              traigo acá adentro para que no tengas que ir a Vercel.
+            </p>
+          </Seccion>
+        )}
+
+        {/* Guardar */}
+        {tab !== 'stats' && (
+          <div className="sticky bottom-4 mt-6">
+            <button
+              onClick={() => guardar(`chore(config): cambios desde el panel (${tab})`)}
+              disabled={estado === 'guardando'}
+              className="w-full py-4 rounded-full text-black text-sm tracking-widest uppercase disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{
+                ...anton,
+                backgroundColor: estado === 'ok' ? '#4ADE80' : '#F0C832',
+                boxShadow: '0 12px 32px -10px rgba(240,200,50,0.5)',
+              }}
+            >
+              {estado === 'guardando' ? (
+                <><RefreshCw size={15} className="animate-spin" /> Guardando…</>
+              ) : estado === 'ok' ? (
+                <><Check size={16} strokeWidth={3} /> Guardado — se ve en el sitio en ~1 min</>
+              ) : (
+                'Guardar cambios'
+              )}
+            </button>
+            {estado && !['ok', 'guardando'].includes(estado) && (
+              <p className="text-red-300 text-sm mt-3 flex items-start gap-2">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {estado}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Historial */}
+        {historial.length > 0 && (
+          <div className="mt-8">
+            <p className="text-white/40 text-[11px] tracking-[0.16em] uppercase mb-2 flex items-center gap-2">
+              <Clock size={12} /> Últimos cambios
+            </p>
+            {historial.map((h, i) => (
+              <div key={i} className="flex items-baseline justify-between py-1 text-xs">
+                <span className="text-white/55 truncate pr-3">{h.mensaje}</span>
+                <span className="text-white/30 shrink-0">
+                  {h.fecha ? new Date(h.fecha).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -2,13 +2,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Minus, ShoppingBag, Trash2, Clock } from 'lucide-react'
 import { useCart, formatPrice, ACTIVE_PROMO } from '../context/CartContext'
 import { getStatus } from '../lib/schedule'
+import { useConfig, todayOverride } from '../lib/config'
 import ZonePicker from './ZonePicker'
 
 const ease = [0.16, 1, 0.3, 1]
 
 export default function CartDrawer() {
   const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, cashTotal, zone, sendToWhatsApp, clear } = useCart()
-  const status = getStatus()
+  const cfg = useConfig()
+  const status = getStatus(new Date(), todayOverride(cfg))
 
   return (
     <AnimatePresence>

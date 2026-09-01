@@ -71,9 +71,9 @@ function Inner() {
   )
 }
 
-// Panel de admin desactivado: /#admin no abre nada y muestra el sitio normal.
-// Para volver a habilitarlo, poner esto en true.
-const ADMIN_ENABLED = false
+// Panel en /#admin. Entra con un token de GitHub; los cambios se guardan en
+// public/config.json del repo (sin base de datos).
+const ADMIN_ENABLED = true
 
 function useIsAdmin() {
   const [isAdmin, setIsAdmin] = useState(

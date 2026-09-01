@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback } from 'react'
 import { recordOrder } from '../lib/orders'
 import { findZone } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
+import { getConfig, todayOverride } from '../lib/config'
 
 const CartContext = createContext()
 
@@ -118,7 +119,13 @@ export function CartProvider({ children }) {
   const [toast, setToast]     = useState(null) // { name, id }
   const [zone, setZoneState]  = useState(null) // zona de envío elegida
 
-  const setZone = useCallback((id) => setZoneState(findZone(id)), [])
+  // El precio de envío puede venir pisado por el panel (config.zones)
+  const setZone = useCallback((id) => {
+    const z = findZone(id)
+    if (!z) return setZoneState(null)
+    const override = getConfig()?.zones?.[z.id]?.price
+    setZoneState(typeof override === 'number' ? { ...z, price: override } : z)
+  }, [])
 
   const addItem = useCallback((burger, size = 'doble', qty = 1) => {
     const n = Math.max(1, Math.floor(qty))
@@ -184,7 +191,7 @@ export function CartProvider({ children }) {
           ? `\nEnvío ${zone.name}: ${formatPrice(zone.price)}`
           : `\n${zone.name}`
     // Si está cerrado, se avisa que el pedido es para cuando abran.
-    const st = getStatus()
+    const st = getStatus(new Date(), todayOverride(getConfig()))
     const closedLine = st.open
       ? ''
       : `\n\n(Sé que están cerrados — lo dejo pedido para cuando abran${

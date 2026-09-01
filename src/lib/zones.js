@@ -53,5 +53,11 @@ export const ZONES = [
 export const findZone = (id) =>
   id === PICKUP.id ? PICKUP : id === OTHER.id ? OTHER : ZONES.find((z) => z.id === id) || null
 
+// Precio efectivo de una zona: el del panel si lo hay, si no el del código.
+export const zonePrice = (z, cfg) => {
+  const o = cfg?.zones?.[z?.id]?.price
+  return typeof o === 'number' ? o : z?.price
+}
+
 export const formatZonePrice = (z) =>
   !z ? '' : z.price == null ? 'A coordinar' : z.price === 0 ? 'Sin cargo' : '$' + z.price.toLocaleString('es-AR')

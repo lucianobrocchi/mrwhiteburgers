@@ -3,7 +3,8 @@ import { Check, Package, Map as MapIcon, ChevronDown } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useCart } from '../context/CartContext'
-import { ZONES, PICKUP, OTHER, LOCAL, formatZonePrice } from '../lib/zones'
+import { ZONES, PICKUP, OTHER, LOCAL, formatZonePrice, zonePrice } from '../lib/zones'
+import { useConfig } from '../lib/config'
 
 // Mapa chico con las zonas dibujadas con su forma real. Se monta solo cuando
 // se abre (dentro del carrito), por eso el invalidateSize: si Leaflet arranca
@@ -80,8 +81,10 @@ function ZoneMap({ selected, onSelect }) {
 
 export default function ZonePicker() {
   const { zone, setZone } = useCart()
+  const cfg = useConfig()
   const [showMap, setShowMap] = useState(false)
-  const opciones = [PICKUP, ...ZONES, OTHER]
+  // Mostramos el precio que realmente se cobra (el del panel si fue cambiado)
+  const opciones = [PICKUP, ...ZONES.map((z) => ({ ...z, price: zonePrice(z, cfg) })), OTHER]
 
   return (
     <div className="flex flex-col gap-2">
