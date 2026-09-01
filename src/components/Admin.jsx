@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Check, AlertTriangle, RefreshCw, ExternalLink, Clock, Ban } from 'lucide-react'
-import { getToken, setToken, checkToken, readConfigFile, saveConfigFile, configHistory } from '../lib/github'
+import * as panel from '../lib/panelApi'
 import { DEFAULT_CONFIG } from '../lib/config'
 import { SCHEDULE, scheduleSummary } from '../lib/schedule'
 import { ZONES, formatZonePrice } from '../lib/zones'
@@ -27,6 +27,10 @@ function Login({ onOk }) {
   const [err, setErr] = useState('')
   const [cargando, setCargando] = useState(false)
   const [diag, setDiag] = useState('')
+  const [modo, setModo] = useState(null)
+
+  useEffect(() => { panel.detectarModo().then(setModo) }, [])
+  const conClave = modo === 'api'
 
   // Comprueba si este dispositivo puede llegar a GitHub, sin token de por medio.
   const probarConexion = async () => {
@@ -50,8 +54,7 @@ function Login({ onOk }) {
     e.preventDefault()
     setErr(''); setCargando(true)
     try {
-      await checkToken(t.trim())
-      setToken(t.trim())
+      await panel.login(t.trim())
       onOk()
     } catch (ex) {
       setErr(ex.message)
@@ -65,16 +68,18 @@ function Login({ onOk }) {
         <h1 className="text-4xl text-white uppercase mb-1" style={anton}>
           Mr. White <span className="text-[#F0C832]">Panel</span>
         </h1>
-        <p className="text-white/50 text-sm mb-6">Pegá tu token de GitHub para entrar.</p>
+        <p className="text-white/50 text-sm mb-6">
+          {conClave ? 'Ingresá la clave del panel.' : 'Pegá tu token de GitHub para entrar.'}
+        </p>
 
         <label className="flex flex-col gap-1.5 mb-3">
-          <span className={labelCls}>Token</span>
+          <span className={labelCls}>{conClave ? 'Clave' : 'Token'}</span>
           <input
             type="password"
             value={t}
             onChange={(e) => setT(e.target.value)}
             className={inputCls}
-            placeholder="github_pat_..."
+            placeholder={conClave ? '••••••••' : 'github_pat_...'}
             autoComplete="off"
           />
         </label>
@@ -106,6 +111,12 @@ function Login({ onOk }) {
           <p className="text-white/70 text-xs mt-3 leading-relaxed">{diag}</p>
         )}
 
+        {conClave ? (
+          <p className="mt-6 text-white/40 text-xs leading-relaxed">
+            El panel habla con tu propio sitio, así que ningún bloqueador lo corta
+            y el token de GitHub queda guardado en Vercel, no en tu teléfono.
+          </p>
+        ) : (
         <div className="mt-6 text-white/45 text-xs leading-relaxed">
           <p className="mb-2">El token queda guardado solo en este dispositivo. Para crear uno:</p>
           <ol className="list-decimal ml-4 space-y-1">
@@ -123,6 +134,7 @@ function Login({ onOk }) {
             Crear token <ExternalLink size={12} />
           </a>
         </div>
+        )}
       </form>
     </div>
   )
@@ -143,21 +155,127 @@ function Seccion({ titulo, children, extra }) {
   )
 }
 
+const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR')
+const nombreBurger = (id) => FALLBACK_BURGERS.find((b) => String(b.id) === String(id))?.name || `#${id}`
+
+function Stats({ stats }) {
+  if (!stats) {
+    return (
+      <Seccion titulo="Números">
+        <p className="text-white/55 text-sm leading-relaxed mb-4">
+          Todavía no está activo el registro de pedidos. Se prende cargando dos
+          variables en Vercel (te las paso), y a partir de ahí cada pedido enviado
+          por WhatsApp queda contado acá: cuántos por día, cuánto vendiste y qué
+          burger sale más.
+        </p>
+        <a
+          href="https://vercel.com/lucianobrocchi-2489s-projects/mrwhiteburgers/analytics"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[#F0C832] text-sm"
+        >
+          Mientras tanto: visitas en Vercel Analytics <ExternalLink size={13} />
+        </a>
+      </Seccion>
+    )
+  }
+
+  const dias = Object.keys(stats.byDay || {}).sort().reverse()
+  const total = dias.reduce((s, d) => s + (stats.byDay[d].total || 0), 0)
+  const pedidos = dias.reduce((s, d) => s + (stats.byDay[d].orders || 0), 0)
+  const porBurger = {}
+  dias.forEach((d) => {
+    Object.entries(stats.byDay[d].burgers || {}).forEach(([k, v]) => {
+      porBurger[k] = (porBurger[k] || 0) + v
+    })
+  })
+  const ranking = Object.entries(porBurger).sort((a, b) => b[1] - a[1])
+  const maxB = ranking[0]?.[1] || 1
+
+  return (
+    <>
+      <Seccion titulo="Resumen">
+        <div className="grid grid-cols-3 gap-3">
+          {[['Pedidos', pedidos], ['Vendido', money(total)], ['Días', dias.length]].map(([k, v]) => (
+            <div key={k} className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+              <p className={labelCls}>{k}</p>
+              <p className="text-[#F0C832] text-2xl mt-1" style={anton}>{v}</p>
+            </div>
+          ))}
+        </div>
+      </Seccion>
+
+      {ranking.length > 0 && (
+        <Seccion titulo="Cuál sale más">
+          {ranking.map(([id, n]) => (
+            <div key={id} className="mb-3">
+              <div className="flex items-baseline justify-between mb-1">
+                <span className="text-white text-sm uppercase" style={anton}>{nombreBurger(id)}</span>
+                <span className="text-[#F0C832] text-sm" style={anton}>{n}</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}>
+                <div className="h-full rounded-full" style={{ width: `${(n / maxB) * 100}%`, backgroundColor: '#F0C832' }} />
+              </div>
+            </div>
+          ))}
+        </Seccion>
+      )}
+
+      <Seccion titulo="Por día">
+        {dias.length === 0 && <p className="text-white/45 text-sm">Todavía no entró ningún pedido.</p>}
+        {dias.map((d) => {
+          const x = stats.byDay[d]
+          return (
+            <div key={d} className="flex items-baseline justify-between py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <span className="text-white/70 text-sm">
+                {new Date(`${d}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </span>
+              <span className="text-white/50 text-sm">
+                {x.orders} {x.orders === 1 ? 'pedido' : 'pedidos'} · <span className="text-[#F0C832]">{money(x.total)}</span>
+              </span>
+            </div>
+          )
+        })}
+      </Seccion>
+
+      {stats.lastOrders?.length > 0 && (
+        <Seccion titulo="Últimos pedidos">
+          {stats.lastOrders.slice(0, 12).map((o, i) => (
+            <div key={i} className="rounded-xl px-3 py-2.5 mb-2" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+              <div className="flex items-baseline justify-between">
+                <span className="text-white/45 text-xs">
+                  {new Date(o.at).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="text-[#F0C832] text-sm" style={anton}>{money(o.total)}</span>
+              </div>
+              <p className="text-white/70 text-sm mt-1">
+                {(o.items || []).map((i2) => `${i2.qty}× ${i2.name}`).join(' · ')}
+                {o.zone ? ` — ${o.zone}` : ''}
+              </p>
+            </div>
+          ))}
+        </Seccion>
+      )}
+    </>
+  )
+}
+
 export default function Admin() {
-  const [logueado, setLogueado] = useState(!!getToken())
+  const [logueado, setLogueado] = useState(panel.estaLogueado())
   const [cfg, setCfg] = useState(null)
   const [sha, setSha] = useState(null)
   const [tab, setTab] = useState('hoy')
   const [estado, setEstado] = useState('')   // '', 'guardando', 'ok', mensaje de error
   const [historial, setHistorial] = useState([])
+  const [stats, setStats] = useState(null)
 
   const cargar = useCallback(async () => {
-    const token = getToken()
     try {
-      const { sha, content } = await readConfigFile(token)
+      const { sha, content } = await panel.readConfig()
       setSha(sha)
       setCfg({ ...DEFAULT_CONFIG, ...(content || {}), today: { ...DEFAULT_CONFIG.today, ...(content?.today || {}) } })
-      setHistorial(await configHistory(token))
+      panel.history().then(setHistorial).catch(() => {})
+      panel.readStats().then(setStats).catch(() => {})
     } catch (e) {
       setEstado(e.message)
     }
@@ -183,12 +301,12 @@ export default function Admin() {
     setEstado('guardando')
     try {
       const nuevo = { ...cfg, updatedAt: new Date().toISOString() }
-      const nuevoSha = await saveConfigFile(getToken(), nuevo, sha, mensaje)
+      const nuevoSha = await panel.saveConfig(nuevo, sha, mensaje)
       setSha(nuevoSha)
       setCfg(nuevo)
       setEstado('ok')
       setTimeout(() => setEstado(''), 3000)
-      configHistory(getToken()).then(setHistorial)
+      panel.history().then(setHistorial).catch(() => {})
     } catch (e) {
       setEstado(e.message)
     }
@@ -207,7 +325,7 @@ export default function Admin() {
           <div className="flex items-center gap-3">
             <a href="/" className="text-sm text-white/55 hover:text-white">Ver sitio →</a>
             <button
-              onClick={() => { setToken(''); setLogueado(false) }}
+              onClick={() => { panel.salir(); setLogueado(false) }}
               className="px-4 py-2 rounded-full text-sm uppercase tracking-wide text-white/65 hover:text-white"
               style={{ border: '1px solid rgba(255,255,255,0.15)' }}
             >
@@ -433,33 +551,7 @@ export default function Admin() {
         )}
 
         {/* ─── NÚMEROS ─────────────────────────────────────────── */}
-        {tab === 'stats' && (
-          <Seccion titulo="Números">
-            <div
-              className="rounded-xl p-4 mb-4"
-              style={{ backgroundColor: 'rgba(240,200,50,0.08)', border: '1px solid rgba(240,200,50,0.28)' }}
-            >
-              <p className="text-[#F0C832] text-sm leading-relaxed">
-                <strong>Falta un paso.</strong> El sitio ya manda el evento de cada
-                burger agregada, pero <b>Web Analytics está apagado</b> en Vercel, así
-                que todavía no se guarda nada. Se activa con un clic y es gratis.
-              </p>
-              <a
-                href="https://vercel.com/lucianobrocchi-2489s-projects/mrwhiteburgers/analytics"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 mt-3 text-[#F0C832] text-sm"
-              >
-                Activar Analytics <ExternalLink size={13} />
-              </a>
-            </div>
-            <p className="text-white/50 text-sm">
-              Una vez activo vas a ver, por burger, cuántas veces la agregaron al
-              pedido, y de dónde entra la gente. Cuando lo prendas avisame y lo
-              traigo acá adentro para que no tengas que ir a Vercel.
-            </p>
-          </Seccion>
-        )}
+        {tab === 'stats' && <Stats stats={stats} />}
 
         {/* Guardar */}
         {tab !== 'stats' && (

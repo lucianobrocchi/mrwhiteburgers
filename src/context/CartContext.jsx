@@ -175,8 +175,8 @@ export function CartProvider({ children }) {
 
   const sendToWhatsApp = () => {
     if (!items.length) return
-    // Registrar el pedido para las ventas del panel (no bloquea)
-    recordOrder({ items, subtotal, discount, total: totalPrice, promo: ACTIVE_PROMO?.title })
+    // Registrar el pedido para las estadísticas del panel (no bloquea)
+    recordOrder({ items, total: totalPrice, cashTotal, zone })
     const lines = items
       .map(i => `• ${i.qty}x ${i.name} (${i.sizeLabel}) — ${formatPrice(i.price * i.qty)}`)
       .join('\n')

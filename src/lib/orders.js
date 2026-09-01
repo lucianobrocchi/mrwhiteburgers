@@ -1,21 +1,24 @@
-import { supabase } from './supabase'
+// Registra el pedido cuando el cliente toca "Pedir por WhatsApp".
+// Va a /api/panel del propio sitio (no a un servicio externo), y desde ahí el
+// servidor lo suma a las estadísticas. Si la función no está configurada, falla
+// en silencio: el pedido de WhatsApp sale igual.
 
-// Registra un pedido cuando el cliente toca "Pedir por WhatsApp".
-// No bloquea ni rompe si falla (p. ej. si la tabla aún no existe).
-export function recordOrder({ items, subtotal, discount, total, promo }) {
+export function recordOrder({ items, total, cashTotal, zone }) {
   try {
     const payload = {
-      items: items.map((i) => ({ name: i.name, size: i.sizeLabel, qty: i.qty, price: i.price })),
-      item_count: items.reduce((s, i) => s + i.qty, 0),
-      subtotal: Math.round(subtotal || 0),
-      discount: Math.round(discount || 0),
+      action: 'order',
+      items: items.map((i) => ({ id: i.id, name: i.name, size: i.size, qty: i.qty })),
       total: Math.round(total || 0),
-      promo: promo || null,
+      cashTotal: Math.round(cashTotal || 0),
+      zone: zone?.name || '',
     }
-    supabase.from('orders').insert(payload).then(
-      () => {},
-      () => {},
-    )
+    // keepalive: el navegador está por abrir WhatsApp y se lleva la pestaña
+    fetch('/api/panel?action=order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {})
   } catch {
     /* noop */
   }
