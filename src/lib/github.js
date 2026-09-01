@@ -15,16 +15,27 @@ export const setToken = (t) => {
   try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY) } catch { /* noop */ }
 }
 
-const api = (path, token, init = {}) =>
-  fetch(`https://api.github.com/repos/${REPO}/${path}`, {
-    ...init,
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...(init.headers || {}),
-    },
-  })
+// Si el fetch falla a nivel red (bloqueador, VPN, sin señal) el navegador tira
+// un TypeError seco que no dice nada. Lo traducimos a algo accionable.
+const api = async (path, token, init = {}) => {
+  try {
+    return await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+      ...init,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(init.headers || {}),
+      },
+    })
+  } catch {
+    throw new Error(
+      'No pude conectarme a GitHub desde este dispositivo. Suele ser un ' +
+      'bloqueador de anuncios, una VPN o el DNS. Probá desactivar el bloqueador, ' +
+      'o entrar desde otra red / con datos del celular.',
+    )
+  }
+}
 
 // Verifica que el token sirva y tenga permiso de escritura en el repo.
 export async function checkToken(token) {

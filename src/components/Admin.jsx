@@ -26,6 +26,25 @@ function Login({ onOk }) {
   const [t, setT] = useState('')
   const [err, setErr] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [diag, setDiag] = useState('')
+
+  // Comprueba si este dispositivo puede llegar a GitHub, sin token de por medio.
+  const probarConexion = async () => {
+    setDiag('probando…')
+    try {
+      const r = await fetch('https://api.github.com/repos/lucianobrocchi/mrwhiteburgers')
+      setDiag(
+        r.ok
+          ? '✅ Llego bien a GitHub. Si falla al entrar, el problema es el token.'
+          : `⚠️ GitHub respondió ${r.status}.`,
+      )
+    } catch {
+      setDiag(
+        '❌ Este dispositivo NO llega a GitHub. Es tu red o navegador: probá ' +
+        'apagar el bloqueador de anuncios / la VPN, o usá los datos del celular.',
+      )
+    }
+  }
 
   const entrar = async (e) => {
     e.preventDefault()
@@ -74,6 +93,18 @@ function Login({ onOk }) {
         >
           {cargando ? 'Verificando…' : 'Entrar'}
         </button>
+
+        <button
+          type="button"
+          onClick={probarConexion}
+          className="w-full mt-3 py-2.5 rounded-full text-xs uppercase tracking-widest text-white/60 hover:text-white"
+          style={{ border: '1px solid rgba(255,255,255,0.15)' }}
+        >
+          Probar conexión con GitHub
+        </button>
+        {diag && (
+          <p className="text-white/70 text-xs mt-3 leading-relaxed">{diag}</p>
+        )}
 
         <div className="mt-6 text-white/45 text-xs leading-relaxed">
           <p className="mb-2">El token queda guardado solo en este dispositivo. Para crear uno:</p>
