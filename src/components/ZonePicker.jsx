@@ -4,7 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useCart } from '../context/CartContext'
 import { ZONES, PICKUP, OTHER, LOCAL, formatZonePrice, zonePrice } from '../lib/zones'
-import { useConfig } from '../lib/config'
+import { useConfig, todayOverride } from '../lib/config'
 
 // Mapa chico con las zonas dibujadas con su forma real. Se monta solo cuando
 // se abre (dentro del carrito), por eso el invalidateSize: si Leaflet arranca
@@ -83,8 +83,17 @@ export default function ZonePicker() {
   const { zone, setZone } = useCart()
   const cfg = useConfig()
   const [showMap, setShowMap] = useState(false)
+  // "Hoy sin envíos" desde el panel: queda solo el retiro en el local
+  const sinEnvios = !!todayOverride(cfg)?.deliveryOff
   // Mostramos el precio que realmente se cobra (el del panel si fue cambiado)
-  const opciones = [PICKUP, ...ZONES.map((z) => ({ ...z, price: zonePrice(z, cfg) })), OTHER]
+  const opciones = sinEnvios
+    ? [PICKUP]
+    : [PICKUP, ...ZONES.map((z) => ({ ...z, price: zonePrice(z, cfg) })), OTHER]
+
+  // Si se apagó el delivery con una zona ya elegida, la sacamos
+  useEffect(() => {
+    if (sinEnvios && zone && zone.id !== PICKUP.id) setZone(PICKUP.id)
+  }, [sinEnvios, zone, setZone])
 
   return (
     <div className="flex flex-col gap-2">
@@ -95,6 +104,7 @@ export default function ZonePicker() {
         >
           ¿A dónde te la llevamos?
         </span>
+        {!sinEnvios && (
         <button
           onClick={() => setShowMap((v) => !v)}
           className="flex items-center gap-1 text-[#F0C832]/80 hover:text-[#F0C832] text-[11px] transition-colors"
@@ -107,9 +117,23 @@ export default function ZonePicker() {
             style={{ transform: showMap ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}
           />
         </button>
+        )}
       </div>
 
-      {showMap && <ZoneMap selected={zone?.id} onSelect={setZone} />}
+      {sinEnvios && (
+        <p
+          className="text-[#F0C832] text-xs px-3 py-2.5 rounded-xl"
+          style={{
+            fontFamily: 'DM Sans, sans-serif',
+            backgroundColor: 'rgba(240,200,50,0.1)',
+            border: '1px solid rgba(240,200,50,0.3)',
+          }}
+        >
+          Hoy no estamos haciendo envíos — solo retiro en el local.
+        </p>
+      )}
+
+      {showMap && !sinEnvios && <ZoneMap selected={zone?.id} onSelect={setZone} />}
 
       {opciones.map((z) => {
         const on = zone?.id === z.id

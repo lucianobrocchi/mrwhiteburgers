@@ -117,6 +117,29 @@ function Login({ onOk }) {
             y el token de GitHub queda guardado en Vercel, no en tu teléfono.
           </p>
         ) : (
+        <>
+        {/* Cómo pasar al modo con clave (sin token en el teléfono) */}
+        <details className="mt-5 rounded-xl p-3" style={{ backgroundColor: 'rgba(240,200,50,0.07)', border: '1px solid rgba(240,200,50,0.25)' }}>
+          <summary className="text-[#F0C832] text-xs cursor-pointer">
+            ¿Te da "failed to fetch"? Tocá acá
+          </summary>
+          <div className="text-white/60 text-xs leading-relaxed mt-3">
+            <p className="mb-2">
+              Ese error es tu red o un bloqueador cortando <b>api.github.com</b>.
+              Se soluciona para siempre haciendo que el panel hable con tu propio
+              sitio. En Vercel → tu proyecto → <b>Settings → Environment Variables</b>,
+              agregá estas dos y volvé a desplegar:
+            </p>
+            <ul className="space-y-1 ml-1">
+              <li><b className="text-white/80">GITHUB_TOKEN</b> → el token fine-grained</li>
+              <li><b className="text-white/80">PANEL_PASSWORD</b> → la clave que quieras para entrar</li>
+            </ul>
+            <p className="mt-2">
+              Listo eso, el panel te pide la clave en vez del token y no vuelve a
+              fallar. Además ahí se prenden las estadísticas de pedidos.
+            </p>
+          </div>
+        </details>
         <div className="mt-6 text-white/45 text-xs leading-relaxed">
           <p className="mb-2">El token queda guardado solo en este dispositivo. Para crear uno:</p>
           <ol className="list-decimal ml-4 space-y-1">
@@ -134,6 +157,7 @@ function Login({ onOk }) {
             Crear token <ExternalLink size={12} />
           </a>
         </div>
+        </>
         )}
       </form>
     </div>
@@ -421,6 +445,18 @@ export default function Admin() {
               >
                 Limpiar excepciones de hoy
               </button>
+            </Seccion>
+
+            <Seccion titulo="Cartel de arriba">
+              <p className="text-white/45 text-xs mb-3">
+                El texto que corre en la barra roja. Vacío = el de siempre.
+              </p>
+              <input
+                value={cfg.ticker || ''}
+                onChange={(e) => set({ ticker: e.target.value })}
+                className={inputCls}
+                placeholder="Ej: HOY 2X1 EN SIMPLES · PEDÍ POR WHATSAPP"
+              />
             </Seccion>
 
             <Seccion titulo="Sin stock">
