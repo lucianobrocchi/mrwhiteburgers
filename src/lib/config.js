@@ -22,6 +22,11 @@ export const DEFAULT_CONFIG = {
   },
   zones: {},     // { [id]: { price } }
   ticker: '',    // texto del cartel de arriba (vacío = el de siempre)
+  promo: {       // promo editable desde el panel (se ve en el banner y el cartel)
+    on: false,        // prender / apagar
+    headline: '',     // línea principal, ej: '2 SIMPLES x $15.000'
+    sub: '',          // línea secundaria, ej: 'Solo hoy · por WhatsApp'
+  },
 }
 
 let cache = DEFAULT_CONFIG
@@ -30,7 +35,12 @@ const escuchas = new Set()
 export const getConfig = () => cache
 
 function aplicar(cfg) {
-  cache = { ...DEFAULT_CONFIG, ...cfg, today: { ...DEFAULT_CONFIG.today, ...(cfg?.today || {}) } }
+  cache = {
+    ...DEFAULT_CONFIG,
+    ...cfg,
+    today: { ...DEFAULT_CONFIG.today, ...(cfg?.today || {}) },
+    promo: { ...DEFAULT_CONFIG.promo, ...(cfg?.promo || {}) },
+  }
   escuchas.forEach((fn) => fn(cache))
 }
 

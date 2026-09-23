@@ -336,7 +336,10 @@ export default function Admin() {
     }
   }
 
-  const TABS = [['hoy', 'Hoy'], ['menu', 'Menú'], ['envios', 'Envíos'], ['stats', 'Números']]
+  const setPromo = (patch) =>
+    setCfg((c) => ({ ...c, promo: { ...DEFAULT_CONFIG.promo, ...(c.promo || {}), ...patch } }))
+
+  const TABS = [['hoy', 'Hoy'], ['menu', 'Menú'], ['promos', 'Promos'], ['envios', 'Envíos'], ['stats', 'Números']]
 
   return (
     <div className="min-h-screen bg-black px-4 md:px-8 py-6" style={font}>
@@ -544,9 +547,64 @@ export default function Admin() {
                       onChange={(e) => setBurger(b.id, { description: e.target.value })}
                     />
                   </label>
+                  <label className="flex items-center gap-3 mt-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!c.featured}
+                      onChange={(e) => setBurger(b.id, { featured: e.target.checked })}
+                      className="w-5 h-5 accent-[#F0C832]"
+                    />
+                    <span className="text-white text-sm">Destacar en el menú (★ Recomendada)</span>
+                  </label>
                 </div>
               )
             })}
+          </Seccion>
+        )}
+
+        {/* ─── PROMOS ──────────────────────────────────────────── */}
+        {tab === 'promos' && (
+          <Seccion titulo="Promo del sitio">
+            <p className="text-white/45 text-xs mb-4">
+              Prendé una promo y aparece sola en el banner y en el cartel de arriba.
+              Apagala cuando termine. (El precio se cobra a mano; esto es el anuncio.)
+            </p>
+
+            <label className="flex items-center gap-3 mb-5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!cfg.promo?.on}
+                onChange={(e) => setPromo({ on: e.target.checked })}
+                className="w-5 h-5 accent-[#F0C832]"
+              />
+              <span className="text-white text-sm">Promo activa (visible en el sitio)</span>
+            </label>
+
+            <label className="flex flex-col gap-1.5 mb-4">
+              <span className={labelCls}>Título de la promo</span>
+              <input
+                value={cfg.promo?.headline || ''}
+                onChange={(e) => setPromo({ headline: e.target.value })}
+                className={inputCls}
+                placeholder="Ej: 2 SIMPLES x $15.000"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5 mb-2">
+              <span className={labelCls}>Detalle (opcional)</span>
+              <input
+                value={cfg.promo?.sub || ''}
+                onChange={(e) => setPromo({ sub: e.target.value })}
+                className={inputCls}
+                placeholder="Ej: Solo hoy · pedí por WhatsApp"
+              />
+            </label>
+
+            <p className="text-white/35 text-[11px] mt-3">
+              {cfg.promo?.on && (cfg.promo?.headline || '').trim()
+                ? `Se está mostrando: "${cfg.promo.headline}"`
+                : 'Ahora no hay promo activa.'}
+            </p>
           </Seccion>
         )}
 

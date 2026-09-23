@@ -5,15 +5,19 @@ const BRAND = '★  SMASH BURGERS PREMIUM  ·  PAN DE PAPA ARTESANAL  ·  CARNE 
 
 export default function DiscountTicker() {
   const cfg = useConfig()
-  // Un texto cargado en el panel manda sobre todo lo demás
+  // Un texto cargado en el panel manda sobre todo lo demás; después la promo
+  // del panel; y por último las promos por fecha del código.
   const propio = (cfg?.ticker || '').trim()
+  const promoPanel = cfg?.promo?.on ? (cfg.promo.headline || '').trim() : ''
   const message = propio
     ? `★  ${propio.toUpperCase()}`
-    : ACTIVE_PROMO
-      ? `★  SOLO HOY  ·  ${ACTIVE_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
-      : PREVIEW_PROMO
-        ? `★  MAÑANA  ·  ${PREVIEW_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
-        : BRAND
+    : promoPanel
+      ? `★  SOLO HOY  ·  ${promoPanel.toUpperCase()}  ·  PEDÍ POR WHATSAPP`
+      : ACTIVE_PROMO
+        ? `★  SOLO HOY  ·  ${ACTIVE_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
+        : PREVIEW_PROMO
+          ? `★  MAÑANA  ·  ${PREVIEW_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
+          : BRAND
 
   return (
     <div

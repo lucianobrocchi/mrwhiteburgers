@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Sparkles, Bike, Package } from 'lucide-react'
 import { ACTIVE_PROMO, PREVIEW_PROMO, WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from '../context/CartContext'
+import { useConfig } from '../lib/config'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -16,11 +17,18 @@ function WhatsAppIcon() {
 export default function PromoBanner() {
   const ref    = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
+  const cfg    = useConfig()
 
-  const promo = ACTIVE_PROMO || PREVIEW_PROMO
+  // La promo cargada desde el panel manda sobre las promos por fecha del código.
+  const headline = (cfg?.promo?.headline || '').trim()
+  const cfgPromo = cfg?.promo?.on && headline
+    ? { title: headline, headline: (cfg.promo.sub || '').trim(), short: headline, fromPanel: true }
+    : null
+
+  const promo = cfgPromo || ACTIVE_PROMO || PREVIEW_PROMO
   if (!promo) return null
 
-  const isLive = !!ACTIVE_PROMO
+  const isLive = !!cfgPromo || !!ACTIVE_PROMO
   const waMsg = encodeURIComponent(
     `Hola! Quiero aprovechar la ${promo.title} (${promo.short}).`
   )
@@ -49,7 +57,8 @@ export default function PromoBanner() {
 
       <div className="relative w-full flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
 
-        {/* Left — big price mark */}
+        {/* Left — big price mark (las promos del panel pueden no traer precio grande) */}
+        {promo.bigPrice && (
         <motion.div
           className="flex items-center gap-5 flex-shrink-0"
           initial={{ opacity: 0, scale: 0.85 }}
@@ -78,6 +87,7 @@ export default function PromoBanner() {
             </span>
           </div>
         </motion.div>
+        )}
 
         {/* Center — copy */}
         <motion.div
