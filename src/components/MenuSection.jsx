@@ -353,6 +353,19 @@ function BurgerCard({ burger, index }) {
             </span>
           </div>
         )}
+        {burger.featured && !itemPromo && !burger.soldOut && (
+          <div
+            className="absolute top-3 left-3 z-20 inline-flex items-center px-2.5 py-1 rounded-full pointer-events-none"
+            style={{ backgroundColor: '#F0C832', boxShadow: '0 6px 18px -6px rgba(240,200,50,0.6)' }}
+          >
+            <span
+              className="text-[10px] tracking-[0.12em] uppercase text-black"
+              style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 700 }}
+            >
+              ★ Recomendada
+            </span>
+          </div>
+        )}
         {burger.image && burger.imageAlt ? (
           <>
             {/* Foto base (fondo negro) */}
@@ -516,6 +529,7 @@ function aplicarConfig(burger, cfg) {
   return {
     ...burger,
     soldOut: !!c.soldOut,
+    featured: !!c.featured,
     prices: c.prices ? { ...burger.prices, ...c.prices } : burger.prices,
     cash: c.cash ? { ...burger.cash, ...c.cash } : burger.cash,
     description: c.description || burger.description,
