@@ -2,14 +2,17 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Clock, MapPin, Bike } from 'lucide-react'
 import { ADDRESS, scheduleSummary, getStatus } from '../lib/schedule'
-import { ZONES, formatZonePrice } from '../lib/zones'
+import { ZONES, formatZonePrice, zonePrice } from '../lib/zones'
+import { useConfig, todayOverride } from '../lib/config'
 
 const ease = [0.16, 1, 0.3, 1]
 
 export default function HoursSection() {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
-  const status = getStatus()
+  const cfg = useConfig()
+  const hoy = todayOverride(cfg)
+  const status = getStatus(new Date(), hoy)
   const horarios = scheduleSummary()
 
   return (
@@ -49,6 +52,28 @@ export default function HoursSection() {
               {status.open ? 'Abierto ahora' : 'Cerrado'}
             </span>
           </div>
+          {/* Excepción cargada desde el panel para hoy */}
+          {hoy && (hoy.closed || hoy.opensAt || hoy.closesAt || hoy.note) && (
+            <div
+              className="mb-3 px-3 py-2.5 rounded-xl"
+              style={{
+                backgroundColor: 'rgba(240,200,50,0.1)',
+                border: '1px solid rgba(240,200,50,0.3)',
+              }}
+            >
+              <p
+                className="text-[#F0C832] text-xs leading-relaxed"
+                style={{ fontFamily: 'DM Sans, sans-serif' }}
+              >
+                <strong className="font-semibold">Solo por hoy: </strong>
+                {hoy.closed
+                  ? 'cerrado.'
+                  : `${hoy.opensAt ? `abrimos ${hoy.opensAt}` : ''}${hoy.opensAt && hoy.closesAt ? ' y ' : ''}${hoy.closesAt ? `cerramos ${hoy.closesAt}` : ''}.`}
+                {hoy.deliveryOff ? ' Sin envíos, solo retiro.' : ''}
+                {hoy.note ? ` ${hoy.note}` : ''}
+              </p>
+            </div>
+          )}
           {horarios.map((h) => (
             <div key={h.label} className="flex items-baseline justify-between py-1">
               <span
@@ -128,7 +153,7 @@ export default function HoursSection() {
                   className="text-white/85 text-sm"
                   style={{ fontFamily: 'DM Sans, sans-serif' }}
                 >
-                  {formatZonePrice(z)}
+                  {formatZonePrice({ ...z, price: zonePrice(z, cfg) })}
                 </span>
               </div>
             ))}

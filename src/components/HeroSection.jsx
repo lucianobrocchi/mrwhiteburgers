@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import imgHero from '../assets/burgers/curri_white_hero.jpg'
 import logoFull from '../assets/logo_full.jpg'
 import { getStatus } from '../lib/schedule'
+import { useConfig, todayOverride } from '../lib/config'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -61,7 +62,8 @@ function HeroVideo({ className, style }) {
 
 // Chip de abierto/cerrado. Si está cerrado, dice cuándo abre y lleva a los horarios.
 function StatusChip() {
-  const s = getStatus()
+  const cfg = useConfig()
+  const s = getStatus(new Date(), todayOverride(cfg))
   const color = s.open ? '#4ADE80' : '#F87171'
   return (
     <motion.a

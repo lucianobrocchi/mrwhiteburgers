@@ -51,7 +51,7 @@ const toMin = (hhmm) => {
 }
 
 // ?abierto=1 / ?abierto=0 fuerza el estado (para probar sin esperar la hora).
-function override() {
+function forzadoPorUrl() {
   try {
     const v = new URLSearchParams(window.location.search).get('abierto')
     if (v === '1') return true
@@ -65,11 +65,51 @@ const fmt = (mins) => {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }
 
+// Próximo turno de apertura. `saltarHoy` sirve cuando hoy se cerró por excepción.
+function proximaApertura(day, nowAbs, saltarHoy = false) {
+  for (let off = saltarHoy ? 1 : 0; off <= 7; off++) {
+    const d = (day + off) % 7
+    for (const t of SCHEDULE[d]) {
+      const from = (day + off) * 1440 + toMin(t.from)
+      if (from > nowAbs) {
+        return {
+          opensAt: t.from,
+          opensLabel: off === 0 ? 'hoy' : off === 1 ? 'mañana' : DAY_NAMES[d],
+        }
+      }
+    }
+  }
+  return { opensAt: null, opensLabel: '' }
+}
+
 // Estado actual del local.
 //   { open, closesAt, opensAt, opensDay, opensLabel }
-export function getStatus(now = new Date()) {
+// `override` viene del panel y solo aplica al día de hoy:
+//   { closed, opensAt, closesAt, note }
+export function getStatus(now = new Date(), override = null) {
   const day = now.getDay()
   const nowAbs = day * 1440 + now.getHours() * 60 + now.getMinutes()
+
+  // Excepción del día cargada desde el panel
+  if (override) {
+    if (override.closed) {
+      const prox = proximaApertura(day, nowAbs, true)
+      return { open: false, note: override.note || '', ...prox, day }
+    }
+    if (override.opensAt || override.closesAt) {
+      const base = SCHEDULE[day][0] || { from: '19:30', to: '22:30' }
+      const from = toMin(override.opensAt || base.from)
+      let to = toMin(override.closesAt || base.to)
+      if (to <= from) to += 1440
+      const mins = now.getHours() * 60 + now.getMinutes()
+      if (mins >= from && mins < to) {
+        return { open: true, closesAt: fmt(to), note: override.note || '', day }
+      }
+      if (mins < from) {
+        return { open: false, opensAt: fmt(from), opensLabel: 'hoy', note: override.note || '', day }
+      }
+    }
+  }
 
   // Turnos de ayer, hoy y mañana: ayer cubre el turno que cruza la medianoche
   // y sigue abierto ahora; mañana sirve para saber cuándo vuelve a abrir.
@@ -85,7 +125,7 @@ export function getStatus(now = new Date()) {
     }
   }
 
-  const forced = override()
+  const forced = forzadoPorUrl()
   const current = turns.find((t) => nowAbs >= t.from && nowAbs < t.to)
   const open = forced !== null ? forced : !!current
 

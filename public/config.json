@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "updatedAt": null,
+  "updatedBy": null,
+  "burgers": {
+    "5": { "soldOut": false },
+    "1": { "soldOut": false },
+    "4": { "soldOut": false },
+    "3": { "soldOut": false },
+    "2": { "soldOut": false },
+    "6": { "soldOut": false }
+  },
+  "today": {
+    "date": null,
+    "closed": false,
+    "opensAt": null,
+    "closesAt": null,
+    "deliveryOff": false,
+    "note": ""
+  },
+  "zones": {},
+  "ticker": ""
+}

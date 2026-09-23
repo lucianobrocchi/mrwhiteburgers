@@ -2,13 +2,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Minus, ShoppingBag, Trash2, Clock } from 'lucide-react'
 import { useCart, formatPrice, ACTIVE_PROMO } from '../context/CartContext'
 import { getStatus } from '../lib/schedule'
+import { useConfig, todayOverride } from '../lib/config'
 import ZonePicker from './ZonePicker'
 
 const ease = [0.16, 1, 0.3, 1]
 
 export default function CartDrawer() {
-  const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, totalPriceEf, zone, sendToWhatsApp, clear } = useCart()
-  const status = getStatus()
+  const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, cashTotal, zone, sendToWhatsApp, clear } = useCart()
+  const cfg = useConfig()
+  const status = getStatus(new Date(), todayOverride(cfg))
 
   return (
     <AnimatePresence>
@@ -253,16 +255,16 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span
-                    className="text-white/45 text-[11px] tracking-[0.18em] uppercase"
+                    className="text-white/45 text-[11px] tracking-[0.15em] uppercase"
                     style={{ fontFamily: 'DM Sans, sans-serif' }}
                   >
-                    Total efectivo
+                    En efectivo
                   </span>
                   <span
                     className="text-white/75 text-xl"
-                    style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
+                    style={{ fontFamily: 'Anton, sans-serif' }}
                   >
-                    {formatPrice(totalPriceEf)}
+                    {formatPrice(cashTotal)}
                   </span>
                 </div>
                 <p

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback } from 'react'
 import { recordOrder } from '../lib/orders'
 import { findZone } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
+import { getConfig, todayOverride } from '../lib/config'
 
 const CartContext = createContext()
 
@@ -118,13 +119,18 @@ export function CartProvider({ children }) {
   const [toast, setToast]     = useState(null) // { name, id }
   const [zone, setZoneState]  = useState(null) // zona de envío elegida
 
-  const setZone = useCallback((id) => setZoneState(findZone(id)), [])
+  // El precio de envío puede venir pisado por el panel (config.zones)
+  const setZone = useCallback((id) => {
+    const z = findZone(id)
+    if (!z) return setZoneState(null)
+    const override = getConfig()?.zones?.[z.id]?.price
+    setZoneState(typeof override === 'number' ? { ...z, price: override } : z)
+  }, [])
 
   const addItem = useCallback((burger, size = 'doble', qty = 1) => {
     const n = Math.max(1, Math.floor(qty))
     const lineKey = `${burger.id}-${size}`
     const price = burger.prices[size]
-    const priceEf = burger.pricesEf?.[size] ?? price  // efectivo (cae en transferencia si no hay)
     setItems(prev => {
       const existing = prev.find(i => i.key === lineKey)
       if (existing) return prev.map(i => i.key === lineKey ? { ...i, qty: i.qty + n } : i)
@@ -135,8 +141,8 @@ export function CartProvider({ children }) {
         image: burger.image,
         size,
         sizeLabel: SIZE_LABEL[size],
-        price,
-        priceEf,
+        price,                                   // transferencia
+        cashPrice: burger.cash?.[size] ?? price, // efectivo
         qty: n,
       }]
     })
@@ -159,19 +165,18 @@ export function CartProvider({ children }) {
 
   const totalItems = items.reduce((acc, i) => acc + i.qty, 0)
   const subtotal   = items.reduce((acc, i) => acc + i.price * i.qty, 0)
-  const subtotalEf = items.reduce((acc, i) => acc + (i.priceEf ?? i.price) * i.qty, 0)
   const discount   = calcPromoDiscount(items)
   const shipping   = zone?.price || 0
   const totalPrice = subtotal - discount + shipping
-  // El envío es igual para los dos medios; el descuento de promo (definido en
-  // transferencia) se aplica también en efectivo para que ambos totales bajen
-  // lo mismo y efectivo nunca quede por encima de transferencia.
-  const totalPriceEf = subtotalEf - discount + shipping
+  // Mismo pedido pagado en efectivo. El descuento de promo se resta igual (es un
+  // monto fijo), porque las promos están escritas en precios de transferencia.
+  const cashSubtotal = items.reduce((acc, i) => acc + (i.cashPrice ?? i.price) * i.qty, 0)
+  const cashTotal    = cashSubtotal - discount + shipping
 
   const sendToWhatsApp = () => {
     if (!items.length) return
-    // Registrar el pedido para las ventas del panel (no bloquea)
-    recordOrder({ items, subtotal, discount, total: totalPrice, promo: ACTIVE_PROMO?.title })
+    // Registrar el pedido para las estadísticas del panel (no bloquea)
+    recordOrder({ items, total: totalPrice, cashTotal, zone })
     const lines = items
       .map(i => `• ${i.qty}x ${i.name} (${i.sizeLabel}) — ${formatPrice(i.price * i.qty)}`)
       .join('\n')
@@ -186,7 +191,7 @@ export function CartProvider({ children }) {
           ? `\nEnvío ${zone.name}: ${formatPrice(zone.price)}`
           : `\n${zone.name}`
     // Si está cerrado, se avisa que el pedido es para cuando abran.
-    const st = getStatus()
+    const st = getStatus(new Date(), todayOverride(getConfig()))
     const closedLine = st.open
       ? ''
       : `\n\n(Sé que están cerrados — lo dejo pedido para cuando abran${
@@ -195,15 +200,15 @@ export function CartProvider({ children }) {
     const tail = zone ? '' : '\n\n¿Hacen entrega o retiro en local?'
     const msg =
       `Hola! Quiero hacer un pedido:\n\n${lines}\n${promoLine}${zoneLine}\n` +
-      `Total transferencia: ${formatPrice(totalPrice)}\n` +
-      `Total efectivo: ${formatPrice(totalPriceEf)}${tail}${closedLine}`
+      `Total por transferencia: ${formatPrice(totalPrice)}\n` +
+      `Total en efectivo: ${formatPrice(cashTotal)}${tail}${closedLine}`
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   return (
     <CartContext.Provider value={{
       items, addItem, removeItem, updateQty,
-      totalItems, subtotal, subtotalEf, discount, shipping, totalPrice, totalPriceEf,
+      totalItems, subtotal, discount, shipping, totalPrice, cashTotal,
       zone, setZone,
       isOpen, setIsOpen, clear, sendToWhatsApp, toast,
     }}>
