@@ -63,6 +63,15 @@ export async function readConfig() {
   return gh.readConfigFile(gh.getToken())
 }
 
+// Dónde está guardando: 'blob' (instantáneo) o 'github' (con historial)
+export async function dondeGuarda() {
+  try {
+    const r = await fetch('/api/panel?action=ping')
+    if (r.ok) return (await r.json()).backend
+  } catch { /* noop */ }
+  return null
+}
+
 export async function saveConfig(config, sha, message) {
   if ((await detectarModo()) === 'api') {
     const j = await call('save-config', { config, sha, message })

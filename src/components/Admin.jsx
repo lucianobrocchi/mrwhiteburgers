@@ -126,17 +126,24 @@ function Login({ onOk }) {
           <div className="text-white/60 text-xs leading-relaxed mt-3">
             <p className="mb-2">
               Ese error es tu red o un bloqueador cortando <b>api.github.com</b>.
-              Se soluciona para siempre haciendo que el panel hable con tu propio
-              sitio. En Vercel → tu proyecto → <b>Settings → Environment Variables</b>,
-              agregá estas dos y volvé a desplegar:
+              Se arregla para siempre en 3 pasos, sin copiar ningún token:
             </p>
-            <ul className="space-y-1 ml-1">
-              <li><b className="text-white/80">GITHUB_TOKEN</b> → el token fine-grained</li>
-              <li><b className="text-white/80">PANEL_PASSWORD</b> → la clave que quieras para entrar</li>
-            </ul>
+            <ol className="list-decimal ml-4 space-y-1.5">
+              <li>
+                En Vercel → pestaña <b className="text-white/80">Storage</b> →
+                <b className="text-white/80"> Create Database</b> → elegí <b className="text-white/80">Blob</b> →
+                conectalo al proyecto <b>mrwhiteburgers</b>.
+              </li>
+              <li>
+                Settings → <b className="text-white/80">Environment Variables</b> → agregá
+                <b className="text-white/80"> PANEL_PASSWORD</b> con la clave que quieras
+                (tildá Production).
+              </li>
+              <li>Deployments → los 3 puntitos del último → <b className="text-white/80">Redeploy</b>.</li>
+            </ol>
             <p className="mt-2">
-              Listo eso, el panel te pide la clave en vez del token y no vuelve a
-              fallar. Además ahí se prenden las estadísticas de pedidos.
+              Listo: entrás con esa clave, se acaba el error, los cambios se ven
+              al instante y arrancan las estadísticas de pedidos.
             </p>
           </div>
         </details>
@@ -496,7 +503,7 @@ export default function Admin() {
         {tab === 'menu' && (
           <Seccion titulo="Precios y textos">
             <p className="text-white/45 text-xs mb-4">
-              Los precios vacíos usan el valor del código. T = transferencia · E = efectivo.
+              Los precios vacíos usan el valor del código.
             </p>
             {FALLBACK_BURGERS.map((b) => {
               const c = cfg.burgers?.[b.id] || {}
@@ -508,27 +515,16 @@ export default function Admin() {
                 >
                   <p className="text-white uppercase mb-3" style={anton}>{b.name}</p>
                   {SIZES.map((s) => (
-                    <div key={s.key} className="grid grid-cols-[70px_1fr_1fr] gap-2 items-center mb-2">
+                    <div key={s.key} className="grid grid-cols-[80px_1fr] gap-2 items-center mb-2">
                       <span className="text-white/50 text-xs">{s.label}</span>
                       <input
                         type="number"
                         className={inputCls}
-                        placeholder={`T ${b.prices[s.key]}`}
+                        placeholder={String(b.prices[s.key])}
                         value={c.prices?.[s.key] ?? ''}
                         onChange={(e) =>
                           setBurger(b.id, {
                             prices: { ...(c.prices || {}), [s.key]: e.target.value ? Number(e.target.value) : undefined },
-                          })
-                        }
-                      />
-                      <input
-                        type="number"
-                        className={inputCls}
-                        placeholder={`E ${b.cash[s.key]}`}
-                        value={c.cash?.[s.key] ?? ''}
-                        onChange={(e) =>
-                          setBurger(b.id, {
-                            cash: { ...(c.cash || {}), [s.key]: e.target.value ? Number(e.target.value) : undefined },
                           })
                         }
                       />

@@ -8,7 +8,7 @@ import ZonePicker from './ZonePicker'
 const ease = [0.16, 1, 0.3, 1]
 
 export default function CartDrawer() {
-  const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, cashTotal, zone, sendToWhatsApp, clear } = useCart()
+  const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, zone, sendToWhatsApp, clear } = useCart()
   const cfg = useConfig()
   const status = getStatus(new Date(), todayOverride(cfg))
 
@@ -244,27 +244,13 @@ export default function CartDrawer() {
                     className="text-white/55 text-xs tracking-[0.18em] uppercase"
                     style={{ fontFamily: 'DM Sans, sans-serif' }}
                   >
-                    Total transferencia
+                    Total
                   </span>
                   <span
                     className="text-[#F0C832] text-3xl"
                     style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
                   >
                     {formatPrice(totalPrice)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span
-                    className="text-white/45 text-[11px] tracking-[0.15em] uppercase"
-                    style={{ fontFamily: 'DM Sans, sans-serif' }}
-                  >
-                    En efectivo
-                  </span>
-                  <span
-                    className="text-white/75 text-xl"
-                    style={{ fontFamily: 'Anton, sans-serif' }}
-                  >
-                    {formatPrice(cashTotal)}
                   </span>
                 </div>
                 <p

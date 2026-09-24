@@ -2,23 +2,58 @@
 //
 // Resuelve dos cosas:
 //  1. El panel ya no llama a api.github.com desde el navegador (que es lo que
-//     bloquean los ad-blockers y algunos DNS). Habla con /api/panel, mismo
-//     dominio que el sitio.
-//  2. El token de GitHub deja de estar en el teléfono y vive en Vercel.
+//     bloquean los ad-blockers). Habla con /api/panel, mismo dominio del sitio.
+//  2. El token deja de estar en el teléfono y vive en Vercel.
 //
-// Variables de entorno (Vercel → Settings → Environment Variables):
-//   GITHUB_TOKEN    token fine-grained con Contents: Read and write
-//   PANEL_PASSWORD  la clave para entrar al panel
+// Soporta dos lugares donde guardar, y elige solo el que esté disponible:
 //
-// Si no están configuradas, el endpoint responde 501 y el panel cae solo al
-// modo viejo (token pegado en el navegador).
+//  A) Vercel Blob  ← el más simple
+//     En Vercel → Storage → Create Blob store → Connect to project.
+//     Vercel inyecta BLOB_READ_WRITE_TOKEN solo, no hay que copiar nada.
+//     Los cambios se ven al instante (no hay que recompilar el sitio).
+//
+//  B) GitHub
+//     Requiere GITHUB_TOKEN (fine-grained, Contents: Read and write).
+//     Guarda cada cambio como un commit, así queda historial.
+//
+// En los dos casos hace falta PANEL_PASSWORD: la clave para entrar al panel.
+// Si no hay ninguno configurado, responde 501 y el panel cae al modo viejo.
+
+import { put, list } from '@vercel/blob'
 
 const REPO = 'lucianobrocchi/mrwhiteburgers'
 const CONFIG_PATH = 'public/config.json'
-const STATS_PATH = 'stats.json' // fuera de public/: no se sirve al visitante
 const BRANCH = 'main'
+const CONFIG_BLOB = 'config.json'
+const STATS_BLOB = 'stats.json'
+const STATS_PATH = 'stats.json'
 const MAX_ULTIMOS = 40
 
+const hayBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN
+const hayGitHub = () => !!process.env.GITHUB_TOKEN
+const backend = () => (hayBlob() ? 'blob' : hayGitHub() ? 'github' : null)
+
+// ─── Vercel Blob ─────────────────────────────────────────────────────────
+async function blobLeer(nombre) {
+  const { blobs } = await list({ prefix: nombre, limit: 1 })
+  const b = blobs.find((x) => x.pathname === nombre)
+  if (!b) return null
+  const r = await fetch(b.url + '?t=' + Date.now(), { cache: 'no-store' })
+  if (!r.ok) return null
+  return r.json()
+}
+
+async function blobEscribir(nombre, data) {
+  await put(nombre, JSON.stringify(data, null, 2), {
+    access: 'public',
+    addRandomSuffix: false, // así la URL es siempre la misma
+    allowOverwrite: true,
+    contentType: 'application/json',
+    cacheControlMaxAge: 0,
+  })
+}
+
+// ─── GitHub ──────────────────────────────────────────────────────────────
 const gh = (path, init = {}) =>
   fetch(`https://api.github.com/repos/${REPO}/${path}`, {
     ...init,
@@ -31,16 +66,15 @@ const gh = (path, init = {}) =>
     },
   })
 
-async function leer(path) {
+async function ghLeer(path) {
   const r = await gh(`contents/${encodeURIComponent(path)}?ref=${BRANCH}`)
   if (r.status === 404) return { sha: null, data: null }
   if (!r.ok) throw new Error(`GitHub ${r.status} al leer ${path}`)
   const j = await r.json()
-  const txt = Buffer.from(j.content, 'base64').toString('utf8')
-  return { sha: j.sha, data: JSON.parse(txt) }
+  return { sha: j.sha, data: JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')) }
 }
 
-async function escribir(path, data, sha, mensaje) {
+async function ghEscribir(path, data, sha, mensaje) {
   const r = await gh(`contents/${encodeURIComponent(path)}`, {
     method: 'PUT',
     body: JSON.stringify({
@@ -59,15 +93,40 @@ async function escribir(path, data, sha, mensaje) {
   return (await r.json()).content.sha
 }
 
+// ─── Operaciones, sin importar el backend ────────────────────────────────
+async function leerConfig() {
+  if (hayBlob()) return { sha: null, config: await blobLeer(CONFIG_BLOB) }
+  const { sha, data } = await ghLeer(CONFIG_PATH)
+  return { sha, config: data }
+}
+
+async function guardarConfig(config, sha, mensaje) {
+  if (hayBlob()) { await blobEscribir(CONFIG_BLOB, config); return null }
+  return ghEscribir(CONFIG_PATH, config, sha, mensaje)
+}
+
+async function leerStats() {
+  if (hayBlob()) return (await blobLeer(STATS_BLOB)) || { byDay: {}, lastOrders: [] }
+  const { data } = await ghLeer(STATS_PATH)
+  return data || { byDay: {}, lastOrders: [] }
+}
+
 const hoyStr = () => new Date().toISOString().slice(0, 10)
 
-// Suma un pedido a stats.json. Reintenta si otro pedido escribió al mismo tiempo.
+// Suma un pedido a las estadísticas.
 async function registrarPedido(pedido, intento = 0) {
-  const { sha, data } = await leer(STATS_PATH)
-  const stats = data || { byDay: {}, lastOrders: [] }
+  let sha = null
+  let stats
+  if (hayBlob()) {
+    stats = (await blobLeer(STATS_BLOB)) || { byDay: {}, lastOrders: [] }
+  } else {
+    const r = await ghLeer(STATS_PATH)
+    sha = r.sha
+    stats = r.data || { byDay: {}, lastOrders: [] }
+  }
+
   const dia = hoyStr()
   const d = stats.byDay[dia] || { orders: 0, total: 0, burgers: {} }
-
   d.orders += 1
   d.total += Number(pedido.total) || 0
   for (const it of pedido.items || []) {
@@ -77,28 +136,47 @@ async function registrarPedido(pedido, intento = 0) {
   stats.byDay[dia] = d
   stats.lastOrders = [pedido, ...(stats.lastOrders || [])].slice(0, MAX_ULTIMOS)
 
+  if (hayBlob()) { await blobEscribir(STATS_BLOB, stats); return true }
   try {
-    await escribir(STATS_PATH, stats, sha, `chore(stats): pedido ${dia}`)
+    await ghEscribir(STATS_PATH, stats, sha, `chore(stats): pedido ${dia}`)
   } catch (e) {
-    // 409 = alguien escribió primero. Releemos y reintentamos una vez.
-    if (e.status === 409 && intento < 2) return registrarPedido(pedido, intento + 1)
+    if (e.status === 409 && intento < 2) return registrarPedido(pedido, intento + 1) // otro pedido escribió primero
     throw e
   }
   return true
 }
 
 export default async function handler(req, res) {
-  const { GITHUB_TOKEN, PANEL_PASSWORD } = process.env
   const action = (req.query?.action || req.body?.action || '').toString()
+  const modo = backend()
+  const listo = !!(modo && process.env.PANEL_PASSWORD)
 
   if (action === 'ping') {
-    return res.status(200).json({ ok: true, configurado: !!(GITHUB_TOKEN && PANEL_PASSWORD) })
-  }
-  if (!GITHUB_TOKEN || !PANEL_PASSWORD) {
-    return res.status(501).json({ error: 'Falta configurar GITHUB_TOKEN y PANEL_PASSWORD en Vercel.' })
+    return res.status(200).json({ ok: true, configurado: listo, backend: modo, clave: !!process.env.PANEL_PASSWORD })
   }
 
-  // Registrar un pedido: público (lo dispara el cliente al pedir por WhatsApp)
+  // La config que lee el sitio público (sin clave). Si no hay backend, que el
+  // sitio use el config.json que viene con el build.
+  if (action === 'public-config') {
+    if (!modo) return res.status(404).json({ error: 'sin backend' })
+    try {
+      const { config } = await leerConfig()
+      res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=10, stale-while-revalidate=30')
+      return res.status(200).json(config || {})
+    } catch {
+      return res.status(404).json({ error: 'sin config' })
+    }
+  }
+
+  if (!listo) {
+    return res.status(501).json({
+      error: modo
+        ? 'Falta cargar PANEL_PASSWORD en Vercel.'
+        : 'Falta conectar el almacenamiento (Vercel Blob) o cargar GITHUB_TOKEN.',
+    })
+  }
+
+  // Registrar un pedido: público, lo dispara el cliente al pedir por WhatsApp
   if (action === 'order' && req.method === 'POST') {
     try {
       const b = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {}
@@ -108,7 +186,6 @@ export default async function handler(req, res) {
           id: i.id, name: String(i.name || '').slice(0, 40), size: i.size, qty: Number(i.qty) || 0,
         })),
         total: Number(b.total) || 0,
-        cashTotal: Number(b.cashTotal) || 0,
         zone: String(b.zone || '').slice(0, 30),
       }
       if (!pedido.items.length) return res.status(400).json({ error: 'pedido vacío' })
@@ -121,25 +198,17 @@ export default async function handler(req, res) {
 
   // De acá para abajo hace falta la clave del panel
   const clave = req.headers['x-panel-key'] || req.query?.key || req.body?.key
-  if (clave !== PANEL_PASSWORD) return res.status(401).json({ error: 'Clave incorrecta.' })
+  if (clave !== process.env.PANEL_PASSWORD) return res.status(401).json({ error: 'Clave incorrecta.' })
 
   try {
-    if (action === 'login') return res.status(200).json({ ok: true })
-
-    if (action === 'get-config') {
-      const { sha, data } = await leer(CONFIG_PATH)
-      return res.status(200).json({ sha, config: data })
-    }
+    if (action === 'login') return res.status(200).json({ ok: true, backend: modo })
+    if (action === 'get-config') return res.status(200).json(await leerConfig())
+    if (action === 'stats') return res.status(200).json(await leerStats())
 
     if (action === 'save-config' && req.method === 'POST') {
       const b = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {}
-      const sha = await escribir(CONFIG_PATH, b.config, b.sha, b.message || 'chore(config): cambios desde el panel')
+      const sha = await guardarConfig(b.config, b.sha, b.message || 'chore(config): cambios desde el panel')
       return res.status(200).json({ ok: true, sha })
-    }
-
-    if (action === 'stats') {
-      const { data } = await leer(STATS_PATH)
-      return res.status(200).json(data || { byDay: {}, lastOrders: [] })
     }
 
     return res.status(400).json({ error: 'acción desconocida' })

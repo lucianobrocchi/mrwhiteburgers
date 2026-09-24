@@ -53,7 +53,7 @@ function mapRow(row) {
 }
 
 // Menú base. El panel puede pisar precios, descripción y "sin stock".
-// `prices` = precio por transferencia · `cash` = precio en efectivo
+// Un solo precio por tamaño (el de transferencia).
 export const FALLBACK_BURGERS = [
   {
     id: 5,
@@ -63,7 +63,6 @@ export const FALLBACK_BURGERS = [
     image: imgCurryNegro,
     imageAlt: imgCurryPapel,
     prices: { simple: 13500, doble: 15000, triple: 16500 },
-    cash:   { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 1,
@@ -73,7 +72,6 @@ export const FALLBACK_BURGERS = [
     image: imgObreraNegro,
     imageAlt: imgObreraPapel,
     prices: { simple: 12500, doble: 14000, triple: 15500 },
-    cash:   { simple: 12000, doble: 13500, triple: 15000 },
   },
   {
     id: 4,
@@ -83,7 +81,6 @@ export const FALLBACK_BURGERS = [
     image: imgChesseJoaNegro,
     imageAlt: imgChesseJoaPapel,
     prices: { simple: 12000, doble: 13000, triple: 15000 },
-    cash:   { simple: 11500, doble: 12500, triple: 14500 },
   },
   {
     id: 3,
@@ -93,7 +90,6 @@ export const FALLBACK_BURGERS = [
     image: imgBigWhiteNegro,
     imageAlt: imgBigWhitePapel,
     prices: { simple: 13500, doble: 15000, triple: 16500 },
-    cash:   { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 2,
@@ -103,7 +99,6 @@ export const FALLBACK_BURGERS = [
     image: imgOklahomaNegro,
     imageAlt: imgOklahomaPapel,
     prices: { simple: 13500, doble: 15000, triple: 16500 },
-    cash:   { simple: 13000, doble: 14500, triple: 16000 },
   },
   {
     id: 6,
@@ -113,7 +108,6 @@ export const FALLBACK_BURGERS = [
     image: imgJoaWhiteNegro,
     imageAlt: imgJoaWhitePapel,
     prices: { simple: 13500, doble: 15000, triple: 16000 },
-    cash:   { simple: 13000, doble: 14500, triple: 15500 },
   },
 ]
 
@@ -278,7 +272,6 @@ function BurgerCard({ burger, index }) {
   const imgWrapRef = useRef(null)   // origen del vuelo al carrito
   const revealed = showAlt || justAdded
   const price = burger.prices[size]
-  const cashPrice = burger.cash?.[size] ?? null                // precio en efectivo
   const promoPrice = itemPromoPrice(burger.name, size, price)  // precio especial del tamaño elegido (o null)
   const itemPromo = ACTIVE_PROMO?.kind === 'itemPrice' && ACTIVE_PROMO.itemName === burger.name
     ? ACTIVE_PROMO : null  // esta burger tiene promo puntual hoy
@@ -491,14 +484,6 @@ function BurgerCard({ burger, index }) {
                 {formatPrice(promoPrice ?? price)}
               </motion.span>
             </div>
-            {cashPrice != null && promoPrice == null && (
-              <span
-                className="text-white/45 text-[11px] leading-tight"
-                style={{ fontFamily: 'DM Sans, sans-serif' }}
-              >
-                Efectivo {formatPrice(cashPrice)}
-              </span>
-            )}
           </div>
         </div>
 
@@ -517,7 +502,6 @@ function aplicarConfig(burger, cfg) {
     ...burger,
     soldOut: !!c.soldOut,
     prices: c.prices ? { ...burger.prices, ...c.prices } : burger.prices,
-    cash: c.cash ? { ...burger.cash, ...c.cash } : burger.cash,
     description: c.description || burger.description,
   }
 }
@@ -601,7 +585,7 @@ export default function MenuSection() {
           animate={headerInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.7, delay: 0.4 }}
         >
-          Todas las hamburguesas vienen con papas fritas. Precios por transferencia.
+          Todas las hamburguesas vienen con papas fritas.
         </motion.p>
 
         {/* Grid */}

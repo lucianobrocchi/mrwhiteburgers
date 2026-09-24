@@ -141,8 +141,7 @@ export function CartProvider({ children }) {
         image: burger.image,
         size,
         sizeLabel: SIZE_LABEL[size],
-        price,                                   // transferencia
-        cashPrice: burger.cash?.[size] ?? price, // efectivo
+        price,
         qty: n,
       }]
     })
@@ -168,15 +167,11 @@ export function CartProvider({ children }) {
   const discount   = calcPromoDiscount(items)
   const shipping   = zone?.price || 0
   const totalPrice = subtotal - discount + shipping
-  // Mismo pedido pagado en efectivo. El descuento de promo se resta igual (es un
-  // monto fijo), porque las promos están escritas en precios de transferencia.
-  const cashSubtotal = items.reduce((acc, i) => acc + (i.cashPrice ?? i.price) * i.qty, 0)
-  const cashTotal    = cashSubtotal - discount + shipping
 
   const sendToWhatsApp = () => {
     if (!items.length) return
     // Registrar el pedido para las estadísticas del panel (no bloquea)
-    recordOrder({ items, total: totalPrice, cashTotal, zone })
+    recordOrder({ items, total: totalPrice, zone })
     const lines = items
       .map(i => `• ${i.qty}x ${i.name} (${i.sizeLabel}) — ${formatPrice(i.price * i.qty)}`)
       .join('\n')
@@ -200,15 +195,14 @@ export function CartProvider({ children }) {
     const tail = zone ? '' : '\n\n¿Hacen entrega o retiro en local?'
     const msg =
       `Hola! Quiero hacer un pedido:\n\n${lines}\n${promoLine}${zoneLine}\n` +
-      `Total por transferencia: ${formatPrice(totalPrice)}\n` +
-      `Total en efectivo: ${formatPrice(cashTotal)}${tail}${closedLine}`
+      `Total: ${formatPrice(totalPrice)}${tail}${closedLine}`
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   return (
     <CartContext.Provider value={{
       items, addItem, removeItem, updateQty,
-      totalItems, subtotal, discount, shipping, totalPrice, cashTotal,
+      totalItems, subtotal, discount, shipping, totalPrice,
       zone, setZone,
       isOpen, setIsOpen, clear, sendToWhatsApp, toast,
     }}>

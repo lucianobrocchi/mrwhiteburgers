@@ -44,6 +44,20 @@ export function todayOverride(cfg = cache, now = new Date()) {
 }
 
 export async function loadConfig() {
+  // 1) La del servidor: se actualiza al instante cuando se guarda en el panel
+  try {
+    const r = await fetch('/api/panel?action=public-config', { cache: 'no-store' })
+    if (r.ok) {
+      const data = await r.json()
+      if (data && typeof data === 'object' && Object.keys(data).length) {
+        aplicar(data)
+        return cache
+      }
+    }
+  } catch {
+    /* sin función: seguimos con el archivo */
+  }
+  // 2) El archivo que viene con el sitio
   try {
     const url = `${import.meta.env.BASE_URL}config.json?t=${Date.now()}`
     const r = await fetch(url, { cache: 'no-store' })
