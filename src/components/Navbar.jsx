@@ -31,7 +31,7 @@ export default function Navbar() {
     <>
       {/* Floating pill nav — appears after scroll, glassmorphic */}
       <motion.nav
-        className="fixed top-14 md:top-16 left-1/2 -translate-x-1/2 z-50"
+        className="fixed top-14 md:top-16 left-1/2 -translate-x-1/2 z-50 w-max max-w-[calc(100vw-1rem)]"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
@@ -69,10 +69,17 @@ export default function Navbar() {
             >
               Menú
             </a>
+            <a
+              href="#bebidas"
+              className="hidden lg:inline-block relative px-5 py-2.5 rounded-full text-sm tracking-widest uppercase text-white/80 hover:text-white transition-colors duration-300 hover:bg-white/5"
+              style={{ fontFamily: 'DM Sans, sans-serif' }}
+            >
+              Bebidas
+            </a>
 
             <motion.a
               href="#menu"
-              className="ml-1 px-6 py-2.5 rounded-full text-sm tracking-widest uppercase text-black"
+              className="ml-1 px-6 py-2.5 rounded-full text-sm tracking-widest uppercase text-black whitespace-nowrap"
               style={{
                 fontFamily: 'Anton, sans-serif',
                 backgroundColor: '#F0C832',
@@ -189,6 +196,14 @@ export default function Navbar() {
                 style={{ fontFamily: 'Anton, sans-serif' }}
               >
                 Menú
+              </a>
+              <a
+                href="#bebidas"
+                onClick={() => setMobileOpen(false)}
+                className="text-white text-2xl tracking-widest uppercase"
+                style={{ fontFamily: 'Anton, sans-serif' }}
+              >
+                Bebidas
               </a>
               <a
                 href="#menu"

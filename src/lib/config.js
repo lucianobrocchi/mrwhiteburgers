@@ -22,6 +22,8 @@ export const DEFAULT_CONFIG = {
   },
   zones: {},     // { [id]: { price } }
   ticker: '',    // texto del cartel de arriba (vacío = el de siempre)
+  stock: {},     // { 'extra:bacon': true, 'flavor:sprite': true, 'drink:coca:lata': true } = sin stock
+  prices: {},    // { 'extra:bacon': 900, 'drink:coca:lata': 2800 } = precio pisado
 }
 
 let cache = DEFAULT_CONFIG

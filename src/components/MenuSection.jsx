@@ -1,115 +1,19 @@
-import { useRef, useState, useEffect } from 'react'
-import { motion, useInView } from 'framer-motion'
-import { Plus, Minus, UtensilsCrossed, ShoppingBag } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { motion, AnimatePresence, useInView } from 'framer-motion'
+import { Plus, Minus, UtensilsCrossed, ShoppingBag, ChevronDown } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice, SIZES, ACTIVE_PROMO, PROMO_ACTIVE, itemPromoPrice } from '../context/CartContext'
-import { supabase } from '../lib/supabase'
 import { trackBurgerClick } from '../lib/track'
 import { flyToCart, popCartBadge } from '../lib/flyToCart'
 import { useConfig } from '../lib/config'
+import { BURGERS } from '../lib/menu'
+import {
+  EXTRAS, MAX_PER_EXTRA, extraPrice, extraOut, resolveExtras, extrasTotal, extrasLabel,
+} from '../lib/catalog'
 
-// Foto base (fondo negro, default) + alternativa (con papel, se revela con tap/hover)
-import imgObreraNegro    from '../assets/burgers/obrera_negro.jpeg'
-import imgObreraPapel    from '../assets/burgers/obrera_papel.jpeg'
-import imgOklahomaNegro  from '../assets/burgers/oklahoma_negro.jpeg'
-import imgOklahomaPapel  from '../assets/burgers/oklahoma_papel.jpeg'
-import imgBigWhiteNegro  from '../assets/burgers/big_white_negro.jpeg'
-import imgBigWhitePapel  from '../assets/burgers/big_white_papel.jpeg'
-import imgChesseJoaNegro from '../assets/burgers/chesse_joa_negro.jpeg'
-import imgChesseJoaPapel from '../assets/burgers/chesse_joa_papel.jpeg'
-import imgCurryNegro     from '../assets/burgers/curri_white_negro.jpeg'
-import imgCurryPapel     from '../assets/burgers/curri_white_papel.jpeg'
-import imgJoaWhiteNegro  from '../assets/burgers/joa_white_negro.jpeg'
-import imgJoaWhitePapel  from '../assets/burgers/joa_white_papel.jpeg'
 
 const ease = [0.16, 1, 0.3, 1]
 
-// El menú se lee de Supabase solo si el panel de admin está en uso.
-const USE_DB = false
-
-// Mapea la image_key de la base a las fotos (negro/papel) que vienen en el bundle
-const IMAGE_MAP = {
-  curri_white: { image: imgCurryNegro,    imageAlt: imgCurryPapel },
-  obrera:      { image: imgObreraNegro,   imageAlt: imgObreraPapel },
-  chesse_joa:  { image: imgChesseJoaNegro, imageAlt: imgChesseJoaPapel },
-  big_white:   { image: imgBigWhiteNegro, imageAlt: imgBigWhitePapel },
-  oklahoma:    { image: imgOklahomaNegro, imageAlt: imgOklahomaPapel },
-  joa_white:   { image: imgJoaWhiteNegro, imageAlt: imgJoaWhitePapel },
-}
-
-// Convierte una fila de Supabase al formato que usa la card
-function mapRow(row) {
-  const imgs = IMAGE_MAP[row.image_key] || {}
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    tag: row.tag,
-    prices: row.prices,
-    image: imgs.image,
-    imageAlt: imgs.imageAlt,
-    fromDb: true,
-  }
-}
-
-// Menú base. El panel puede pisar precios, descripción y "sin stock".
-// Un solo precio por tamaño (el de transferencia).
-export const FALLBACK_BURGERS = [
-  {
-    id: 5,
-    name: 'CURRI WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, bacon y salsa barbacoa.',
-    tag: 'Smash Burger',
-    image: imgCurryNegro,
-    imageAlt: imgCurryPapel,
-    prices: { simple: 13500, doble: 15000, triple: 16500 },
-  },
-  {
-    id: 1,
-    name: 'OBRERA',
-    description: 'Pan de papa, medallón de carne, queso Tybo, cebolla, lechuga, tomate y salsa Big White.',
-    tag: 'La Clásica',
-    image: imgObreraNegro,
-    imageAlt: imgObreraPapel,
-    prices: { simple: 12500, doble: 14000, triple: 15500 },
-  },
-  {
-    id: 4,
-    name: 'LA CHEESE JOA',
-    description: 'Pan de papa, medallón de carne, queso cheddar y salsa Big White.',
-    tag: 'La Bestia',
-    image: imgChesseJoaNegro,
-    imageAlt: imgChesseJoaPapel,
-    prices: { simple: 12000, doble: 13000, triple: 15000 },
-  },
-  {
-    id: 3,
-    name: 'BIG WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, pepinillos y salsa Big White.',
-    tag: 'La Contundente',
-    image: imgBigWhiteNegro,
-    imageAlt: imgBigWhitePapel,
-    prices: { simple: 13500, doble: 15000, triple: 16500 },
-  },
-  {
-    id: 2,
-    name: 'OKLAHOMA WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, cebolla smash, bacon y salsa Big White.',
-    tag: 'La Más Pedida',
-    image: imgOklahomaNegro,
-    imageAlt: imgOklahomaPapel,
-    prices: { simple: 13500, doble: 15000, triple: 16500 },
-  },
-  {
-    id: 6,
-    name: 'LA JOA WHITE',
-    description: 'Pan de papa, medallón de carne, cheddar, bacon, cebolla crispy y salsa Big White.',
-    tag: 'Edición Joa',
-    image: imgJoaWhiteNegro,
-    imageAlt: imgJoaWhitePapel,
-    prices: { simple: 13500, doble: 15000, triple: 16000 },
-  },
-]
 
 function SizeSelector({ cardId, size, setSize }) {
   return (
@@ -146,11 +50,172 @@ function SizeSelector({ cardId, size, setSize }) {
   )
 }
 
-function CartControls({ burger, size, onAdded, imgRef }) {
+// Extras tipo "armá tu burger": medallón, cheddar, bacon. Desplegable para no
+// cargar la card, con el precio actualizándose en vivo.
+function ExtrasPicker({ picked, setPicked, cfg }) {
+  const [open, setOpen] = useState(false)
+  const lista = resolveExtras(picked, cfg)
+  const total = extrasTotal(lista)
+  const hayAlgo = lista.length > 0
+
+  const cambiar = (id, delta) =>
+    setPicked((p) => {
+      const n = Math.min(MAX_PER_EXTRA, Math.max(0, (p[id] || 0) + delta))
+      const next = { ...p }
+      if (n === 0) delete next[id]
+      else next[id] = n
+      return next
+    })
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden transition-colors duration-300"
+      style={{
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        border: `1px solid ${hayAlgo ? 'rgba(240,200,50,0.38)' : 'rgba(255,255,255,0.08)'}`,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
+      >
+        <span
+          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300"
+          style={{
+            backgroundColor: hayAlgo ? '#F0C832' : 'rgba(240,200,50,0.12)',
+            border: `1px solid ${hayAlgo ? '#F0C832' : 'rgba(240,200,50,0.28)'}`,
+            color: hayAlgo ? '#000' : '#F0C832',
+          }}
+        >
+          <Plus
+            size={16}
+            strokeWidth={3}
+            style={{ transform: open ? 'rotate(45deg)' : 'none', transition: 'transform .25s ease' }}
+          />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span
+            className="block text-white text-[13px] uppercase leading-tight"
+            style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '0.02em' }}
+          >
+            {hayAlgo ? 'Tus extras' : 'Sumá extras'}
+          </span>
+          <span
+            className="block text-[11px] truncate mt-0.5"
+            style={{
+              fontFamily: 'DM Sans, sans-serif',
+              color: hayAlgo ? '#F0C832' : 'rgba(255,255,255,0.45)',
+            }}
+          >
+            {hayAlgo ? extrasLabel(lista) : EXTRAS.map((e) => e.name.split(' ')[0]).join(' · ')}
+          </span>
+        </span>
+        {hayAlgo ? (
+          <span className="text-[#F0C832] text-sm shrink-0" style={{ fontFamily: 'Anton, sans-serif' }}>
+            +{formatPrice(total)}
+          </span>
+        ) : (
+          <ChevronDown
+            size={16}
+            className="text-white/40 shrink-0"
+            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }}
+          />
+        )}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="px-3.5 pb-2.5">
+              {EXTRAS.map((e, i) => {
+                const n = picked[e.id] || 0
+                const sinStock = extraOut(e, cfg)
+                return (
+                  <div
+                    key={e.id}
+                    className="flex items-center gap-3 py-2.5"
+                    style={{ borderTop: i === 0 ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(255,255,255,0.04)' }}
+                  >
+                    <div className="flex-1 min-w-0" style={{ opacity: sinStock ? 0.45 : 1 }}>
+                      <p className="text-white text-[13px] leading-tight" style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+                        {e.name}
+                      </p>
+                      {e.desc && (
+                        <p className="text-white/40 text-[11px] mt-0.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                          {e.desc}
+                        </p>
+                      )}
+                    </div>
+
+                    {sinStock ? (
+                      <span
+                        className="text-[10px] tracking-[0.14em] uppercase text-white/45 px-2.5 py-1 rounded-full"
+                        style={{ fontFamily: 'DM Sans, sans-serif', border: '1px solid rgba(255,255,255,0.14)' }}
+                      >
+                        Sin stock
+                      </span>
+                    ) : (
+                      <>
+                        <span className="text-white/70 text-[13px] tabular-nums shrink-0" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                          +{formatPrice(extraPrice(e, cfg))}
+                        </span>
+                        <div
+                          className="flex items-center gap-0.5 p-0.5 rounded-full shrink-0"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => cambiar(e.id, -1)}
+                            disabled={n === 0}
+                            aria-label={`Quitar ${e.name}`}
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-white/70 hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent"
+                          >
+                            <Minus size={13} strokeWidth={3} />
+                          </button>
+                          <span
+                            className="w-5 text-center text-sm tabular-nums"
+                            style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, color: n ? '#F0C832' : 'rgba(255,255,255,0.4)' }}
+                          >
+                            {n}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => cambiar(e.id, 1)}
+                            disabled={n >= MAX_PER_EXTRA}
+                            aria-label={`Agregar ${e.name}`}
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#F0C832] hover:bg-[#F0C832]/15 disabled:opacity-25 disabled:hover:bg-transparent"
+                          >
+                            <Plus size={13} strokeWidth={3} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function CartControls({ burger, size, onAdded, imgRef, extras, extrasUnit }) {
   const { addItem, totalItems } = useCart()
   const [qty, setQty] = useState(1)
   const price = burger.prices[size]
-  const subtotal = qty * price
+  // Un burger con extras = precio base + extras. La promo se calcula sobre el
+  // base (los extras se pagan completos), por eso el descuento no los toca.
+  const subtotal = qty * (price + extrasUnit)
   // Preview del descuento "2 simples x $15.000" (solo aplica a simples)
   const isBundle = ACTIVE_PROMO?.kind === 'simplesBundle' && size === 'simple'
   const pairs = Math.floor(qty / 2)
@@ -160,13 +225,14 @@ function CartControls({ burger, size, onAdded, imgRef }) {
   const handleAdd = () => {
     const n = qty
     const wasEmpty = totalItems === 0
+    const extrasAlAgregar = extras
     setQty(1)
     onAdded?.()
     trackBurgerClick(burger)
     // La foto vuela al carrito y el ítem se suma al aterrizar, así el contador
     // sube justo cuando llega (con reduced-motion se suma al instante).
     flyToCart(imgRef?.current, () => {
-      addItem(burger, size, n)
+      addItem(burger, size, n, extrasAlAgregar)
       // El badge lo pinta React: le damos un tick para que exista y ahí el pop.
       // Si el carrito estaba vacío, el badge ya entra con su propio spring.
       if (!wasEmpty) setTimeout(popCartBadge, 0)
@@ -271,12 +337,17 @@ function BurgerCard({ burger, index }) {
   const addedTimer = useRef(null)
   const imgWrapRef = useRef(null)   // origen del vuelo al carrito
   const revealed = showAlt || justAdded
+  const cfg = useConfig()
+  const [picked, setPicked] = useState({})        // extras elegidos { id: cantidad }
+  const extras = resolveExtras(picked, cfg)
+  const extrasUnit = extrasTotal(extras)
   const price = burger.prices[size]
   const promoPrice = itemPromoPrice(burger.name, size, price)  // precio especial del tamaño elegido (o null)
   const itemPromo = ACTIVE_PROMO?.kind === 'itemPrice' && ACTIVE_PROMO.itemName === burger.name
     ? ACTIVE_PROMO : null  // esta burger tiene promo puntual hoy
 
   const handleAdded = () => {
+    setPicked({})   // como en un pedido real: el siguiente arranca sin extras
     if (!burger.imageAlt) return
     setJustAdded(true)
     clearTimeout(addedTimer.current)
@@ -455,6 +526,9 @@ function BurgerCard({ burger, index }) {
         {/* Size selector */}
         <SizeSelector cardId={burger.id} size={size} setSize={setSize} />
 
+        {/* Extras */}
+        {!burger.soldOut && <ExtrasPicker picked={picked} setPicked={setPicked} cfg={cfg} />}
+
         {/* Price */}
         <div className="flex items-baseline justify-between">
           <span
@@ -470,24 +544,39 @@ function BurgerCard({ burger, index }) {
                   className="text-lg text-white/35 line-through"
                   style={{ fontFamily: 'Anton, sans-serif' }}
                 >
-                  {formatPrice(price)}
+                  {formatPrice(price + extrasUnit)}
                 </span>
               )}
               <motion.span
-                key={promoPrice ?? price}
+                key={(promoPrice ?? price) + extrasUnit}
                 className="text-3xl text-[#F0C832]"
                 style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, ease }}
               >
-                {formatPrice(promoPrice ?? price)}
+                {formatPrice((promoPrice ?? price) + extrasUnit)}
               </motion.span>
             </div>
+            {extrasUnit > 0 && (
+              <span
+                className="text-white/45 text-[11px] leading-tight mt-0.5"
+                style={{ fontFamily: 'DM Sans, sans-serif' }}
+              >
+                Burger {formatPrice(promoPrice ?? price)} + extras {formatPrice(extrasUnit)}
+              </span>
+            )}
           </div>
         </div>
 
-        <CartControls burger={burger} size={size} onAdded={handleAdded} imgRef={imgWrapRef} />
+        <CartControls
+          burger={burger}
+          size={size}
+          onAdded={handleAdded}
+          imgRef={imgWrapRef}
+          extras={extras}
+          extrasUnit={extrasUnit}
+        />
       </div>
     </motion.div>
   )
@@ -509,32 +598,14 @@ function aplicarConfig(burger, cfg) {
 export default function MenuSection() {
   const headerRef    = useRef(null)
   const headerInView = useInView(headerRef, { once: true, margin: '-60px' })
-  const [burgersBase, setBurgers] = useState(FALLBACK_BURGERS)
   const cfg = useConfig()
-  const burgers = burgersBase.map((b) => aplicarConfig(b, cfg))
-
-  useEffect(() => {
-    // Con el panel de admin apagado nadie edita la base, así que el menú sale
-    // del código (FALLBACK_BURGERS) y el sitio no depende de que Supabase
-    // responda. Al reactivar el panel, poner esto en true.
-    if (!USE_DB) return
-    let alive = true
-    supabase
-      .from('burgers')
-      .select('*')
-      .eq('active', true)
-      .order('sort_order', { ascending: true })
-      .then(({ data, error }) => {
-        if (!alive || error || !data || !data.length) return
-        setBurgers(data.map(mapRow))
-      })
-    return () => { alive = false }
-  }, [])
+  // El menú vive en el código; el panel solo pisa precios, textos y "sin stock"
+  const burgers = BURGERS.map((b) => aplicarConfig(b, cfg))
 
   const isOdd = burgers.length % 2 !== 0
 
   return (
-    <section id="menu" className="relative bg-black py-20 md:py-40 px-6 md:px-12 lg:px-24 overflow-hidden">
+    <section id="menu" className="relative bg-black pt-20 pb-10 md:pt-40 md:pb-16 px-6 md:px-12 lg:px-24 overflow-hidden">
       {/* Decorative ambient glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] pointer-events-none"

@@ -1,16 +1,49 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Minus, ShoppingBag, Trash2, Clock } from 'lucide-react'
+import { X, Plus, Minus, ShoppingBag, Trash2, Clock, CupSoda, GlassWater, Droplets } from 'lucide-react'
 import { useCart, formatPrice, ACTIVE_PROMO } from '../context/CartContext'
+import { DRINKS, drinkPrice, sizeOut, flavorOut } from '../lib/catalog'
 import { getStatus } from '../lib/schedule'
 import { useConfig, todayOverride } from '../lib/config'
 import ZonePicker from './ZonePicker'
 
+const ICONS = { soda: CupSoda, water: GlassWater, drops: Droplets }
+
+// Sugerencias rápidas de bebida (lo que más se suele sumar a una burger)
+const SUGERIDAS = [
+  { drink: 'coca', flavor: 'coca',   size: 'lata' },
+  { drink: 'coca', flavor: 'sprite', size: 'lata' },
+  { drink: 'coca', flavor: 'coca',   size: '15' },
+  { drink: 'aquarius',               size: '15' },
+]
+
+// Resuelve cada sugerencia contra el catálogo y descarta lo que esté sin stock
+function opcionesDeBebida(cfg) {
+  return SUGERIDAS.map((sg) => {
+    const drink = DRINKS.find((d) => d.id === sg.drink)
+    const size = drink?.sizes.find((z) => z.id === sg.size)
+    const flavor = sg.flavor ? drink?.flavors?.find((f) => f.id === sg.flavor) : null
+    if (!drink || !size) return null
+    if (sizeOut(drink, size, cfg) || (flavor && flavorOut(flavor, cfg))) return null
+    return {
+      key: `${drink.id}-${size.id}-${flavor?.id || ''}`,
+      drink, size, flavor,
+      nombre: flavor ? flavor.label : drink.name,
+      tint: flavor?.tint || drink.tint,
+      precio: drinkPrice(drink, size, cfg),
+    }
+  }).filter(Boolean)
+}
+
 const ease = [0.16, 1, 0.3, 1]
 
 export default function CartDrawer() {
-  const { items, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, zone, sendToWhatsApp, clear } = useCart()
+  const { items, addDrink, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, sendToWhatsApp, clear } = useCart()
   const cfg = useConfig()
   const status = getStatus(new Date(), todayOverride(cfg))
+  const hayBurgers = items.some((i) => (i.kind ?? 'burger') === 'burger')
+  const hayBebida = items.some((i) => i.kind === 'drink')
+  const sugerencias = hayBurgers && !hayBebida ? opcionesDeBebida(cfg) : []
+  const haySugerencias = sugerencias.length > 0
 
   return (
     <AnimatePresence>
@@ -99,10 +132,11 @@ export default function CartDrawer() {
                     className="text-white/55 text-sm leading-relaxed"
                     style={{ fontFamily: 'DM Sans, sans-serif' }}
                   >
-                    Tu carrito está vacío.<br />Agregá una hamburguesa del menú.
+                    Tu carrito está vacío.<br />Agregá algo del menú.
                   </p>
                 </div>
               ) : (
+                <>
                 <AnimatePresence>
                   {items.map(item => (
                     <motion.div
@@ -117,13 +151,26 @@ export default function CartDrawer() {
                         border: '1px solid rgba(255,255,255,0.05)',
                       }}
                     >
-                      {/* Thumb */}
-                      <div
-                        className="w-16 h-16 flex-shrink-0 overflow-hidden rounded-xl"
-                        style={{ backgroundColor: '#0A0A0A' }}
-                      >
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                      </div>
+                      {/* Thumb: foto de la burger, o ícono de la bebida */}
+                      {item.kind === 'drink' ? (
+                        <div
+                          className="w-16 h-16 flex-shrink-0 rounded-xl flex items-center justify-center"
+                          style={{
+                            background: `radial-gradient(circle at 50% 110%, ${item.tint}55, transparent 70%), #0E0E0E`,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            color: item.tint,
+                          }}
+                        >
+                          {(() => { const I = ICONS[item.icon] || CupSoda; return <I size={26} strokeWidth={1.8} /> })()}
+                        </div>
+                      ) : (
+                        <div
+                          className="w-16 h-16 flex-shrink-0 overflow-hidden rounded-xl"
+                          style={{ backgroundColor: '#0A0A0A' }}
+                        >
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
@@ -137,8 +184,16 @@ export default function CartDrawer() {
                           className="text-white/45 text-[11px] tracking-wide mt-0.5 uppercase"
                           style={{ fontFamily: 'DM Sans, sans-serif' }}
                         >
-                          {item.sizeLabel} · con papas
+                          {item.kind === 'drink' ? item.sizeLabel : `${item.sizeLabel} · con papas`}
                         </p>
+                        {item.extras?.length > 0 && (
+                          <p
+                            className="text-[#F0C832] text-[11px] mt-1 leading-snug"
+                            style={{ fontFamily: 'DM Sans, sans-serif' }}
+                          >
+                            {item.extras.map((e) => (e.qty > 1 ? `+ ${e.qty} ${e.name}` : `+ ${e.name}`)).join('  ')}
+                          </p>
+                        )}
                         <p
                           className="text-[#F0C832] text-sm mt-1"
                           style={{ fontFamily: 'Anton, sans-serif' }}
@@ -188,6 +243,73 @@ export default function CartDrawer() {
                     </motion.div>
                   ))}
                 </AnimatePresence>
+
+                {/* ¿Algo para tomar? — solo si hay burgers y todavía no hay bebida */}
+                {haySugerencias && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease, delay: 0.1 }}
+                    className="mt-4 mb-1"
+                  >
+                    <div className="flex items-baseline justify-between mb-2.5">
+                      <span
+                        className="text-white/60 text-[11px] tracking-[0.18em] uppercase"
+                        style={{ fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        ¿Algo para tomar?
+                      </span>
+                      <a
+                        href="#bebidas"
+                        onClick={() => setIsOpen(false)}
+                        className="text-[#F0C832]/80 hover:text-[#F0C832] text-[11px] transition-colors"
+                        style={{ fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        Ver todas →
+                      </a>
+                    </div>
+                    <div
+                      className="flex gap-2 overflow-x-auto -mx-6 px-6 pb-1"
+                      style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+                    >
+                      {sugerencias.map((o) => (
+                        <motion.button
+                          key={o.key}
+                          type="button"
+                          onClick={() => addDrink(o.drink, { ...o.size, price: o.precio }, o.flavor, 1)}
+                          whileTap={{ scale: 0.96 }}
+                          className="shrink-0 flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-2xl text-left"
+                          style={{
+                            backgroundColor: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                          }}
+                        >
+                          <span
+                            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: `${o.tint}22`, color: o.tint, border: `1px solid ${o.tint}44` }}
+                          >
+                            {(() => { const I = ICONS[o.drink.icon] || CupSoda; return <I size={17} strokeWidth={2} /> })()}
+                          </span>
+                          <span className="flex flex-col leading-tight">
+                            <span className="text-white text-[12px]" style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+                              {o.nombre}
+                            </span>
+                            <span className="text-white/45 text-[11px]" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                              {o.size.label} · {formatPrice(o.precio)}
+                            </span>
+                          </span>
+                          <span
+                            className="w-6 h-6 rounded-full flex items-center justify-center ml-1"
+                            style={{ backgroundColor: '#F0C832', color: '#000' }}
+                          >
+                            <Plus size={13} strokeWidth={3} />
+                          </span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+                </>
               )}
             </div>
 

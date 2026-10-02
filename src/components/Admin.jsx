@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Check, AlertTriangle, RefreshCw, ExternalLink, Clock, Ban } from 'lucide-react'
+import { Check, AlertTriangle, RefreshCw, ExternalLink, Clock, Ban, Zap, Timer } from 'lucide-react'
 import * as panel from '../lib/panelApi'
 import { DEFAULT_CONFIG } from '../lib/config'
-import { SCHEDULE, scheduleSummary } from '../lib/schedule'
+import { scheduleSummary } from '../lib/schedule'
 import { ZONES, formatZonePrice } from '../lib/zones'
 import { SIZES } from '../context/CartContext'
+import { EXTRAS, DRINKS, extraKey, drinkKey, flavorKey } from '../lib/catalog'
+import AdminStats from './AdminStats'
 
 const inputCls =
   'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors'
@@ -12,9 +14,9 @@ const labelCls = 'text-[10px] tracking-[0.16em] uppercase text-white/40'
 const font = { fontFamily: 'DM Sans, sans-serif' }
 const anton = { fontFamily: 'Anton, sans-serif' }
 
-// Las burgers y sus valores por defecto salen del código; el panel solo guarda
-// lo que se cambió. Esta lista se pasa desde MenuSection para no duplicarla.
-import { FALLBACK_BURGERS } from './MenuSection'
+// Las burgers y sus precios de la carta salen del código; el panel solo guarda
+// lo que se cambió.
+import { BURGERS } from '../lib/menu'
 
 const hoyStr = () => {
   const d = new Date()
@@ -99,22 +101,26 @@ function Login({ onOk }) {
           {cargando ? 'Verificando…' : 'Entrar'}
         </button>
 
-        <button
-          type="button"
-          onClick={probarConexion}
-          className="w-full mt-3 py-2.5 rounded-full text-xs uppercase tracking-widest text-white/60 hover:text-white"
-          style={{ border: '1px solid rgba(255,255,255,0.15)' }}
-        >
-          Probar conexión con GitHub
-        </button>
-        {diag && (
-          <p className="text-white/70 text-xs mt-3 leading-relaxed">{diag}</p>
+        {!conClave && (
+          <>
+            <button
+              type="button"
+              onClick={probarConexion}
+              className="w-full mt-3 py-2.5 rounded-full text-xs uppercase tracking-widest text-white/60 hover:text-white"
+              style={{ border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              Probar conexión con GitHub
+            </button>
+            {diag && (
+              <p className="text-white/70 text-xs mt-3 leading-relaxed">{diag}</p>
+            )}
+          </>
         )}
 
         {conClave ? (
           <p className="mt-6 text-white/40 text-xs leading-relaxed">
-            El panel habla con tu propio sitio, así que ningún bloqueador lo corta
-            y el token de GitHub queda guardado en Vercel, no en tu teléfono.
+            El panel habla con tu propio sitio, así que ningún bloqueador lo corta.
+            Los cambios se ven en la web en segundos.
           </p>
         ) : (
         <>
@@ -171,154 +177,144 @@ function Login({ onOk }) {
   )
 }
 
-function Seccion({ titulo, children, extra }) {
+function Seccion({ titulo, children, extra, nota }) {
   return (
     <div
       className="rounded-2xl p-5 mb-4"
       style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)' }}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-xl text-white uppercase" style={anton}>{titulo}</h2>
         {extra}
       </div>
+      {nota && <p className="text-white/45 text-xs mb-4 leading-relaxed" style={font}>{nota}</p>}
+      {!nota && <div className="mb-3" />}
       {children}
     </div>
   )
 }
 
-const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR')
-const nombreBurger = (id) => FALLBACK_BURGERS.find((b) => String(b.id) === String(id))?.name || `#${id}`
+// Subtítulo dentro de una sección
+const Grupo = ({ children }) => (
+  <p className="text-white/40 text-[10px] tracking-[0.18em] uppercase mt-4 mb-2 first:mt-0" style={font}>
+    {children}
+  </p>
+)
 
-function Stats({ stats }) {
-  if (!stats) {
-    return (
-      <Seccion titulo="Números">
-        <p className="text-white/55 text-sm leading-relaxed mb-4">
-          Todavía no está activo el registro de pedidos. Se prende cargando dos
-          variables en Vercel (te las paso), y a partir de ahí cada pedido enviado
-          por WhatsApp queda contado acá: cuántos por día, cuánto vendiste y qué
-          burger sale más.
-        </p>
-        <a
-          href="https://vercel.com/lucianobrocchi-2489s-projects/mrwhiteburgers/analytics"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-[#F0C832] text-sm"
-        >
-          Mientras tanto: visitas en Vercel Analytics <ExternalLink size={13} />
-        </a>
-      </Seccion>
-    )
-  }
-
-  const dias = Object.keys(stats.byDay || {}).sort().reverse()
-  const total = dias.reduce((s, d) => s + (stats.byDay[d].total || 0), 0)
-  const pedidos = dias.reduce((s, d) => s + (stats.byDay[d].orders || 0), 0)
-  const porBurger = {}
-  dias.forEach((d) => {
-    Object.entries(stats.byDay[d].burgers || {}).forEach(([k, v]) => {
-      porBurger[k] = (porBurger[k] || 0) + v
-    })
-  })
-  const ranking = Object.entries(porBurger).sort((a, b) => b[1] - a[1])
-  const maxB = ranking[0]?.[1] || 1
-
+// Fila que se toca para alternar entre "disponible" y "SIN STOCK"
+function Interruptor({ nombre, detalle, sinStock, onToggle }) {
   return (
-    <>
-      <Seccion titulo="Resumen">
-        <div className="grid grid-cols-3 gap-3">
-          {[['Pedidos', pedidos], ['Vendido', money(total)], ['Días', dias.length]].map(([k, v]) => (
-            <div key={k} className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-              <p className={labelCls}>{k}</p>
-              <p className="text-[#F0C832] text-2xl mt-1" style={anton}>{v}</p>
-            </div>
-          ))}
-        </div>
-      </Seccion>
-
-      {ranking.length > 0 && (
-        <Seccion titulo="Cuál sale más">
-          {ranking.map(([id, n]) => (
-            <div key={id} className="mb-3">
-              <div className="flex items-baseline justify-between mb-1">
-                <span className="text-white text-sm uppercase" style={anton}>{nombreBurger(id)}</span>
-                <span className="text-[#F0C832] text-sm" style={anton}>{n}</span>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}>
-                <div className="h-full rounded-full" style={{ width: `${(n / maxB) * 100}%`, backgroundColor: '#F0C832' }} />
-              </div>
-            </div>
-          ))}
-        </Seccion>
-      )}
-
-      <Seccion titulo="Por día">
-        {dias.length === 0 && <p className="text-white/45 text-sm">Todavía no entró ningún pedido.</p>}
-        {dias.map((d) => {
-          const x = stats.byDay[d]
-          return (
-            <div key={d} className="flex items-baseline justify-between py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <span className="text-white/70 text-sm">
-                {new Date(`${d}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
-              </span>
-              <span className="text-white/50 text-sm">
-                {x.orders} {x.orders === 1 ? 'pedido' : 'pedidos'} · <span className="text-[#F0C832]">{money(x.total)}</span>
-              </span>
-            </div>
-          )
-        })}
-      </Seccion>
-
-      {stats.lastOrders?.length > 0 && (
-        <Seccion titulo="Últimos pedidos">
-          {stats.lastOrders.slice(0, 12).map((o, i) => (
-            <div key={i} className="rounded-xl px-3 py-2.5 mb-2" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-              <div className="flex items-baseline justify-between">
-                <span className="text-white/45 text-xs">
-                  {new Date(o.at).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <span className="text-[#F0C832] text-sm" style={anton}>{money(o.total)}</span>
-              </div>
-              <p className="text-white/70 text-sm mt-1">
-                {(o.items || []).map((i2) => `${i2.qty}× ${i2.name}`).join(' · ')}
-                {o.zone ? ` — ${o.zone}` : ''}
-              </p>
-            </div>
-          ))}
-        </Seccion>
-      )}
-    </>
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl mb-2 text-left"
+      style={{
+        backgroundColor: sinStock ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${sinStock ? 'rgba(248,113,113,0.4)' : 'rgba(255,255,255,0.08)'}`,
+      }}
+    >
+      <span className="min-w-0">
+        <span className="block text-white text-sm uppercase truncate" style={anton}>{nombre}</span>
+        {detalle && <span className="block text-white/40 text-[11px] mt-0.5" style={font}>{detalle}</span>}
+      </span>
+      <span
+        className="text-xs px-3 py-1 rounded-full shrink-0"
+        style={{
+          ...font,
+          color: sinStock ? '#F87171' : 'rgba(255,255,255,0.45)',
+          border: `1px solid ${sinStock ? 'rgba(248,113,113,0.45)' : 'rgba(255,255,255,0.12)'}`,
+        }}
+      >
+        {sinStock ? 'SIN STOCK' : 'disponible'}
+      </span>
+    </button>
   )
 }
+
+// Campo de precio: vacío = usa el precio de la carta (el que está en el código)
+function EntradaPrecio({ etiqueta, defecto, valor, onChange }) {
+  return (
+    <div className="grid grid-cols-[1fr_120px] gap-3 items-center mb-2">
+      <span className="text-white/70 text-sm min-w-0 truncate" style={font}>{etiqueta}</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        className={inputCls}
+        placeholder={String(defecto)}
+        value={valor ?? ''}
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+      />
+    </div>
+  )
+}
+
+// Rellena lo que falte para que el resto del panel nunca se encuentre con undefined
+const normalizar = (c) => ({
+  ...DEFAULT_CONFIG,
+  ...(c || {}),
+  today: { ...DEFAULT_CONFIG.today, ...(c?.today || {}) },
+  burgers: { ...(c?.burgers || {}) },
+  zones: { ...(c?.zones || {}) },
+  stock: { ...(c?.stock || {}) },
+  prices: { ...(c?.prices || {}) },
+})
+
+const PASOS_BLOB = (
+  <ol className="list-decimal ml-5 space-y-1.5 text-white/65 text-xs leading-relaxed" style={font}>
+    <li>En Vercel, abrí el proyecto <b>mrwhiteburgers</b> → pestaña <b>Storage</b> → <b>Create Database</b> → <b>Blob</b> y conectalo al proyecto.</li>
+    <li>En <b>Settings → Environment Variables</b> agregá <b>PANEL_PASSWORD</b> con la clave que quieras (tildá Production).</li>
+    <li>En <b>Deployments</b> → los 3 puntitos del último → <b>Redeploy</b>.</li>
+  </ol>
+)
 
 export default function Admin() {
   const [logueado, setLogueado] = useState(panel.estaLogueado())
   const [cfg, setCfg] = useState(null)
   const [sha, setSha] = useState(null)
   const [tab, setTab] = useState('hoy')
-  const [estado, setEstado] = useState('')   // '', 'guardando', 'ok', mensaje de error
+  const [estado, setEstado] = useState('')   // '', 'guardando', 'ok', o el mensaje de error
   const [historial, setHistorial] = useState([])
   const [stats, setStats] = useState(null)
+  const [backend, setBackend] = useState(null) // nombre del almacén si guarda el servidor (al instante); null = modo token
+  const [recargando, setRecargando] = useState(false)
 
-  const cargar = useCallback(async () => {
-    try {
-      const { sha, content } = await panel.readConfig()
-      setSha(sha)
-      setCfg({ ...DEFAULT_CONFIG, ...(content || {}), today: { ...DEFAULT_CONFIG.today, ...(content?.today || {}) } })
-      panel.history().then(setHistorial).catch(() => {})
-      panel.readStats().then(setStats).catch(() => {})
-    } catch (e) {
-      setEstado(e.message)
-    }
+  const traerStats = useCallback(async () => {
+    try { setStats(await panel.readStats()) } catch { /* se queda con lo que tenía */ }
   }, [])
 
-  useEffect(() => { if (logueado) cargar() }, [logueado, cargar])
+  // El botón de actualizar: igual que la carga inicial, pero mostrando que está trabajando
+  const recargarStats = useCallback(async () => {
+    setRecargando(true)
+    await traerStats()
+    setRecargando(false)
+  }, [traerStats])
+
+  // Carga inicial al entrar. `vivo` evita escribir estado si se sale del panel
+  // mientras todavía está trayendo los datos.
+  useEffect(() => {
+    if (!logueado) return undefined
+    let vivo = true
+    ;(async () => {
+      try {
+        const { sha: version, content } = await panel.readConfig()
+        if (!vivo) return
+        setSha(version)
+        setCfg(normalizar(content))
+        panel.history().then((h) => vivo && setHistorial(h)).catch(() => {})
+        panel.dondeGuarda().then((b) => vivo && setBackend(b))
+        traerStats()
+      } catch (e) {
+        if (vivo) setEstado(e.message)
+      }
+    })()
+    return () => { vivo = false }
+  }, [logueado, traerStats])
 
   if (!logueado) return <Login onOk={() => setLogueado(true)} />
   if (!cfg) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center" style={font}>
-        <p className="text-white/60">{estado || 'Cargando…'}</p>
+      <div className="min-h-screen bg-black flex items-center justify-center px-6 text-center" style={font}>
+        <p className={estado ? 'text-red-300 text-sm' : 'text-white/60'}>{estado || 'Cargando…'}</p>
       </div>
     )
   }
@@ -327,6 +323,20 @@ export default function Admin() {
   const setHoy = (patch) => setCfg((c) => ({ ...c, today: { ...c.today, ...patch, date: hoyStr() } }))
   const setBurger = (id, patch) =>
     setCfg((c) => ({ ...c, burgers: { ...c.burgers, [id]: { ...(c.burgers?.[id] || {}), ...patch } } }))
+  const setStock = (clave, sin) =>
+    setCfg((c) => {
+      const stock = { ...c.stock }
+      if (sin) stock[clave] = true
+      else delete stock[clave]
+      return { ...c, stock }
+    })
+  const setPrecio = (clave, valor) =>
+    setCfg((c) => {
+      const prices = { ...c.prices }
+      if (valor == null || Number.isNaN(valor)) delete prices[clave]
+      else prices[clave] = valor
+      return { ...c, prices }
+    })
 
   const guardar = async (mensaje) => {
     setEstado('guardando')
@@ -336,23 +346,33 @@ export default function Admin() {
       setSha(nuevoSha)
       setCfg(nuevo)
       setEstado('ok')
-      setTimeout(() => setEstado(''), 3000)
+      setTimeout(() => setEstado(''), 3500)
       panel.history().then(setHistorial).catch(() => {})
     } catch (e) {
       setEstado(e.message)
     }
   }
 
+  const alInstante = backend != null // hay un servidor guardando: los cambios son inmediatos
   const TABS = [['hoy', 'Hoy'], ['menu', 'Menú'], ['envios', 'Envíos'], ['stats', 'Números']]
 
   return (
     <div className="min-h-screen bg-black px-4 md:px-8 py-6" style={font}>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-          <h1 className="text-3xl text-white uppercase leading-none" style={anton}>
-            Mr. White <span className="text-[#F0C832]">Panel</span>
-          </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div>
+            <h1 className="text-3xl text-white uppercase leading-none" style={anton}>
+              Mr. White <span className="text-[#F0C832]">Panel</span>
+            </h1>
+            <p
+              className="inline-flex items-center gap-1.5 text-[11px] mt-2"
+              style={{ color: alInstante ? '#4ADE80' : 'rgba(255,255,255,0.4)' }}
+            >
+              {alInstante ? <Zap size={12} /> : <Timer size={12} />}
+              {alInstante ? 'Los cambios se ven en la web en segundos' : 'Los cambios tardan ~1 minuto en verse'}
+            </p>
+          </div>
           <div className="flex items-center gap-3">
             <a href="/" className="text-sm text-white/55 hover:text-white">Ver sitio →</a>
             <button
@@ -387,12 +407,10 @@ export default function Admin() {
         {/* ─── HOY ─────────────────────────────────────────────── */}
         {tab === 'hoy' && (
           <>
-            <Seccion titulo="Hoy">
-              <p className="text-white/45 text-xs mb-4">
-                Excepciones solo para hoy. Mañana vuelve al horario de siempre
-                ({scheduleSummary().filter((h) => !h.closed)[0]?.hours}).
-              </p>
-
+            <Seccion
+              titulo="Hoy"
+              nota={`Excepciones solo para hoy. Mañana vuelve solo al horario de siempre (${scheduleSummary().find((h) => !h.closed)?.hours || '—'}).`}
+            >
               <label className="flex items-center gap-3 mb-4 cursor-pointer">
                 <input
                   type="checkbox"
@@ -454,10 +472,58 @@ export default function Admin() {
               </button>
             </Seccion>
 
-            <Seccion titulo="Cartel de arriba">
-              <p className="text-white/45 text-xs mb-3">
-                El texto que corre en la barra roja. Vacío = el de siempre.
-              </p>
+            <Seccion
+              titulo="Sin stock"
+              nota="Lo que marques acá aparece como “Sin stock” en la web y no se puede pedir. Tocá de nuevo para volver a habilitarlo."
+            >
+              <Grupo>Burgers</Grupo>
+              {BURGERS.map((b) => (
+                <Interruptor
+                  key={b.id}
+                  nombre={b.name}
+                  sinStock={!!cfg.burgers?.[b.id]?.soldOut}
+                  onToggle={() => setBurger(b.id, { soldOut: !cfg.burgers?.[b.id]?.soldOut })}
+                />
+              ))}
+
+              <Grupo>Extras</Grupo>
+              {EXTRAS.map((e) => (
+                <Interruptor
+                  key={e.id}
+                  nombre={e.name}
+                  detalle={e.desc}
+                  sinStock={!!cfg.stock[extraKey(e)]}
+                  onToggle={() => setStock(extraKey(e), !cfg.stock[extraKey(e)])}
+                />
+              ))}
+
+              <Grupo>Bebidas (por tamaño)</Grupo>
+              {DRINKS.flatMap((d) =>
+                d.sizes.map((s) => (
+                  <Interruptor
+                    key={drinkKey(d, s)}
+                    nombre={`${d.name} · ${s.label}`}
+                    sinStock={!!cfg.stock[drinkKey(d, s)]}
+                    onToggle={() => setStock(drinkKey(d, s), !cfg.stock[drinkKey(d, s)])}
+                  />
+                )),
+              )}
+
+              <Grupo>Sabores</Grupo>
+              {DRINKS.flatMap((d) =>
+                (d.flavors || []).map((f) => (
+                  <Interruptor
+                    key={flavorKey(f)}
+                    nombre={f.label}
+                    detalle="Todos los tamaños"
+                    sinStock={!!cfg.stock[flavorKey(f)]}
+                    onToggle={() => setStock(flavorKey(f), !cfg.stock[flavorKey(f)])}
+                  />
+                )),
+              )}
+            </Seccion>
+
+            <Seccion titulo="Cartel de arriba" nota="El texto que corre en la barra roja. Vacío = el de siempre.">
               <input
                 value={cfg.ticker || ''}
                 onChange={(e) => set({ ticker: e.target.value })}
@@ -465,94 +531,85 @@ export default function Admin() {
                 placeholder="Ej: HOY 2X1 EN SIMPLES · PEDÍ POR WHATSAPP"
               />
             </Seccion>
-
-            <Seccion titulo="Sin stock">
-              <p className="text-white/45 text-xs mb-4">
-                Lo que marques acá aparece tachado en el menú y no se puede pedir.
-              </p>
-              {FALLBACK_BURGERS.map((b) => {
-                const agotada = !!cfg.burgers?.[b.id]?.soldOut
-                return (
-                  <button
-                    key={b.id}
-                    onClick={() => setBurger(b.id, { soldOut: !agotada })}
-                    className="w-full flex items-center justify-between px-3 py-3 rounded-xl mb-2"
-                    style={{
-                      backgroundColor: agotada ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${agotada ? 'rgba(248,113,113,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                    }}
-                  >
-                    <span className="text-white text-sm uppercase" style={anton}>{b.name}</span>
-                    <span
-                      className="text-xs px-3 py-1 rounded-full"
-                      style={{
-                        color: agotada ? '#F87171' : 'rgba(255,255,255,0.45)',
-                        border: `1px solid ${agotada ? 'rgba(248,113,113,0.45)' : 'rgba(255,255,255,0.12)'}`,
-                      }}
-                    >
-                      {agotada ? 'SIN STOCK' : 'disponible'}
-                    </span>
-                  </button>
-                )
-              })}
-            </Seccion>
           </>
         )}
 
         {/* ─── MENÚ ────────────────────────────────────────────── */}
         {tab === 'menu' && (
-          <Seccion titulo="Precios y textos">
-            <p className="text-white/45 text-xs mb-4">
-              Los precios vacíos usan el valor del código.
-            </p>
-            {FALLBACK_BURGERS.map((b) => {
-              const c = cfg.burgers?.[b.id] || {}
-              return (
-                <div
-                  key={b.id}
-                  className="rounded-xl p-4 mb-3"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
-                  <p className="text-white uppercase mb-3" style={anton}>{b.name}</p>
-                  {SIZES.map((s) => (
-                    <div key={s.key} className="grid grid-cols-[80px_1fr] gap-2 items-center mb-2">
-                      <span className="text-white/50 text-xs">{s.label}</span>
-                      <input
-                        type="number"
-                        className={inputCls}
-                        placeholder={String(b.prices[s.key])}
-                        value={c.prices?.[s.key] ?? ''}
-                        onChange={(e) =>
-                          setBurger(b.id, {
-                            prices: { ...(c.prices || {}), [s.key]: e.target.value ? Number(e.target.value) : undefined },
-                          })
+          <>
+            <Seccion titulo="Burgers" nota="Si dejás un precio vacío se usa el de la carta (el que figura en gris).">
+              {BURGERS.map((b) => {
+                const c = cfg.burgers?.[b.id] || {}
+                return (
+                  <div
+                    key={b.id}
+                    className="rounded-xl p-4 mb-3"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    <p className="text-white uppercase mb-3" style={anton}>{b.name}</p>
+                    {SIZES.map((s) => (
+                      <EntradaPrecio
+                        key={s.key}
+                        etiqueta={s.label}
+                        defecto={b.prices[s.key]}
+                        valor={c.prices?.[s.key]}
+                        onChange={(v) =>
+                          setBurger(b.id, { prices: { ...(c.prices || {}), [s.key]: v == null ? undefined : v } })
                         }
                       />
-                    </div>
-                  ))}
-                  <label className="flex flex-col gap-1.5 mt-3">
-                    <span className={labelCls}>Descripción</span>
-                    <textarea
-                      rows={2}
-                      className={inputCls + ' resize-y'}
-                      placeholder={b.description}
-                      value={c.description || ''}
-                      onChange={(e) => setBurger(b.id, { description: e.target.value })}
+                    ))}
+                    <label className="flex flex-col gap-1.5 mt-3">
+                      <span className={labelCls}>Descripción</span>
+                      <textarea
+                        rows={2}
+                        className={inputCls + ' resize-y'}
+                        placeholder={b.description}
+                        value={c.description || ''}
+                        onChange={(e) => setBurger(b.id, { description: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                )
+              })}
+            </Seccion>
+
+            <Seccion titulo="Extras">
+              {EXTRAS.map((e) => (
+                <EntradaPrecio
+                  key={e.id}
+                  etiqueta={`${e.name}${e.desc ? ` · ${e.desc}` : ''}`}
+                  defecto={e.price}
+                  valor={cfg.prices[extraKey(e)]}
+                  onChange={(v) => setPrecio(extraKey(e), v)}
+                />
+              ))}
+            </Seccion>
+
+            <Seccion titulo="Bebidas">
+              {DRINKS.map((d) => (
+                <div key={d.id} className="mb-3 last:mb-0">
+                  <Grupo>{d.name}</Grupo>
+                  {d.sizes.map((s) => (
+                    <EntradaPrecio
+                      key={drinkKey(d, s)}
+                      etiqueta={s.label}
+                      defecto={s.price}
+                      valor={cfg.prices[drinkKey(d, s)]}
+                      onChange={(v) => setPrecio(drinkKey(d, s), v)}
                     />
-                  </label>
+                  ))}
                 </div>
-              )
-            })}
-          </Seccion>
+              ))}
+            </Seccion>
+          </>
         )}
 
         {/* ─── ENVÍOS ──────────────────────────────────────────── */}
         {tab === 'envios' && (
-          <Seccion titulo="Zonas de envío">
-            <p className="text-white/45 text-xs mb-4">
-              Cambiá el precio de cada zona. Para agregar zonas nuevas hace falta
-              dibujarlas en el mapa — pedímelo y las sumo.
-            </p>
+          <Seccion
+            titulo="Zonas de envío"
+            nota="Cambiá el precio de cada zona. Para sumar zonas nuevas hay que dibujarlas en el mapa: pedilo y se agregan."
+          >
             {ZONES.map((z) => (
               <div key={z.id} className="flex items-center gap-3 mb-3">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: z.color }} />
@@ -562,6 +619,7 @@ export default function Admin() {
                 </div>
                 <input
                   type="number"
+                  inputMode="numeric"
                   className={inputCls + ' w-32 shrink-0'}
                   placeholder={String(z.price)}
                   value={cfg.zones?.[z.id]?.price ?? ''}
@@ -583,7 +641,20 @@ export default function Admin() {
         )}
 
         {/* ─── NÚMEROS ─────────────────────────────────────────── */}
-        {tab === 'stats' && <Stats stats={stats} />}
+        {tab === 'stats' && (
+          <AdminStats
+            stats={stats}
+            registroActivo={alInstante}
+            pasosBlob={PASOS_BLOB}
+            onReload={recargarStats}
+            recargando={recargando}
+            puedeBorrar={alInstante}
+            onDelete={async (id) => {
+              await panel.deleteOrder(id)
+              await traerStats()
+            }}
+          />
+        )}
 
         {/* Guardar */}
         {tab !== 'stats' && (
@@ -601,7 +672,7 @@ export default function Admin() {
               {estado === 'guardando' ? (
                 <><RefreshCw size={15} className="animate-spin" /> Guardando…</>
               ) : estado === 'ok' ? (
-                <><Check size={16} strokeWidth={3} /> Guardado — se ve en el sitio en ~1 min</>
+                <><Check size={16} strokeWidth={3} /> {alInstante ? 'Guardado — ya está en la web' : 'Guardado — se ve en ~1 min'}</>
               ) : (
                 'Guardar cambios'
               )}
@@ -614,7 +685,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* Historial */}
+        {/* Historial de cambios (solo con GitHub) */}
         {historial.length > 0 && (
           <div className="mt-8">
             <p className="text-white/40 text-[11px] tracking-[0.16em] uppercase mb-2 flex items-center gap-2">

@@ -10,6 +10,7 @@ import HeroSection from './components/HeroSection'
 import OrderBanner from './components/OrderBanner'
 import PromoBanner from './components/PromoBanner'
 import MenuSection from './components/MenuSection'
+import DrinksSection from './components/DrinksSection'
 import MarqueeStrip from './components/MarqueeStrip'
 import HoursSection from './components/HoursSection'
 import StatementSection from './components/StatementSection'
@@ -63,6 +64,7 @@ function Inner() {
       <OrderBanner />
       <PromoBanner />
       <MenuSection />
+      <DrinksSection />
       <MarqueeStrip />
       <StatementSection />
       <HoursSection />

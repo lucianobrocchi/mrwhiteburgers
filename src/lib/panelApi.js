@@ -63,11 +63,16 @@ export async function readConfig() {
   return gh.readConfigFile(gh.getToken())
 }
 
-// Dónde está guardando: 'blob' (instantáneo) o 'github' (con historial)
+// ¿Está guardando el servidor del sitio (almacén conectado + clave cargada)?
+// Devuelve el nombre del almacén ('blob') o null si no: en ese caso el panel
+// trabaja con el token de GitHub y los cambios tardan un minuto en verse.
 export async function dondeGuarda() {
   try {
     const r = await fetch('/api/panel?action=ping')
-    if (r.ok) return (await r.json()).backend
+    if (r.ok) {
+      const j = await r.json()
+      return j.configurado ? j.backend : null
+    }
   } catch { /* noop */ }
   return null
 }
@@ -80,9 +85,15 @@ export async function saveConfig(config, sha, message) {
   return gh.saveConfigFile(gh.getToken(), config, sha, message)
 }
 
-export async function readStats() {
-  if ((await detectarModo()) === 'api') return call('stats')
-  return null // sin función no hay estadísticas propias
+// Estadísticas de pedidos. Solo existen con el modo "clave" (Vercel Blob): en el
+// modo viejo con token de GitHub no se registran pedidos, así que devuelve null.
+export async function readStats(meses = 12) {
+  if ((await detectarModo()) === 'api') return call(`stats&months=${meses}`)
+  return null
+}
+
+export async function deleteOrder(id) {
+  return call('delete-order', { id })
 }
 
 export async function history() {

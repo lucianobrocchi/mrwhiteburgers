@@ -3,6 +3,7 @@ import { recordOrder } from '../lib/orders'
 import { findZone } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
 import { getConfig, todayOverride } from '../lib/config'
+import { extrasLabel } from '../lib/catalog'
 
 const CartContext = createContext()
 
@@ -89,15 +90,21 @@ const SIZE_LABEL = Object.fromEntries(SIZES.map(s => [s.key, s.label]))
 
 export const formatPrice = (n) => '$' + Math.round(n).toLocaleString('es-AR')
 
+// Las promos son sobre las BURGERS y se calculan con su precio base: los extras
+// y las bebidas se pagan siempre completos, por encima de la promo.
+const esBurger = (it) => (it.kind ?? 'burger') === 'burger'
+const precioBase = (it) => it.basePrice ?? it.price
+
 function calcPromoDiscount(items) {
   const promo = ACTIVE_PROMO
   if (!promo) return 0
+  const burgers = items.filter(esBurger)
   let discount = 0
   if (promo.kind === 'simplesBundle') {
     // Cada par de simples sale bundlePrice
     const simples = []
-    for (const it of items) {
-      for (let i = 0; i < it.qty; i++) if (it.size === 'simple') simples.push(it.price)
+    for (const it of burgers) {
+      for (let i = 0; i < it.qty; i++) if (it.size === 'simple') simples.push(precioBase(it))
     }
     simples.sort((a, b) => b - a)
     for (let i = 0; i + 1 < simples.length; i += 2) {
@@ -105,9 +112,10 @@ function calcPromoDiscount(items) {
     }
   } else if (promo.kind === 'itemPrice') {
     // Una burger + tamaño puntual baja a specialPrice
-    for (const it of items) {
-      const sp = itemPromoPrice(it.name, it.size, it.price)
-      if (sp != null) discount += (it.price - sp) * it.qty
+    for (const it of burgers) {
+      const base = precioBase(it)
+      const sp = itemPromoPrice(it.name, it.size, base)
+      if (sp != null) discount += (base - sp) * it.qty
     }
   }
   return discount
@@ -127,28 +135,60 @@ export function CartProvider({ children }) {
     setZoneState(typeof override === 'number' ? { ...z, price: override } : z)
   }, [])
 
-  const addItem = useCallback((burger, size = 'doble', qty = 1) => {
-    const n = Math.max(1, Math.floor(qty))
-    const lineKey = `${burger.id}-${size}`
-    const price = burger.prices[size]
+  const pushItem = useCallback((nuevo, toastName) => {
     setItems(prev => {
-      const existing = prev.find(i => i.key === lineKey)
-      if (existing) return prev.map(i => i.key === lineKey ? { ...i, qty: i.qty + n } : i)
-      return [...prev, {
-        key: lineKey,
-        id: burger.id,
-        name: burger.name,
-        image: burger.image,
-        size,
-        sizeLabel: SIZE_LABEL[size],
-        price,
-        qty: n,
-      }]
+      const existing = prev.find(i => i.key === nuevo.key)
+      if (existing) return prev.map(i => i.key === nuevo.key ? { ...i, qty: i.qty + nuevo.qty } : i)
+      return [...prev, nuevo]
     })
-    const suffix = n > 1 ? ` × ${n}` : ''
-    setToast({ name: `${burger.name} ${SIZE_LABEL[size]}${suffix}`, id: Date.now() })
+    const suffix = nuevo.qty > 1 ? ` × ${nuevo.qty}` : ''
+    setToast({ name: `${toastName}${suffix}`, id: Date.now() })
     setTimeout(() => setToast(null), 2200)
   }, [])
+
+  // `extras` = [{ id, name, price, qty }] ya resueltos con el precio vigente.
+  // Dos líneas con distintos extras NO se juntan: cada combinación es su línea.
+  const addItem = useCallback((burger, size = 'doble', qty = 1, extras = []) => {
+    const n = Math.max(1, Math.floor(qty))
+    const ex = (extras || []).filter(e => e.qty > 0)
+    const sig = ex.map(e => `${e.id}x${e.qty}`).sort().join('+')
+    const base = burger.prices[size]
+    const extrasUnit = ex.reduce((s, e) => s + e.price * e.qty, 0)
+    pushItem({
+      key: `b${burger.id}-${size}${sig ? `-${sig}` : ''}`,
+      kind: 'burger',
+      id: burger.id,
+      name: burger.name,
+      image: burger.image,
+      size,
+      sizeLabel: SIZE_LABEL[size],
+      basePrice: base,
+      extras: ex,
+      price: base + extrasUnit,   // precio de UNA unidad, extras incluidos
+      qty: n,
+    }, `${burger.name} ${SIZE_LABEL[size]}${ex.length ? ' + extras' : ''}`)
+  }, [pushItem])
+
+  // `size.price` ya viene resuelto con el precio vigente (puede estar pisado por el panel)
+  const addDrink = useCallback((drink, size, flavor, qty = 1) => {
+    const n = Math.max(1, Math.floor(qty))
+    const name = flavor ? flavor.label : drink.name
+    pushItem({
+      key: `d${drink.id}-${size.id}${flavor ? `-${flavor.id}` : ''}`,
+      kind: 'drink',
+      id: drink.id,
+      name,
+      icon: drink.icon,
+      tint: flavor?.tint || drink.tint,
+      size: size.id,
+      sizeLabel: size.label,
+      flavor: flavor?.id,
+      basePrice: size.price,
+      extras: [],
+      price: size.price,
+      qty: n,
+    }, `${name} ${size.label}`)
+  }, [pushItem])
 
   const removeItem = (key) => setItems(prev => prev.filter(i => i.key !== key))
 
@@ -171,9 +211,15 @@ export function CartProvider({ children }) {
   const sendToWhatsApp = () => {
     if (!items.length) return
     // Registrar el pedido para las estadísticas del panel (no bloquea)
-    recordOrder({ items, total: totalPrice, zone })
+    recordOrder({ items, total: totalPrice, subtotal, discount, zone, promo: ACTIVE_PROMO?.title })
+    // Una línea por ítem. Si lleva extras, van abajo para que se lean bien en la cocina.
     const lines = items
-      .map(i => `• ${i.qty}x ${i.name} (${i.sizeLabel}) — ${formatPrice(i.price * i.qty)}`)
+      .map(i => {
+        const nombre = i.kind === 'drink' ? `${i.name} ${i.sizeLabel}` : `${i.name} (${i.sizeLabel})`
+        const base = `• ${i.qty}x ${nombre} — ${formatPrice(i.price * i.qty)}`
+        if (!i.extras?.length) return base
+        return `${base}\n   ↳ Extras${i.qty > 1 ? ' (en cada una)' : ''}: ${extrasLabel(i.extras)}`
+      })
       .join('\n')
     const promoLine = discount > 0 && ACTIVE_PROMO
       ? `\nSubtotal: ${formatPrice(subtotal)}\nDescuento ${ACTIVE_PROMO.title} (${ACTIVE_PROMO.short}): -${formatPrice(discount)}`
@@ -201,7 +247,7 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider value={{
-      items, addItem, removeItem, updateQty,
+      items, addItem, addDrink, removeItem, updateQty,
       totalItems, subtotal, discount, shipping, totalPrice,
       zone, setZone,
       isOpen, setIsOpen, clear, sendToWhatsApp, toast,

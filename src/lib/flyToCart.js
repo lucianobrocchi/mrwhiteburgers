@@ -146,6 +146,7 @@ export function flyToCart(sourceEl, onLand) {
   const flyer = source.cloneNode(true)
   flyer.removeAttribute('loading')
   flyer.setAttribute('aria-hidden', 'true')
+  const esFoto = source.tagName === 'IMG'
   Object.assign(flyer.style, {
     position: 'fixed',
     left: from.left + 'px',
@@ -160,9 +161,11 @@ export function flyToCart(sourceEl, onLand) {
     zIndex: '9999',          // por encima del nav sticky
     pointerEvents: 'none',
     willChange: 'transform, opacity',
-    // Recorte redondo con borde difuminado: se va el fondo negro de la foto
-    WebkitMaskImage: CUTOUT_MASK,
-    maskImage: CUTOUT_MASK,
+    // Foto: recorte redondo con borde difuminado (se va el fondo negro).
+    // Ícono de bebida: ya es una burbuja redonda, se deja tal cual.
+    ...(esFoto
+      ? { WebkitMaskImage: CUTOUT_MASK, maskImage: CUTOUT_MASK }
+      : { borderRadius: '9999px' }),
   })
   document.body.appendChild(flyer)
 
