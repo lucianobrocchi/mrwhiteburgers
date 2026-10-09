@@ -28,9 +28,9 @@ export const OTHER = {
 const TABLA = [
   { n: 1, price: 2000,  color: '#4ADE80', hasta: '1,5 km' },
   { n: 2, price: 4000,  color: '#F0C832', hasta: '3 km' },
-  { n: 3, price: 6000,  color: '#FB923C', hasta: '4,5 km' },
-  { n: 4, price: 8000,  color: '#F87171', hasta: '6 km' },
-  { n: 5, price: 10000, color: '#C084FC', hasta: '8 km' },
+  { n: 3, price: 5000,  color: '#FB923C', hasta: '4,5 km' },
+  { n: 4, price: 6000,  color: '#F87171', hasta: '6 km' },
+  { n: 5, price: 7500,  color: '#C084FC', hasta: '8 km' },
 ]
 
 export const ZONES = TABLA.map((t) => ({
