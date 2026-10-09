@@ -34,10 +34,17 @@ export function scheduleSummary() {
     if (last && last.key === key) last.days.push(d)
     else out.push({ key, days: [d], turns: SCHEDULE[d] })
   }
+  // La semana arranca en domingo, pero "miércoles a lunes" es un solo tramo que
+  // da la vuelta: si el primero y el último grupo son iguales, los unimos.
+  if (out.length > 2 && out[0].key === out[out.length - 1].key) {
+    const ultimo = out.pop()
+    out[0] = { ...out[0], days: [...ultimo.days, ...out[0].days] }
+  }
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
   return out.map((g) => {
     const first = DAY_NAMES[g.days[0]]
     const lastD = DAY_NAMES[g.days[g.days.length - 1]]
-    const label = g.days.length === 1 ? first : `${first} a ${lastD}`
+    const label = cap(g.days.length === 1 ? first : `${first} a ${lastD}`)
     const hours = g.turns.length
       ? g.turns.map((t) => `${t.from} a ${t.to}`).join(' y ')
       : 'cerrado'

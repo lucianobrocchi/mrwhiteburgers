@@ -608,7 +608,7 @@ export default function Admin() {
         {tab === 'envios' && (
           <Seccion
             titulo="Zonas de envío"
-            nota="Cambiá el precio de cada zona. Para sumar zonas nuevas hay que dibujarlas en el mapa: pedilo y se agregan."
+            nota="Cada zona llega hasta cierta distancia del local. Cambiá el precio de cada una; para mover los límites o sumar calles se vuelve a armar el mapa."
           >
             {ZONES.map((z) => (
               <div key={z.id} className="flex items-center gap-3 mb-3">
@@ -616,6 +616,9 @@ export default function Admin() {
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm uppercase truncate" style={anton}>{z.name}</p>
                   <p className="text-white/40 text-xs">{z.bounds}</p>
+                  {z.calles.length > 0 && (
+                    <p className="text-white/25 text-[10px] leading-snug mt-0.5">{z.calles.join('  ·  ')}</p>
+                  )}
                 </div>
                 <input
                   type="number"

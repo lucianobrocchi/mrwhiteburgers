@@ -2,8 +2,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ShoppingBag } from 'lucide-react'
 import { useCart, formatPrice } from '../context/CartContext'
 
-const ease = [0.16, 1, 0.3, 1]
-
 export default function CartFab() {
   const { totalItems, totalPrice, isOpen, setIsOpen } = useCart()
 

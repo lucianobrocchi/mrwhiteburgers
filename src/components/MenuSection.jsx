@@ -146,7 +146,7 @@ function ExtrasPicker({ picked, setPicked, cfg }) {
                   >
                     <div className="flex-1 min-w-0" style={{ opacity: sinStock ? 0.45 : 1 }}>
                       <p className="text-white text-[13px] leading-tight" style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
-                        {e.name}
+                        {e.name.replace(/ (?=gr$)/, ' ')}
                       </p>
                       {e.desc && (
                         <p className="text-white/40 text-[11px] mt-0.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>

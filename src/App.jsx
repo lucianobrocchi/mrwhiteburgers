@@ -26,7 +26,7 @@ function AddedToast() {
       {toast && (
         <motion.div
           key={toast.id}
-          className="fixed bottom-6 left-1/2 z-[60] flex items-center gap-3 bg-[#111] px-5 py-4 cursor-pointer"
+          className="fixed bottom-[88px] md:bottom-6 left-1/2 z-[60] flex items-center gap-3 w-max max-w-[calc(100vw-2rem)] bg-[#111] px-4 md:px-5 py-3.5 md:py-4 cursor-pointer"
           style={{ border: '1px solid rgba(240,200,50,0.35)', translateX: '-50%' }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

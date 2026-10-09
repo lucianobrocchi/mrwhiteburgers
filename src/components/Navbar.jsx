@@ -76,6 +76,13 @@ export default function Navbar() {
             >
               Bebidas
             </a>
+            <a
+              href="#horarios"
+              className="hidden lg:inline-block relative px-5 py-2.5 rounded-full text-sm tracking-widest uppercase text-white/80 hover:text-white transition-colors duration-300 hover:bg-white/5"
+              style={{ fontFamily: 'DM Sans, sans-serif' }}
+            >
+              Horarios
+            </a>
 
             <motion.a
               href="#menu"
@@ -204,6 +211,14 @@ export default function Navbar() {
                 style={{ fontFamily: 'Anton, sans-serif' }}
               >
                 Bebidas
+              </a>
+              <a
+                href="#horarios"
+                onClick={() => setMobileOpen(false)}
+                className="text-white text-2xl tracking-widest uppercase"
+                style={{ fontFamily: 'Anton, sans-serif' }}
+              >
+                Horarios
               </a>
               <a
                 href="#menu"

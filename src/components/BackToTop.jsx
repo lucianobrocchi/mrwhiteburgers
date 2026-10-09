@@ -6,8 +6,15 @@ export default function BackToTop() {
   const [show, setShow] = useState(false)
   const { scrollY } = useScroll()
 
+  // Aparece cuando se sube (y no cuando se baja): así no se queda tapando los
+  // botones de las tarjetas mientras se recorre el menú.
   useEffect(() => {
-    return scrollY.on('change', (v) => setShow(v > 700))
+    return scrollY.on('change', (v) => {
+      const antes = scrollY.getPrevious() ?? v
+      if (v <= 700) setShow(false)
+      else if (v < antes - 2) setShow(true)
+      else if (v > antes + 2) setShow(false)
+    })
   }, [scrollY])
 
   const toTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })

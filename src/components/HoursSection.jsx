@@ -77,7 +77,7 @@ export default function HoursSection() {
           {horarios.map((h) => (
             <div key={h.label} className="flex items-baseline justify-between py-1">
               <span
-                className="text-white/60 text-sm capitalize"
+                className="text-white/60 text-sm"
                 style={{ fontFamily: 'DM Sans, sans-serif' }}
               >
                 {h.label}
@@ -146,8 +146,8 @@ export default function HoursSection() {
                   className="text-white/55 text-sm flex items-center gap-2"
                   style={{ fontFamily: 'DM Sans, sans-serif' }}
                 >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: z.color }} />
-                  {z.bounds}
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: z.color }} />
+                  {z.name} · {z.bounds}
                 </span>
                 <span
                   className="text-white/85 text-sm"
@@ -161,7 +161,7 @@ export default function HoursSection() {
               className="text-white/35 text-[11px] mt-2.5"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
-              Elegís tu zona al hacer el pedido, en el carrito.
+              En el carrito ponés tu esquina (por ejemplo 12 y 60) y te decimos tu zona.
             </p>
           </div>
         </div>

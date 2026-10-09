@@ -1,15 +1,37 @@
 import { useRef, useEffect, useState } from 'react'
-import { Check, Package, Map as MapIcon, ChevronDown } from 'lucide-react'
+import { Check, Package, Map as MapIcon, ChevronDown, MapPin } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useCart } from '../context/CartContext'
-import { ZONES, PICKUP, OTHER, LOCAL, formatZonePrice, zonePrice } from '../lib/zones'
+import { ZONES, PICKUP, OTHER, LOCAL, formatZonePrice, zonePrice, zonaDeCalles } from '../lib/zones'
 import { useConfig, todayOverride } from '../lib/config'
 
-// Mapa chico con las zonas dibujadas con su forma real. Se monta solo cuando
-// se abre (dentro del carrito), por eso el invalidateSize: si Leaflet arranca
-// con el contenedor en 0px, dibuja los tiles cortados.
-function ZoneMap({ selected, onSelect }) {
+// Mapas base. Los tiles de CARTO (el que usábamos) ahora piden API key y
+// devuelven un cartel "API KEY REQUIRED" en cada cuadro, así que usamos los de
+// OpenStreetMap (sin clave), oscurecidos por CSS para que combinen con el sitio.
+// Si por algún motivo fallan, se pasa solo al de Esri.
+const BASES = [
+  {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap',
+    maxZoom: 19,
+    className: 'mw-tiles-dark',
+  },
+  {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Esri',
+    maxZoom: 19,
+    maxNativeZoom: 18,
+    className: 'mw-tiles-dark',
+  },
+]
+
+// Mapa con las zonas dibujadas con su forma real (rectángulos de la grilla de
+// calles, coloreados según la zona). Se monta solo cuando se abre (dentro del
+// carrito), con el cajón todavía deslizándose: el contenedor puede medir 0px al
+// arrancar. Por eso se vuelve a encuadrar cada vez que cambia de tamaño, hasta
+// que la persona toca el mapa.
+function ZoneMap({ selected, onSelect, precios }) {
   const boxRef = useRef(null)
   const mapRef = useRef(null)
   const layersRef = useRef({})
@@ -17,29 +39,53 @@ function ZoneMap({ selected, onSelect }) {
   useEffect(() => {
     if (!boxRef.current || mapRef.current) return
 
+    const tactil = L.Browser.mobile
     const map = L.map(boxRef.current, {
       zoomControl: false,
       scrollWheelZoom: false,
-      attributionControl: false,
+      // En el celu un dedo tiene que seguir moviendo el carrito, no el mapa:
+      // recién se puede arrastrar cuando ya se hizo zoom (ver más abajo).
+      dragging: !tactil,
+      attributionControl: true,
     })
     mapRef.current = map
+    map.attributionControl.setPrefix(false)
+    L.control.zoom({ position: 'topright', zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar' }).addTo(map)
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-    }).addTo(map)
+    // Mapa base con respaldo: si fallan muchos cuadros, cambia al siguiente
+    let base = 0
+    let errores = 0
+    let capa = null
+    const ponerBase = () => {
+      if (capa) map.removeLayer(capa)
+      errores = 0
+      capa = L.tileLayer(BASES[base].url, BASES[base]).addTo(map)
+      capa.on('tileerror', () => {
+        errores += 1
+        if (errores === 4 && base < BASES.length - 1) {
+          base += 1
+          ponerBase()
+        }
+      })
+    }
+    ponerBase()
 
+    // Un rectángulo por sector; los de una misma zona comparten color
     const all = []
     ZONES.forEach((z) => {
-      const poly = L.polygon(z.polygon, {
-        color: z.color,
-        weight: 2,
-        fillColor: z.color,
-        fillOpacity: 0.15,
-      }).addTo(map)
-      poly.on('click', () => onSelect(z.id))
-      poly.bindTooltip(`${z.name} — ${formatZonePrice(z)}`, { sticky: true })
-      layersRef.current[z.id] = poly
-      all.push(poly)
+      layersRef.current[z.id] = z.sectores.map((s) => {
+        const poly = L.polygon(s.polygon, {
+          color: z.color,
+          weight: 1,
+          opacity: 0.6,
+          fillColor: z.color,
+          fillOpacity: 0.2,
+        }).addTo(map)
+        poly.on('click', () => onSelect(z.id))
+        poly.bindTooltip(z.name, { sticky: true, className: 'mw-zone-label' })
+        all.push(poly)
+        return poly
+      })
     })
 
     L.marker([LOCAL.lat, LOCAL.lng], {
@@ -51,12 +97,39 @@ function ZoneMap({ selected, onSelect }) {
         iconSize: [14, 14],
         iconAnchor: [7, 7],
       }),
-    }).addTo(map)
+      keyboard: false,
+      zIndexOffset: 1000,
+    })
+      .bindTooltip('Mr. White · 27 esq. 80', { direction: 'top', offset: [0, -8] })
+      .addTo(map)
 
-    map.fitBounds(L.featureGroup(all).getBounds(), { padding: [12, 12] })
-    setTimeout(() => map.invalidateSize(), 120)
+    // Encuadre: todas las zonas, y se repite mientras el mapa cambie de tamaño
+    const limites = L.featureGroup(all).getBounds()
+    let tocado = false
+    let porCodigo = false
+    let zoomBase = null
+    const encuadrar = () => {
+      map.invalidateSize()
+      if (tocado) return
+      porCodigo = true
+      map.fitBounds(limites, { padding: [8, 8], animate: false })
+      zoomBase = map.getZoom()
+      porCodigo = false
+    }
+    encuadrar()
+    map.on('dragstart zoomstart', () => { if (!porCodigo) tocado = true })
+    // En pantallas táctiles el arrastre con un dedo se habilita al acercar
+    if (tactil) {
+      map.on('zoomend', () => {
+        if (zoomBase != null && map.getZoom() > zoomBase) map.dragging.enable()
+        else map.dragging.disable()
+      })
+    }
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(encuadrar) : null
+    ro?.observe(boxRef.current)
 
     return () => {
+      ro?.disconnect()
       map.remove()
       mapRef.current = null
       layersRef.current = {}
@@ -64,18 +137,123 @@ function ZoneMap({ selected, onSelect }) {
   }, [onSelect])
 
   useEffect(() => {
-    Object.entries(layersRef.current).forEach(([id, layer]) => {
+    Object.entries(layersRef.current).forEach(([id, polys]) => {
       const on = id === selected
-      layer.setStyle({ fillOpacity: on ? 0.45 : 0.15, weight: on ? 4 : 2 })
+      polys.forEach((p) => {
+        p.setStyle({ fillOpacity: on ? 0.55 : 0.2, weight: on ? 2.5 : 1, opacity: on ? 1 : 0.6 })
+        if (on) p.bringToFront()
+      })
     })
   }, [selected])
 
   return (
+    <div className="relative">
+      <div
+        ref={boxRef}
+        className="w-full rounded-xl overflow-hidden"
+        style={{ height: 240, border: '1px solid rgba(255,255,255,0.1)', backgroundColor: '#111' }}
+      />
+      {/* Referencia de colores → precio */}
+      <div
+        className="absolute left-2 top-2 z-[500] flex flex-wrap gap-x-2.5 gap-y-1 max-w-[70%] px-2 py-1.5 rounded-lg pointer-events-none"
+        style={{ backgroundColor: 'rgba(0,0,0,0.72)', border: '1px solid rgba(255,255,255,0.1)' }}
+      >
+        {precios.map((z) => (
+          <span
+            key={z.id}
+            className="flex items-center gap-1 text-[10px] text-white/80"
+            style={{ fontFamily: 'DM Sans, sans-serif' }}
+          >
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: z.color }} />
+            {formatZonePrice(z)}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// "¿En qué zona estoy?": se escriben las dos calles de la esquina (12 y 60) y
+// se elige sola la zona que corresponde.
+function BuscaZona({ zona, setZone, cfg }) {
+  const [x, setX] = useState('')
+  const [y, setY] = useState('')
+
+  const nx = Number(x)
+  const ny = Number(y)
+  const completo = x !== '' && y !== ''
+  const r = completo ? zonaDeCalles(nx, ny) : null
+  const zonaR = r?.zona ? { ...r.zona, price: zonePrice(r.zona, cfg) } : null
+
+  const cambiar = (set) => (e) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 3)
+    set(v)
+    // Si con este valor la esquina ya está completa, se elige la zona
+    const otro = set === setX ? y : x
+    if (v !== '' && otro !== '') {
+      const res = set === setX ? zonaDeCalles(Number(v), Number(otro)) : zonaDeCalles(Number(otro), Number(v))
+      if (res.zona) setZone(res.zona.id)
+      else if (res.fuera) setZone(OTHER.id) // fuera de las zonas: el envío se coordina
+    }
+  }
+
+  const campo =
+    'w-full min-w-0 text-center text-white text-base rounded-lg py-2 outline-none placeholder:text-white/25 focus:border-[#F0C832]/60'
+
+  return (
     <div
-      ref={boxRef}
-      className="w-full rounded-xl overflow-hidden"
-      style={{ height: 180, border: '1px solid rgba(255,255,255,0.1)', backgroundColor: '#111' }}
-    />
+      className="rounded-xl px-3 py-3"
+      style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+    >
+      <p className="flex items-center gap-1.5 text-white text-[13px] uppercase" style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '0.02em' }}>
+        <MapPin size={13} className="text-[#F0C832]" />
+        ¿En qué zona estás?
+      </p>
+      <p className="text-white/40 text-[11px] mt-0.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+        Poné las dos calles de tu esquina, por ejemplo 12 y 60.
+      </p>
+      <div className="flex items-center gap-2 mt-2.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+        <input
+          value={x}
+          onChange={cambiar(setX)}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          placeholder="Calle"
+          aria-label="Primera calle de tu esquina"
+          className={campo}
+          style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)' }}
+        />
+        <span className="text-white/45 text-sm">y</span>
+        <input
+          value={y}
+          onChange={cambiar(setY)}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          placeholder="Calle"
+          aria-label="Segunda calle de tu esquina"
+          className={campo}
+          style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)' }}
+        />
+      </div>
+
+      {completo && (
+        <p
+          className="text-[12px] mt-2.5 leading-snug"
+          style={{ fontFamily: 'DM Sans, sans-serif', color: zonaR ? zonaR.color : 'rgba(255,255,255,0.55)' }}
+          role="status"
+        >
+          {zonaR && (
+            <>
+              <strong className="font-semibold">Estás en {zonaR.name}</strong> · {formatZonePrice(zonaR)} de envío
+              {zona?.id === zonaR.id ? ' ✓' : ''}
+            </>
+          )}
+          {r?.fuera && 'Esa esquina queda fuera de nuestras zonas: el envío lo coordinamos por WhatsApp.'}
+          {r?.error === 'misma' && 'Poné una calle de cada numeración, por ejemplo 12 y 60.'}
+          {r?.error === 'numero' && 'No reconozco esas calles. Probá con otra esquina o elegí la zona en la lista.'}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -86,9 +264,8 @@ export default function ZonePicker() {
   // "Hoy sin envíos" desde el panel: queda solo el retiro en el local
   const sinEnvios = !!todayOverride(cfg)?.deliveryOff
   // Mostramos el precio que realmente se cobra (el del panel si fue cambiado)
-  const opciones = sinEnvios
-    ? [PICKUP]
-    : [PICKUP, ...ZONES.map((z) => ({ ...z, price: zonePrice(z, cfg) })), OTHER]
+  const zonasConPrecio = ZONES.map((z) => ({ ...z, price: zonePrice(z, cfg) }))
+  const opciones = sinEnvios ? [PICKUP] : [PICKUP, ...zonasConPrecio, OTHER]
 
   // Si se apagó el delivery con una zona ya elegida, la sacamos
   useEffect(() => {
@@ -133,7 +310,9 @@ export default function ZonePicker() {
         </p>
       )}
 
-      {showMap && !sinEnvios && <ZoneMap selected={zone?.id} onSelect={setZone} />}
+      {showMap && !sinEnvios && <ZoneMap selected={zone?.id} onSelect={setZone} precios={zonasConPrecio} />}
+
+      {!sinEnvios && <BuscaZona zona={zone} setZone={setZone} cfg={cfg} />}
 
       {opciones.map((z) => {
         const on = zone?.id === z.id

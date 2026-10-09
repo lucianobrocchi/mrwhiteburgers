@@ -1,3 +1,4 @@
+/* global process */
 // Función de Vercel: /api/panel
 //
 // Corre en el mismo dominio del sitio, así que ningún bloqueador de anuncios la
