@@ -11,6 +11,11 @@ import AdminPromos from './AdminPromos'
 import { validatePromo, validatePromoList, cheapPromoError } from '../lib/promos'
 import { leerPrecio, textoDePrecio } from '../lib/precio'
 
+// La pestaña "Números" (estadísticas de pedidos) queda apagada: es parte de la
+// versión paga. Los pedidos se siguen guardando igual en segundo plano, así que
+// al prenderla (true) ya hay historial. Apagada, el panel ni siquiera los pide.
+const MOSTRAR_NUMEROS = false
+
 const inputCls =
   'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors scroll-mb-28'
 const labelCls = 'text-[10px] tracking-[0.16em] uppercase text-white/40'
@@ -379,7 +384,7 @@ export default function Admin() {
         setPromosBase(claveDePromos(inicial.promos))
         panel.history().then((h) => vivo && setHistorial(h)).catch(() => {})
         panel.dondeGuarda().then((b) => vivo && setBackend(b))
-        traerStats()
+        if (MOSTRAR_NUMEROS) traerStats()
       } catch (e) {
         if (vivo) setEstado(e.message)
       }
@@ -447,7 +452,7 @@ export default function Admin() {
   }
 
   const alInstante = backend != null // hay un servidor guardando: los cambios son inmediatos
-  const TABS = [['hoy', 'Hoy'], ['promos', 'Promos'], ['menu', 'Menú'], ['envios', 'Envíos'], ['stats', 'Números']]
+  const TABS = [['hoy', 'Hoy'], ['promos', 'Promos'], ['menu', 'Menú'], ['envios', 'Envíos'], ...(MOSTRAR_NUMEROS ? [['stats', 'Números']] : [])]
 
   return (
     <div className="min-h-screen bg-black px-4 md:px-8 py-6" style={font}>
@@ -737,7 +742,7 @@ export default function Admin() {
         )}
 
         {/* ─── NÚMEROS ─────────────────────────────────────────── */}
-        {tab === 'stats' && (
+        {MOSTRAR_NUMEROS && tab === 'stats' && (
           <AdminStats
             stats={stats}
             registroActivo={alInstante}
