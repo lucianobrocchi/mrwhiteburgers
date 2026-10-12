@@ -24,6 +24,13 @@ export const DEFAULT_CONFIG = {
   ticker: '',    // texto del cartel de arriba (vacío = el de siempre)
   stock: {},     // { 'extra:bacon': true, 'flavor:sprite': true, 'drink:coca:lata': true } = sin stock
   prices: {},    // { 'extra:bacon': 900, 'drink:coca:lata': 2800 } = precio pisado
+  // Promos que se arman desde el panel (pestaña "Promos"). Sin promos = sin promo.
+  // Cada una guarda solo campos estructurados (el texto que ve el cliente se arma
+  // solo, ver src/lib/promos.js):
+  //   { id, enabled, title?, kind: 'simplesBundle', bundlePrice, date | weekdays }
+  //   { id, enabled, title?, kind: 'itemPrice', itemName, itemSize, specialPrice, date | weekdays }
+  // `date` = 'AAAA-MM-DD' (vale solo ese día); `weekdays` = [0-6] (0 = domingo, se repite cada semana).
+  promos: [],
 }
 
 let cache = DEFAULT_CONFIG

@@ -209,3 +209,115 @@ test('guardar dos veces seguidas en la misma sesión funciona (el panel usa la v
   assert.equal(tres.code, 200)
   assert.equal((await llamar(h, { action: 'get-config', key: CLAVE })).body.config.v, 3)
 })
+
+// ─── Promos en la config ─────────────────────────────────────────────────
+const promoBundle = (extra = {}) => ({ id: 'p1', enabled: true, kind: 'simplesBundle', bundlePrice: 15000, date: '2026-10-11', ...extra })
+const promoItem = (extra = {}) => ({ id: 'p2', enabled: true, kind: 'itemPrice', itemName: 'CURRI WHITE', itemSize: 'triple', specialPrice: 15000, weekdays: [5, 6], ...extra })
+// guarda sobre la versión que hay (como hace el panel: lee y manda el sha)
+const guardarConfig = async (h, config) => {
+  const g = (await llamar(h, { action: 'get-config', key: CLAVE })).body
+  return llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config, sha: g.sha } })
+}
+
+test('las promos se guardan, se leen y el sitio público las ve', async () => {
+  const { h } = nuevo()
+  const r = await guardarConfig(h, { stock: { 'extra:bacon': true }, promos: [promoBundle(), promoItem({ title: ' Finde  curri ' })] })
+  assert.equal(r.code, 200)
+  const pub = (await llamar(h, { action: 'public-config' })).body
+  assert.equal(pub.promos.length, 2)
+  assert.deepEqual(pub.promos[0], promoBundle())
+  assert.equal(pub.promos[1].title, 'Finde curri') // texto limpio
+  assert.deepEqual(pub.stock, { 'extra:bacon': true }) // lo demás de la config queda igual
+  assert.deepEqual((await llamar(h, { action: 'get-config', key: CLAVE })).body.config.promos, pub.promos)
+})
+
+test('promos: se descartan los campos que no corresponden y los días quedan ordenados', async () => {
+  const { h } = nuevo()
+  const r = await guardarConfig(h, {
+    promos: [{ ...promoBundle(), date: undefined, weekdays: [6, 1, 6], itemName: 'OBRERA', specialPrice: 1, hack: '<script>', mode: 'weekly' }],
+  })
+  assert.equal(r.code, 200)
+  const [p] = (await llamar(h, { action: 'public-config' })).body.promos
+  assert.deepEqual(p, { id: 'p1', enabled: true, kind: 'simplesBundle', bundlePrice: 15000, weekdays: [1, 6] })
+})
+
+test('una config sin promos se guarda igual que antes (no inventa el campo)', async () => {
+  const { h } = nuevo()
+  assert.equal((await guardarConfig(h, { stock: {}, ticker: 'hola' })).code, 200)
+  const pub = (await llamar(h, { action: 'public-config' })).body
+  assert.equal('promos' in pub, false)
+  assert.equal(pub.ticker, 'hola')
+  // y las promos vacías o null se guardan como lista vacía
+  assert.equal((await guardarConfig(h, { promos: [] })).code, 200)
+  assert.deepEqual((await llamar(h, { action: 'public-config' })).body.promos, [])
+  assert.equal((await guardarConfig(h, { promos: null })).code, 200)
+  assert.deepEqual((await llamar(h, { action: 'public-config' })).body.promos, [])
+})
+
+test('promos inválidas: se rechazan con un error claro y no se guarda nada', async () => {
+  const { h } = nuevo()
+  assert.equal((await guardarConfig(h, { ticker: 'antes', promos: [promoBundle()] })).code, 200)
+
+  const malas = [
+    [promoBundle({ bundlePrice: 0 }), /precio/i],
+    [promoBundle({ bundlePrice: -5 }), /precio/i],
+    [promoBundle({ bundlePrice: 12.5 }), /precio/i],
+    [promoBundle({ bundlePrice: '15000' }), /precio/i],
+    [promoBundle({ kind: 'otra' }), /tipo/i],
+    [promoItem({ itemSize: 'gigante' }), /tamaño/i],
+    [promoItem({ itemName: '' }), /burger/i],
+    [promoBundle({ date: '2026-02-30' }), /fecha/i],
+    [promoBundle({ date: undefined }), /cuándo/i],
+    [promoBundle({ weekdays: [1] }), /no los dos/i], // fecha Y días
+    [promoItem({ weekdays: [9] }), /días/i],
+    [promoBundle({ id: '' }), /identificador/i],
+    [promoBundle({ title: 'x'.repeat(41) }), /título/i],
+    ['texto', /vac/i],
+    [null, /vac/i],
+  ]
+  for (const [promo, patron] of malas) {
+    const r = await guardarConfig(h, { ticker: 'despues', promos: [promoItem({ id: 'ok' }), promo] })
+    assert.equal(r.code, 400, JSON.stringify(promo))
+    assert.match(r.body.error, /^Promo 2/, 'dice cuál promo es')
+    assert.match(r.body.error, patron, JSON.stringify(promo))
+  }
+  // lo guardado antes sigue intacto
+  const g = (await llamar(h, { action: 'get-config', key: CLAVE })).body.config
+  assert.equal(g.ticker, 'antes')
+  assert.equal(g.promos.length, 1)
+})
+
+test('promos: tipo equivocado, tope de 30 e identificadores repetidos', async () => {
+  const { h } = nuevo()
+  for (const promos of ['texto', 5, {}, true]) {
+    const r = await guardarConfig(h, { promos })
+    assert.equal(r.code, 400, JSON.stringify(promos))
+    assert.match(r.body.error, /lista/)
+  }
+  const una = (i) => promoBundle({ id: `p${i}` })
+  assert.equal((await guardarConfig(h, { promos: Array.from({ length: 30 }, (_, i) => una(i)) })).code, 200)
+  const muchas = await guardarConfig(h, { promos: Array.from({ length: 31 }, (_, i) => una(i)) })
+  assert.equal(muchas.code, 400)
+  assert.match(muchas.body.error, /demasiadas/)
+  const repetidas = await guardarConfig(h, { promos: [una(1), una(1)] })
+  assert.equal(repetidas.code, 400)
+  assert.match(repetidas.body.error, /repetida/)
+})
+
+test('promos: sigue el control de versiones (409 si otro guardó en el medio)', async () => {
+  const { h } = nuevo()
+  await guardarConfig(h, { promos: [promoBundle()] })
+  const a = (await llamar(h, { action: 'get-config', key: CLAVE })).body
+  const b = (await llamar(h, { action: 'get-config', key: CLAVE })).body
+  const ok = await llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config: { promos: [promoBundle({ bundlePrice: 14000 })] }, sha: a.sha } })
+  assert.equal(ok.code, 200)
+  const choque = await llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config: { promos: [promoBundle({ bundlePrice: 13000 })] }, sha: b.sha } })
+  assert.equal(choque.code, 409)
+  assert.equal((await llamar(h, { action: 'get-config', key: CLAVE })).body.config.promos[0].bundlePrice, 14000)
+})
+
+test('promos: sin clave no se pueden guardar', async () => {
+  const { h } = nuevo()
+  const r = await llamar(h, { action: 'save-config', method: 'POST', body: { config: { promos: [promoBundle()] } } })
+  assert.equal(r.code, 401)
+})

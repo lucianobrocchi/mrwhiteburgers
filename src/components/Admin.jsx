@@ -7,6 +7,8 @@ import { ZONES, formatZonePrice } from '../lib/zones'
 import { SIZES } from '../context/CartContext'
 import { EXTRAS, DRINKS, extraKey, drinkKey, flavorKey } from '../lib/catalog'
 import AdminStats from './AdminStats'
+import AdminPromos from './AdminPromos'
+import { validatePromo, validatePromoList } from '../lib/promos'
 
 const inputCls =
   'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors'
@@ -257,7 +259,13 @@ const normalizar = (c) => ({
   zones: { ...(c?.zones || {}) },
   stock: { ...(c?.stock || {}) },
   prices: { ...(c?.prices || {}) },
+  promos: Array.isArray(c?.promos) ? [...c.promos] : [],
 })
+
+// Las promos como las va a guardar el servidor (limpias): sirve para saber si hay
+// cambios que todavía no están en el sitio
+const claveDePromos = (lista) =>
+  JSON.stringify((lista || []).map((p) => { const r = validatePromo(p); return r.ok ? r.promo : p }))
 
 const PASOS_BLOB = (
   <ol className="list-decimal ml-5 space-y-1.5 text-white/65 text-xs leading-relaxed" style={font}>
@@ -277,6 +285,8 @@ export default function Admin() {
   const [stats, setStats] = useState(null)
   const [backend, setBackend] = useState(null) // nombre del almacén si guarda el servidor (al instante); null = modo token
   const [recargando, setRecargando] = useState(false)
+  const [promosBase, setPromosBase] = useState('[]')      // las promos como están guardadas
+  const [verErroresPromos, setVerErroresPromos] = useState(false) // marcar en rojo lo que falta
 
   const traerStats = useCallback(async () => {
     try { setStats(await panel.readStats()) } catch { /* se queda con lo que tenía */ }
@@ -299,7 +309,9 @@ export default function Admin() {
         const { sha: version, content } = await panel.readConfig()
         if (!vivo) return
         setSha(version)
-        setCfg(normalizar(content))
+        const inicial = normalizar(content)
+        setCfg(inicial)
+        setPromosBase(claveDePromos(inicial.promos))
         panel.history().then((h) => vivo && setHistorial(h)).catch(() => {})
         panel.dondeGuarda().then((b) => vivo && setBackend(b))
         traerStats()
@@ -339,12 +351,22 @@ export default function Admin() {
     })
 
   const guardar = async (mensaje) => {
+    // Una promo descuenta plata en el carrito: no se guarda ninguna incompleta
+    const promos = validatePromoList(cfg.promos)
+    if (!promos.ok) {
+      setTab('promos')
+      setVerErroresPromos(true)
+      setEstado(`${promos.error} Completá lo que está marcado en rojo para poder guardar.`)
+      return
+    }
     setEstado('guardando')
     try {
-      const nuevo = { ...cfg, updatedAt: new Date().toISOString() }
+      const nuevo = { ...cfg, promos: promos.promos, updatedAt: new Date().toISOString() }
       const nuevoSha = await panel.saveConfig(nuevo, sha, mensaje)
       setSha(nuevoSha)
       setCfg(nuevo)
+      setPromosBase(claveDePromos(nuevo.promos))
+      setVerErroresPromos(false)
       setEstado('ok')
       setTimeout(() => setEstado(''), 3500)
       panel.history().then(setHistorial).catch(() => {})
@@ -354,7 +376,7 @@ export default function Admin() {
   }
 
   const alInstante = backend != null // hay un servidor guardando: los cambios son inmediatos
-  const TABS = [['hoy', 'Hoy'], ['menu', 'Menú'], ['envios', 'Envíos'], ['stats', 'Números']]
+  const TABS = [['hoy', 'Hoy'], ['promos', 'Promos'], ['menu', 'Menú'], ['envios', 'Envíos'], ['stats', 'Números']]
 
   return (
     <div className="min-h-screen bg-black px-4 md:px-8 py-6" style={font}>
@@ -391,7 +413,7 @@ export default function Admin() {
             <button
               key={k}
               onClick={() => setTab(k)}
-              className="px-4 py-2 rounded-full text-sm tracking-widest uppercase"
+              className="px-4 py-2 min-h-[44px] rounded-full text-sm tracking-widest uppercase"
               style={{
                 ...anton,
                 backgroundColor: tab === k ? '#F0C832' : 'transparent',
@@ -532,6 +554,22 @@ export default function Admin() {
               />
             </Seccion>
           </>
+        )}
+
+        {/* ─── PROMOS ──────────────────────────────────────────── */}
+        {tab === 'promos' && (
+          <AdminPromos
+            promos={cfg.promos}
+            onChange={(promos) => {
+              set({ promos })
+              // un error viejo de "promo incompleta" ya no vale una vez que se edita
+              setEstado((e) => (e && !['ok', 'guardando'].includes(e) ? '' : e))
+            }}
+            cfg={cfg}
+            hoy={hoyStr()}
+            sinGuardar={claveDePromos(cfg.promos) !== promosBase}
+            verErrores={verErroresPromos}
+          />
         )}
 
         {/* ─── MENÚ ────────────────────────────────────────────── */}
@@ -681,7 +719,10 @@ export default function Admin() {
               )}
             </button>
             {estado && !['ok', 'guardando'].includes(estado) && (
-              <p className="text-red-300 text-sm mt-3 flex items-start gap-2">
+              <p
+                className="text-red-300 text-sm mt-3 flex items-start gap-2 rounded-xl px-3 py-2"
+                style={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(248,113,113,0.3)' }}
+              >
                 <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {estado}
               </p>
             )}

@@ -2,7 +2,9 @@ import { useRef, useState } from 'react'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import { Plus, Minus, UtensilsCrossed, ShoppingBag, ChevronDown } from 'lucide-react'
 import { fadeUp } from '../styles/tokens'
-import { useCart, formatPrice, SIZES, ACTIVE_PROMO, PROMO_ACTIVE, itemPromoPrice } from '../context/CartContext'
+import { useCart, formatPrice, SIZES } from '../context/CartContext'
+import { usePromos } from '../lib/usePromos'
+import { itemPromoPrice } from '../lib/promos'
 import { trackBurgerClick } from '../lib/track'
 import { flyToCart, popCartBadge } from '../lib/flyToCart'
 import { useConfig } from '../lib/config'
@@ -211,15 +213,16 @@ function ExtrasPicker({ picked, setPicked, cfg }) {
 
 function CartControls({ burger, size, onAdded, imgRef, extras, extrasUnit }) {
   const { addItem, totalItems } = useCart()
+  const { active: promo } = usePromos()
   const [qty, setQty] = useState(1)
   const price = burger.prices[size]
   // Un burger con extras = precio base + extras. La promo se calcula sobre el
   // base (los extras se pagan completos), por eso el descuento no los toca.
   const subtotal = qty * (price + extrasUnit)
   // Preview del descuento "2 simples x $15.000" (solo aplica a simples)
-  const isBundle = ACTIVE_PROMO?.kind === 'simplesBundle' && size === 'simple'
+  const isBundle = promo?.kind === 'simplesBundle' && size === 'simple'
   const pairs = Math.floor(qty / 2)
-  const discount = isBundle ? pairs * Math.max(0, price * 2 - ACTIVE_PROMO.bundlePrice) : 0
+  const discount = isBundle ? pairs * Math.max(0, price * 2 - promo.bundlePrice) : 0
   const total = subtotal - discount
 
   const handleAdd = () => {
@@ -300,7 +303,7 @@ function CartControls({ burger, size, onAdded, imgRef, extras, extrasUnit }) {
       </div>
 
       {/* Discount preview when qty>=2 (solo con promo activa y con descuento real) */}
-      {PROMO_ACTIVE && qty >= 2 && discount > 0 && (
+      {promo && qty >= 2 && discount > 0 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -314,7 +317,7 @@ function CartControls({ burger, size, onAdded, imgRef, extras, extrasUnit }) {
             className="text-[10px] tracking-[0.18em] uppercase text-[#F0C832]"
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
-            ★ 2 simples x $15.000
+            ★ {promo.short}
           </span>
           <span
             className="text-[#F0C832] text-sm"
@@ -342,9 +345,10 @@ function BurgerCard({ burger, index }) {
   const extras = resolveExtras(picked, cfg)
   const extrasUnit = extrasTotal(extras)
   const price = burger.prices[size]
-  const promoPrice = itemPromoPrice(burger.name, size, price)  // precio especial del tamaño elegido (o null)
-  const itemPromo = ACTIVE_PROMO?.kind === 'itemPrice' && ACTIVE_PROMO.itemName === burger.name
-    ? ACTIVE_PROMO : null  // esta burger tiene promo puntual hoy
+  const { active: promo } = usePromos()
+  const promoPrice = itemPromoPrice(promo, burger.name, size, price)  // precio especial del tamaño elegido (o null)
+  const itemPromo = promo?.kind === 'itemPrice' && promo.itemName === burger.name
+    ? promo : null  // esta burger tiene promo puntual hoy
 
   const handleAdded = () => {
     setPicked({})   // como en un pedido real: el siguiente arranca sin extras

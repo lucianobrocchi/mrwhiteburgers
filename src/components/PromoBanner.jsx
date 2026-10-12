@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Sparkles, Bike, Package } from 'lucide-react'
-import { ACTIVE_PROMO, PREVIEW_PROMO, WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from '../context/CartContext'
+import { WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from '../context/CartContext'
+import { usePromos } from '../lib/usePromos'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -13,14 +14,13 @@ function WhatsAppIcon() {
   )
 }
 
-export default function PromoBanner() {
+// La promo llega con la config del panel (después del primer render), así que el
+// banner se monta recién cuando hay promo: useInView tiene que nacer junto con la
+// <section>, por eso vive en este componente y no en el de afuera.
+function Banner({ promo, isLive }) {
   const ref    = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
 
-  const promo = ACTIVE_PROMO || PREVIEW_PROMO
-  if (!promo) return null
-
-  const isLive = !!ACTIVE_PROMO
   const waMsg = encodeURIComponent(
     `Hola! Quiero aprovechar la ${promo.title} (${promo.short}).`
   )
@@ -163,4 +163,11 @@ export default function PromoBanner() {
       </div>
     </section>
   )
+}
+
+export default function PromoBanner() {
+  const { active, preview } = usePromos()
+  const promo = active || preview
+  if (!promo) return null
+  return <Banner promo={promo} isLive={!!active} />
 }

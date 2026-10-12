@@ -9,10 +9,11 @@
 //   store.listPaths(prefix)            → [path]
 //
 // Archivos que guarda:
-//   config.json          lo que se edita desde el panel (stock, precios, avisos)
+//   config.json          lo que se edita desde el panel (stock, precios, avisos, promos)
 //   stats/AAAA-MM.json   los pedidos de cada mes (se lee/escribe uno por pedido)
 
 import { randomUUID, createHash, timingSafeEqual } from 'node:crypto'
+import { validatePromoList } from '../src/lib/promos.js'
 
 export const TZ = 'America/Argentina/Buenos_Aires'
 const PATH_CONFIG = 'config.json'
@@ -221,9 +222,17 @@ export function createPanel({ store, env = {} }) {
           return json(400, { error: 'config inválida' })
         }
         if (JSON.stringify(config).length > 200_000) return json(400, { error: 'config demasiado grande' })
+        // Las promos descuentan plata en el carrito: se validan y se limpian acá
+        // (con la misma función que usa el sitio). Lo demás de la config no se toca.
+        let aGuardar = config
+        if ('promos' in config) {
+          const p = validatePromoList(config.promos)
+          if (!p.ok) return json(400, { error: p.error })
+          aGuardar = { ...config, promos: p.promos }
+        }
         let nuevoSha = null
         try {
-          nuevoSha = await store.putJson(PATH_CONFIG, config, body.sha ?? null)
+          nuevoSha = await store.putJson(PATH_CONFIG, aGuardar, body.sha ?? null)
         } catch (e) {
           if (e?.code === 'PRECONDITION') {
             return json(409, { error: 'Alguien más guardó cambios hace un momento. Recargá el panel y volvé a intentar.' })
