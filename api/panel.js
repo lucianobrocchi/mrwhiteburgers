@@ -3,7 +3,7 @@
 //
 // Corre en el mismo dominio del sitio, así que ningún bloqueador de anuncios la
 // corta (a diferencia de llamar a api.github.com desde el navegador). Hace dos
-// cosas: guarda lo que se edita en el panel (stock, precios, avisos) y registra
+// cosas: guarda lo que se edita en el panel (stock, precios, avisos, promos) y registra
 // los pedidos para las estadísticas.
 //
 // Para activarla en Vercel:

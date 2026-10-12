@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Minus, ShoppingBag, Trash2, Clock, CupSoda, GlassWater, Droplets } from 'lucide-react'
-import { useCart, formatPrice, ACTIVE_PROMO } from '../context/CartContext'
+import { useCart, formatPrice } from '../context/CartContext'
+import { usePromos } from '../lib/usePromos'
 import { DRINKS, drinkPrice, sizeOut, flavorOut } from '../lib/catalog'
 import { formatZonePrice } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
@@ -40,6 +41,7 @@ const ease = [0.16, 1, 0.3, 1]
 export default function CartDrawer() {
   const { items, addDrink, zone, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, sendToWhatsApp, clear } = useCart()
   const cfg = useConfig()
+  const { active: promo } = usePromos()
   const status = getStatus(new Date(), todayOverride(cfg))
   const hayBurgers = items.some((i) => (i.kind ?? 'burger') === 'burger')
   const hayBebida = items.some((i) => i.kind === 'drink')
@@ -392,7 +394,7 @@ export default function CartDrawer() {
                         className="text-[#F0C832] text-[10px] tracking-[0.15em] uppercase"
                         style={{ fontFamily: 'DM Sans, sans-serif' }}
                       >
-                        ★ {ACTIVE_PROMO?.short || 'Descuento'}
+                        ★ {promo?.short || 'Descuento'}
                       </span>
                       <span
                         className="text-[#F0C832] text-base"

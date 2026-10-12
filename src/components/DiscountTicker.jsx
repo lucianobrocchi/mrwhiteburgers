@@ -1,18 +1,19 @@
-import { ACTIVE_PROMO, PREVIEW_PROMO } from '../context/CartContext'
 import { useConfig } from '../lib/config'
+import { usePromos } from '../lib/usePromos'
 
 const BRAND = '★  SMASH BURGERS PREMIUM  ·  PAN DE PAPA ARTESANAL  ·  CARNE FRESCA TODOS LOS DÍAS'
 
 export default function DiscountTicker() {
   const cfg = useConfig()
+  const { active, preview } = usePromos()
   // Un texto cargado en el panel manda sobre todo lo demás
   const propio = (cfg?.ticker || '').trim()
   const message = propio
     ? `★  ${propio.toUpperCase()}`
-    : ACTIVE_PROMO
-      ? `★  SOLO HOY  ·  ${ACTIVE_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
-      : PREVIEW_PROMO
-        ? `★  MAÑANA  ·  ${PREVIEW_PROMO.ticker}  ·  PEDÍ POR WHATSAPP`
+    : active
+      ? `★  SOLO HOY  ·  ${active.ticker}  ·  PEDÍ POR WHATSAPP`
+      : preview
+        ? `★  MAÑANA  ·  ${preview.ticker}  ·  PEDÍ POR WHATSAPP`
         : BRAND
 
   return (
