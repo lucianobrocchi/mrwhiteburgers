@@ -8,10 +8,11 @@ import { SIZES } from '../context/CartContext'
 import { EXTRAS, DRINKS, extraKey, drinkKey, flavorKey } from '../lib/catalog'
 import AdminStats from './AdminStats'
 import AdminPromos from './AdminPromos'
-import { validatePromo, validatePromoList } from '../lib/promos'
+import { validatePromo, validatePromoList, cheapPromoError } from '../lib/promos'
+import { leerPrecio, textoDePrecio } from '../lib/precio'
 
 const inputCls =
-  'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors'
+  'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors scroll-mb-28'
 const labelCls = 'text-[10px] tracking-[0.16em] uppercase text-white/40'
 const font = { fontFamily: 'DM Sans, sans-serif' }
 const anton = { fontFamily: 'Anton, sans-serif' }
@@ -233,19 +234,83 @@ function Interruptor({ nombre, detalle, sinStock, onToggle }) {
   )
 }
 
+// Input de precio: texto con teclado numérico que entiende "13.500" como 13500 (un
+// <input type="number"> lo lee como 13,5 y el sitio mostraría $14). `onChange` recibe
+// el número, o null si está vacío o no se entiende; `onMalo(true)` avisa que lo
+// escrito no se entiende (el aviso lo muestra quien lo usa, al salir del campo).
+function InputPrecio({ valor, placeholder, onChange, onMalo, className = '' }) {
+  const [texto, setTexto] = useState(textoDePrecio(valor))
+  const [editando, setEditando] = useState(false)
+  const malo = texto.trim() !== '' && Number.isNaN(leerPrecio(texto))
+  useEffect(() => { onMalo?.(malo && !editando) }, [malo, editando, onMalo])
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      className={`${inputCls} ${className}`}
+      style={malo && !editando ? { borderColor: 'rgba(248,113,113,0.7)' } : undefined}
+      placeholder={placeholder}
+      value={texto}
+      onChange={(e) => {
+        setTexto(e.target.value)
+        const n = leerPrecio(e.target.value)
+        onChange(Number.isFinite(n) ? n : null)
+      }}
+      onFocus={() => setEditando(true)}
+      onBlur={() => {
+        setEditando(false)
+        const n = leerPrecio(texto)
+        if (Number.isFinite(n)) setTexto(textoDePrecio(n))
+      }}
+    />
+  )
+}
+
+const avisoPrecioMalo = (
+  <p className="text-red-300 text-xs flex items-start gap-1.5 mb-2" style={font} role="alert">
+    <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+    No se entiende ese precio: escribí sólo números, sin centavos (por ejemplo 13500). Mientras tanto se usa el de la carta.
+  </p>
+)
+
 // Campo de precio: vacío = usa el precio de la carta (el que está en el código)
 function EntradaPrecio({ etiqueta, defecto, valor, onChange }) {
+  const [malo, setMalo] = useState(false)
   return (
-    <div className="grid grid-cols-[1fr_120px] gap-3 items-center mb-2">
-      <span className="text-white/70 text-sm min-w-0 truncate" style={font}>{etiqueta}</span>
-      <input
-        type="number"
-        inputMode="numeric"
-        className={inputCls}
-        placeholder={String(defecto)}
-        value={valor ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-      />
+    <>
+      <div className="grid grid-cols-[1fr_120px] gap-3 items-center mb-2">
+        <span className="text-white/70 text-sm min-w-0 truncate" style={font}>{etiqueta}</span>
+        <InputPrecio valor={valor} placeholder={textoDePrecio(defecto)} onChange={onChange} onMalo={setMalo} />
+      </div>
+      {malo && avisoPrecioMalo}
+    </>
+  )
+}
+
+// Precio de una zona de envío (vacío = el de siempre)
+function FilaZona({ z, valor, onChange }) {
+  const [malo, setMalo] = useState(false)
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-3">
+        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: z.color }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-sm uppercase truncate" style={anton}>{z.name}</p>
+          <p className="text-white/40 text-xs">{z.bounds}</p>
+          {z.calles.length > 0 && (
+            <p className="text-white/25 text-[10px] leading-snug mt-0.5">{z.calles.join('  ·  ')}</p>
+          )}
+        </div>
+        <InputPrecio
+          className="w-32 shrink-0"
+          valor={valor}
+          placeholder={textoDePrecio(z.price)}
+          onChange={(n) => onChange(n ?? undefined)}
+          onMalo={setMalo}
+        />
+      </div>
+      {malo && <div className="mt-2">{avisoPrecioMalo}</div>}
     </div>
   )
 }
@@ -351,12 +416,18 @@ export default function Admin() {
     })
 
   const guardar = async (mensaje) => {
-    // Una promo descuenta plata en el carrito: no se guarda ninguna incompleta
+    // Una promo descuenta plata en el carrito: no se guarda ninguna incompleta ni
+    // con un precio que parece un error de tipeo ("15" en vez de "15.000")
     const promos = validatePromoList(cfg.promos)
-    if (!promos.ok) {
+    const problema = promos.ok ? cheapPromoError(promos.promos) : promos.error
+    if (problema) {
       setTab('promos')
       setVerErroresPromos(true)
-      setEstado(`${promos.error} Completá lo que está marcado en rojo para poder guardar.`)
+      setEstado(`${problema} Corregí lo que está marcado en rojo para poder guardar.`)
+      // lleva la pantalla al primer campo con problema (esperando a que se dibuje la pestaña)
+      setTimeout(() => {
+        document.querySelector('[id^="promo-"] [role="alert"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }, 80)
       return
     }
     setEstado('guardando')
@@ -396,10 +467,10 @@ export default function Admin() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/" className="text-sm text-white/55 hover:text-white">Ver sitio →</a>
+            <a href="/" className="inline-flex items-center min-h-[44px] text-sm text-white/55 hover:text-white">Ver sitio →</a>
             <button
               onClick={() => { panel.salir(); setLogueado(false) }}
-              className="px-4 py-2 rounded-full text-sm uppercase tracking-wide text-white/65 hover:text-white"
+              className="px-4 py-2 min-h-[44px] rounded-full text-sm uppercase tracking-wide text-white/65 hover:text-white"
               style={{ border: '1px solid rgba(255,255,255,0.15)' }}
             >
               Salir
@@ -545,7 +616,10 @@ export default function Admin() {
               )}
             </Seccion>
 
-            <Seccion titulo="Cartel de arriba" nota="El texto que corre en la barra roja. Vacío = el de siempre.">
+            <Seccion
+              titulo="Cartel de arriba"
+              nota="El texto que corre en la barra roja. Vacío = el de siempre, o el de la promo del día si hay una (pestaña Promos). Si escribís algo acá, ese texto tapa el anuncio de la promo."
+            >
               <input
                 value={cfg.ticker || ''}
                 onChange={(e) => set({ ticker: e.target.value })}
@@ -649,31 +723,12 @@ export default function Admin() {
             nota="Cada zona llega hasta cierta distancia del local. Cambiá el precio de cada una; para mover los límites o sumar calles se vuelve a armar el mapa."
           >
             {ZONES.map((z) => (
-              <div key={z.id} className="flex items-center gap-3 mb-3">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: z.color }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm uppercase truncate" style={anton}>{z.name}</p>
-                  <p className="text-white/40 text-xs">{z.bounds}</p>
-                  {z.calles.length > 0 && (
-                    <p className="text-white/25 text-[10px] leading-snug mt-0.5">{z.calles.join('  ·  ')}</p>
-                  )}
-                </div>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className={inputCls + ' w-32 shrink-0'}
-                  placeholder={String(z.price)}
-                  value={cfg.zones?.[z.id]?.price ?? ''}
-                  onChange={(e) =>
-                    set({
-                      zones: {
-                        ...cfg.zones,
-                        [z.id]: { price: e.target.value ? Number(e.target.value) : undefined },
-                      },
-                    })
-                  }
-                />
-              </div>
+              <FilaZona
+                key={z.id}
+                z={z}
+                valor={cfg.zones?.[z.id]?.price}
+                onChange={(price) => set({ zones: { ...cfg.zones, [z.id]: { price } } })}
+              />
             ))}
             <p className="text-white/35 text-[11px] mt-3">
               Precio actual en el sitio: {ZONES.map((z) => `${z.name} ${formatZonePrice(z)}`).join(' · ')}
@@ -719,12 +774,25 @@ export default function Admin() {
               )}
             </button>
             {estado && !['ok', 'guardando'].includes(estado) && (
-              <p
-                className="text-red-300 text-sm mt-3 flex items-start gap-2 rounded-xl px-3 py-2"
+              <div
+                className="mt-3 rounded-xl px-3 py-2"
                 style={{ backgroundColor: 'rgba(0,0,0,0.9)', border: '1px solid rgba(248,113,113,0.3)' }}
               >
-                <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {estado}
-              </p>
+                <p className="text-red-300 text-sm flex items-start gap-2" role="alert">
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {estado}
+                </p>
+                {/* Si otra persona guardó antes, lo único que sirve es volver a cargar el panel */}
+                {estado.includes('Recargá el panel') && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="mt-2 w-full min-h-[44px] rounded-full text-xs uppercase tracking-widest text-white"
+                    style={{ ...anton, border: '1px solid rgba(255,255,255,0.25)' }}
+                  >
+                    Recargar el panel
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
