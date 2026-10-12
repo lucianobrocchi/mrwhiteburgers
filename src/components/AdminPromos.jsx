@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Trash2, ExternalLink, AlertTriangle, Tag, Info } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, AlertTriangle, Tag, Info, ArrowUp } from 'lucide-react'
 import { SIZES } from '../context/CartContext'
 import { BURGERS } from '../lib/menu'
 import { SCHEDULE } from '../lib/schedule'
@@ -256,7 +256,7 @@ function Etiqueta({ tono, children }) {
 }
 
 // ─── Una promo ───────────────────────────────────────────────────────────
-function Promo({ promo: p, indice, lista, cfg, hoy, sinGuardar, verErrores, onChange, onDelete }) {
+function Promo({ clave, promo: p, indice, lista, cfg, hoy, sinGuardar, verErrores, onChange, onDelete, onUp }) {
   const [borrando, setBorrando] = useState(false)
   const v = validatePromo(p)
   const errores = v.ok ? {} : v.errors
@@ -294,7 +294,7 @@ function Promo({ promo: p, indice, lista, cfg, hoy, sinGuardar, verErrores, onCh
       const otra = validatePromo(lista[j])
       if (otra.ok && lista[j].enabled && seSuperponen(v.promo, otra.promo, hoy)) {
         const t = otra.promo.title ? ` “${otra.promo.title}”` : ''
-        avisos.push(`Coincide con la promo ${j + 1}${t}: los días que se pisan sólo corre la ${j + 1}, que va primero en la lista.`)
+        avisos.push(`Coincide con la promo ${j + 1}${t}: los días que se pisan sólo corre la ${j + 1}, que va primero en la lista. Si querés que corra esta, tocá la flecha ↑ de arriba a la derecha.`)
         break
       }
     }
@@ -326,6 +326,7 @@ function Promo({ promo: p, indice, lista, cfg, hoy, sinGuardar, verErrores, onCh
   return (
     <div
       id={`promo-${p.id}`}
+      data-promo-key={clave}
       className="rounded-2xl p-4 sm:p-5 mb-4 scroll-mt-4"
       style={{
         backgroundColor: '#111',
@@ -346,6 +347,18 @@ function Promo({ promo: p, indice, lista, cfg, hoy, sinGuardar, verErrores, onCh
           {v.ok && <p className="text-white/60 text-xs mt-0.5" style={font}>{cuando(v.promo, hoy)}</p>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {onUp && (
+            <button
+              type="button"
+              onClick={onUp}
+              aria-label={`Subir la promo ${indice + 1}: pasa a correr antes que la ${indice}`}
+              title="Subir en la lista (corre antes si dos promos coinciden)"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-white/65 hover:text-white"
+              style={{ border: '1px solid rgba(255,255,255,0.14)' }}
+            >
+              <ArrowUp size={16} />
+            </button>
+          )}
           <span className="text-white/60 text-xs hidden sm:inline" style={font}>{p.enabled ? 'Activa' : 'Apagada'}</span>
           <Switch
             on={!!p.enabled}
@@ -611,6 +624,14 @@ export default function AdminPromos({ promos, onChange, cfg, hoy, sinGuardar, ve
   // La promo nueva queda abajo de todo: después de agregarla se lleva la pantalla
   // hasta ella (en el celu, si no, parece que el botón no hizo nada)
   const irA = useRef(null)
+  // Subir una promo: pasa a correr antes que la de arriba (si coinciden, gana la primera)
+  const subir = (i) => {
+    if (i < 1) return
+    const nueva = [...lista]
+    ;[nueva[i - 1], nueva[i]] = [nueva[i], nueva[i - 1]]
+    irA.current = claves[i]
+    onChange(nueva)
+  }
   const agregar = () => {
     const nueva = nuevaPromo(lista, hoy)
     irA.current = nueva.id
@@ -618,10 +639,10 @@ export default function AdminPromos({ promos, onChange, cfg, hoy, sinGuardar, ve
   }
   useEffect(() => {
     if (!irA.current) return
-    const el = document.getElementById(`promo-${irA.current}`)
+    const el = document.querySelector(`[data-promo-key="${CSS.escape(irA.current)}"]`)
     irA.current = null
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [lista.length])
+  }, [promos])
 
   return (
     <>
@@ -675,6 +696,7 @@ export default function AdminPromos({ promos, onChange, cfg, hoy, sinGuardar, ve
       {lista.map((p, i) => (
         <Promo
           key={claves[i]}
+          clave={claves[i]}
           promo={p && typeof p === 'object' ? p : {}}
           indice={i}
           lista={lista}
@@ -684,6 +706,7 @@ export default function AdminPromos({ promos, onChange, cfg, hoy, sinGuardar, ve
           verErrores={verErrores}
           onChange={(patch) => cambiar(i, patch)}
           onDelete={() => borrar(i)}
+          onUp={i > 0 ? () => subir(i) : null}
         />
       ))}
 
