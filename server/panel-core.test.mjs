@@ -321,3 +321,54 @@ test('promos: sin clave no se pueden guardar', async () => {
   const r = await llamar(h, { action: 'save-config', method: 'POST', body: { config: { promos: [promoBundle()] } } })
   assert.equal(r.code, 401)
 })
+
+test('promos: un precio que parece error de tipeo ($15 en vez de $15.000) no se guarda', async () => {
+  const { h } = nuevo()
+  assert.equal((await guardarConfig(h, { ticker: 'antes', promos: [promoBundle()] })).code, 200)
+  for (const precio of [1, 15, 150, 999]) {
+    const b = await guardarConfig(h, { ticker: 'despues', promos: [promoBundle({ bundlePrice: precio })] })
+    assert.equal(b.code, 400, `bundle ${precio}`)
+    assert.match(b.body.error, /^Promo 1: \$\d+ es demasiado poco/)
+    assert.match(b.body.error, /ceros/)
+    const i = await guardarConfig(h, { promos: [promoBundle(), promoItem({ specialPrice: precio })] })
+    assert.equal(i.code, 400, `item ${precio}`)
+    assert.match(i.body.error, /^Promo 2:/)
+  }
+  // lo guardado antes sigue intacto
+  const g = (await llamar(h, { action: 'get-config', key: CLAVE })).body.config
+  assert.equal(g.ticker, 'antes')
+  // el piso es $1.000: ahí ya se guarda
+  assert.equal((await guardarConfig(h, { promos: [promoBundle({ bundlePrice: 1000 })] })).code, 200)
+})
+
+test('promos: payloads raros (__proto__, listas gigantes, config enorme) no rompen ni contaminan', async () => {
+  const { h } = nuevo()
+  const rara = JSON.parse('{"__proto__":{"polluted":true},"promos":[{"id":"a","enabled":true,"kind":"simplesBundle","bundlePrice":15000,"date":"2026-10-12","__proto__":{"x":1},"constructor":{"prototype":{"y":1}}}]}')
+  assert.equal((await guardarConfig(h, rara)).code, 200)
+  assert.equal({}.polluted, undefined)
+  const [p] = (await llamar(h, { action: 'public-config' })).body.promos
+  assert.deepEqual(Object.keys(p).sort(), ['bundlePrice', 'date', 'enabled', 'id', 'kind'])
+  // weekdays de 30.000 elementos: se limpia a los 7 días posibles
+  const dias = await guardarConfig(h, { promos: [promoBundle({ date: undefined, weekdays: Array.from({ length: 30000 }, (_, i) => i % 7) })] })
+  assert.equal(dias.code, 200)
+  assert.deepEqual((await llamar(h, { action: 'public-config' })).body.promos[0].weekdays, [0, 1, 2, 3, 4, 5, 6])
+  // más de 30 promos o una config enorme: 400 sin tocar lo guardado
+  assert.equal((await guardarConfig(h, { promos: Array.from({ length: 5000 }, (_, i) => promoBundle({ id: `p${i}` })) })).code, 400)
+  assert.equal((await guardarConfig(h, { ticker: 'x'.repeat(250000), promos: [promoBundle()] })).code, 400)
+  assert.equal((await llamar(h, { action: 'public-config' })).body.promos[0].weekdays.length, 7)
+})
+
+test('promos: 12 guardados a la vez con la misma versión → uno gana y los demás reciben 409', async () => {
+  const store = memoryStore({ latencia: 10 })
+  const h = createPanel({ store, env: { PANEL_PASSWORD: CLAVE } })
+  await guardarConfig(h, { promos: [promoBundle()] })
+  const g = (await llamar(h, { action: 'get-config', key: CLAVE })).body
+  const rs = await Promise.all(Array.from({ length: 12 }, (_, i) =>
+    llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config: { promos: [promoBundle({ bundlePrice: 14000 + i * 100 })] }, sha: g.sha } })))
+  const codigos = rs.map((r) => r.code).sort()
+  assert.equal(codigos.filter((c) => c === 200).length, 1)
+  assert.equal(codigos.filter((c) => c === 409).length, 11)
+  const fin = (await llamar(h, { action: 'get-config', key: CLAVE })).body.config
+  assert.equal(fin.promos.length, 1)
+  assert.ok(Number.isInteger(fin.promos[0].bundlePrice) && fin.promos[0].bundlePrice >= 14000)
+})

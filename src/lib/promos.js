@@ -56,7 +56,10 @@ export function addDays(s, n) {
   const p = parseDate(s)
   if (!p) return null
   const t = new Date(Date.UTC(p.y, p.m - 1, p.d + n))
-  return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`
+  const out = `${String(t.getUTCFullYear()).padStart(4, '0')}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`
+  // Fuera de lo que sabemos leer (9999-12-31 + 1 día = año 10000, o antes del año 100)
+  // devuelve null en vez de un texto que después nadie puede interpretar.
+  return parseDate(out) ? out : null
 }
 
 // La fecha de HOY en el reloj de quien mira (el cliente está en La Plata)
@@ -170,6 +173,35 @@ export function validatePromoList(list) {
   return { ok: true, promos }
 }
 
+// ─── Freno contra precios de promo absurdos ──────────────────────────────
+// Una burger sale más de $10.000: una promo a $15 (alguien tipeó "15" en vez de
+// "15.000") regalaría la comida. El panel avisa antes de guardar; esto es el freno
+// de atrás: el servidor no guarda una promo así y el sitio no la aplica aunque
+// llegue por otro camino (un config.json editado a mano).
+export const MIN_PROMO_PRICE = 1000
+
+// Precio que la promo le pone a las burgers (el del par de simples o el especial)
+export const promoPrice = (p) => (p?.kind === 'simplesBundle' ? p.bundlePrice : p?.specialPrice)
+
+export const isCheapPromo = (p) => {
+  const v = promoPrice(p)
+  return typeof v === 'number' && Number.isFinite(v) && v < MIN_PROMO_PRICE
+}
+
+// Para la lista ya validada: el primer problema (con el número de promo) o null
+export function cheapPromoError(promos) {
+  const lista = Array.isArray(promos) ? promos : []
+  for (let i = 0; i < lista.length; i++) {
+    if (isCheapPromo(lista[i])) {
+      return (
+        `Promo ${i + 1}: ${money(promoPrice(lista[i]))} es demasiado poco para una promo de burgers ` +
+        `(¿le faltan ceros?). Escribilo completo, por ejemplo 15000.`
+      )
+    }
+  }
+  return null
+}
+
 // ─── Textos derivados ────────────────────────────────────────────────────
 // dateLabel es "HOY" si la promo corre hoy, o el día de la semana si es mañana.
 // Sin contexto (ctx.dateLabel) sale del día puntual, si lo tiene.
@@ -217,10 +249,11 @@ export function normalizePromo(raw, ctx = {}) {
 export function describeWhen(p, hoy) {
   if (!p) return ''
   if (p.date && isDateStr(p.date)) {
-    if (hoy && p.date === hoy) return 'Hoy'
-    if (hoy && p.date === addDays(hoy, 1)) return 'Mañana'
+    const hayHoy = isDateStr(hoy) // sin un "hoy" válido se dice la fecha a secas
+    if (hayHoy && p.date === hoy) return 'Hoy'
+    if (hayHoy && p.date === addDays(hoy, 1)) return 'Mañana'
     const [y, m, d] = p.date.split('-')
-    const anio = hoy && hoy.slice(0, 4) !== y ? `/${y}` : ''
+    const anio = hayHoy && hoy.slice(0, 4) !== y ? `/${y}` : ''
     return `${cap(DAY_SHORT[weekdayOf(p.date)])} ${d}/${m}${anio}`
   }
   const dias = Array.isArray(p.weekdays) ? WEEK_ORDER.filter((d) => p.weekdays.includes(d)) : []
@@ -257,16 +290,22 @@ export function nextDateOf(p, hoy) {
 // De la lista guardada en la config, la promo de HOY y la de MAÑANA (para el aviso
 // "mañana: …"). Es la primera habilitada de la lista que vale ese día. Con basura
 // o sin promos devuelve { active: null, preview: null }; nunca tira.
-export function promosActivas(promos, hoyStr) {
+// `burgerNames` (opcional): los nombres de la carta; una promo de una burger que no
+// está ahí se ignora.
+export function promosActivas(promos, hoyStr, { burgerNames } = {}) {
   const nada = { active: null, preview: null }
   if (!Array.isArray(promos) || !isDateStr(hoyStr)) return nada
+  // Mañana puede no existir (9999-12-31): entonces solo se mira la promo de hoy
   const manana = addDays(hoyStr, 1)
-  const etiquetaManana = DAY_NAMES[weekdayOf(manana)].toUpperCase()
+  const etiquetaManana = manana ? DAY_NAMES[weekdayOf(manana)].toUpperCase() : ''
   let active = null
   let preview = null
   for (const raw of promos.slice(0, MAX_PROMOS)) {
     const r = validatePromo(raw)
-    if (!r.ok || !r.promo.enabled) continue
+    if (!r.ok || !r.promo.enabled || isCheapPromo(r.promo)) continue
+    // Una burger que no está en la carta (se renombró o se borró) no se puede vender
+    // a precio especial: mejor no anunciar nada que anunciar algo que no existe.
+    if (r.promo.kind === 'itemPrice' && Array.isArray(burgerNames) && !burgerNames.includes(r.promo.itemName)) continue
     if (!active && promoAppliesOn(r.promo, hoyStr)) active = normalizePromo(r.promo, { dateLabel: 'HOY' })
     if (!preview && promoAppliesOn(r.promo, manana)) preview = normalizePromo(r.promo, { dateLabel: etiquetaManana })
     if (active && preview) break
@@ -292,28 +331,55 @@ export function itemPromoPrice(promo, name, size, price) {
   return null
 }
 
-// Descuento total del carrito. Nunca es negativo.
+// Un precio de carta sano: número finito y no negativo. Si algo llega roto (un precio
+// con texto, NaN…) esa línea simplemente no entra en la promo; nunca se inventa un
+// descuento con basura.
+const esPrecio = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0
+const cantidadDe = (it) => {
+  const n = Math.floor(Number(it.qty))
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+// Descuento total del carrito. Siempre un número finito entre 0 y lo que suman las
+// burgers a su precio base (los extras y las bebidas nunca se descuentan).
 export function calcPromoDiscount(items, promo) {
-  if (!promo) return 0
-  const burgers = (items || []).filter(esBurger)
+  if (!promo || !Array.isArray(items)) return 0
+  const burgers = items.filter((it) => it && esBurger(it))
   let discount = 0
-  if (promo.kind === 'simplesBundle') {
-    // Cada par de simples sale bundlePrice; se emparejan de mayor a menor precio
-    const simples = []
+  if (promo.kind === 'simplesBundle' && esPrecio(promo.bundlePrice)) {
+    // Cada par de simples sale bundlePrice; se emparejan de mayor a menor precio.
+    // Se cuentan por precio (no uno por uno) para que el costo no dependa de la cantidad.
+    const porPrecio = new Map()
     for (const it of burgers) {
-      for (let i = 0; i < it.qty; i++) if (it.size === 'simple') simples.push(precioBase(it))
+      const base = precioBase(it)
+      const n = cantidadDe(it)
+      if (it.size === 'simple' && esPrecio(base) && n > 0) porPrecio.set(base, (porPrecio.get(base) || 0) + n)
     }
-    simples.sort((a, b) => b - a)
-    for (let i = 0; i + 1 < simples.length; i += 2) {
-      discount += Math.max(0, simples[i] + simples[i + 1] - promo.bundlePrice)
+    let pendiente = null // un simple esperando pareja (el último de un precio más caro)
+    for (const [precio, total] of [...porPrecio].sort((a, b) => b[0] - a[0])) {
+      let n = total
+      if (pendiente !== null) {
+        discount += Math.max(0, pendiente + precio - promo.bundlePrice)
+        n -= 1
+        pendiente = null
+      }
+      discount += Math.floor(n / 2) * Math.max(0, precio * 2 - promo.bundlePrice)
+      if (n % 2) pendiente = precio
     }
   } else if (promo.kind === 'itemPrice') {
     // Una burger + tamaño puntual baja a specialPrice
     for (const it of burgers) {
       const base = precioBase(it)
+      const n = cantidadDe(it)
+      if (!esPrecio(base) || !n) continue
       const sp = itemPromoPrice(promo, it.name, it.size, base)
-      if (sp != null) discount += (base - sp) * it.qty
+      if (sp != null && esPrecio(sp)) discount += (base - sp) * n
     }
   }
-  return discount
+  // Tope de seguridad: jamás más que las burgers a precio base
+  const tope = burgers.reduce((s, it) => {
+    const base = precioBase(it)
+    return esPrecio(base) ? s + base * cantidadDe(it) : s
+  }, 0)
+  return Number.isFinite(discount) ? Math.min(Math.max(discount, 0), tope) : 0
 }

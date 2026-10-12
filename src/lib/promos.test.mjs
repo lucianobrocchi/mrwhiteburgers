@@ -503,3 +503,190 @@ test('money: separador de miles igual que el del sitio (es-AR)', () => {
   assert.equal(P.money(1234567), '$1.234.567')
   assert.equal(P.money(15000), '$' + (15000).toLocaleString('es-AR'))
 })
+
+// ─── Revisión adversarial: carritos al azar contra la lógica vieja ───────
+// Mismo carrito, mismas promos: la cuenta nueva (que junta los simples por precio)
+// tiene que dar EXACTAMENTE lo mismo que la vieja (que los apilaba de a uno).
+function azar(semilla) {
+  let s = semilla
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32 }
+  const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1))
+  const pick = (arr) => arr[ri(0, arr.length - 1)]
+  return { rnd, ri, pick }
+}
+
+test('[azar] 5.000 carritos: la cuenta nueva da lo mismo que la vieja, nunca negativa, y no descuenta extras ni bebidas', () => {
+  const { rnd, ri, pick } = azar(20261012)
+  const NOMBRES = ['CURRI WHITE', 'OBRERA', 'LA CHEESE JOA', 'BIG WHITE', 'OKLAHOMA WHITE', 'LA JOA WHITE']
+  const TAMANOS = ['simple', 'doble', 'triple']
+  const PRECIOS = [6000, 9000, 12000, 12500, 13000, 13500, 14000, 15000, 15500, 16000, 16500, 20000]
+  for (let n = 0; n < 5000; n++) {
+    const items = Array.from({ length: ri(0, 8) }, () => {
+      if (rnd() < 0.25) {
+        const precio = pick([2500, 4000, 5000, 6000, 16500])
+        return { kind: 'drink', name: pick([...NOMBRES, 'Coca-Cola']), size: pick([...TAMANOS, 'lata']), qty: ri(1, 5), basePrice: precio, price: precio }
+      }
+      const base = pick(PRECIOS)
+      const extras = rnd() < 0.4 ? pick([800, 1000, 1600, 2400, 3400]) : 0
+      const it = { kind: 'burger', name: pick(NOMBRES), size: pick(TAMANOS), qty: ri(1, 7), basePrice: base, price: base + extras }
+      if (rnd() < 0.05) delete it.kind
+      if (rnd() < 0.05) delete it.basePrice
+      return it
+    })
+    const vieja = rnd() < 0.5
+      ? { kind: 'simplesBundle', bundlePrice: pick([1000, 10000, 15000, 20000, 25000, 27000, 30000]) }
+      : { kind: 'itemPrice', itemName: pick(NOMBRES), itemSize: pick(TAMANOS), specialPrice: pick([1000, 9000, 13500, 15000, 15500, 16500, 17000]) }
+    const nueva = P.normalizePromo({ id: 'x', enabled: true, date: '2026-10-12', ...vieja }, { dateLabel: 'HOY' })
+    const d = P.calcPromoDiscount(items, nueva)
+    assert.equal(d, legacy.calcPromoDiscount(items, vieja), JSON.stringify({ items, vieja }))
+
+    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0)
+    const envio = pick([0, 2000, 4000, 5000, 7500])
+    assert.ok(Number.isInteger(d) && d >= 0, 'descuento entero y no negativo')
+    assert.ok(subtotal - d + envio >= envio, 'el total nunca baja del envío')
+    // el descuento sale solo de las burgers a precio base
+    const burgersBase = items.filter((i) => (i.kind ?? 'burger') === 'burger').reduce((s, i) => s + (i.basePrice ?? i.price) * i.qty, 0)
+    assert.ok(d <= burgersBase, 'no descuenta extras ni bebidas')
+  }
+})
+
+test('descuento: carritos con cantidades enormes o precios rotos no se cuelgan ni inventan descuentos', () => {
+  const bundle = P.normalizePromo({ id: 'b', enabled: true, kind: 'simplesBundle', bundlePrice: 15000, date: '2026-10-12' })
+  const item = P.normalizePromo({ id: 'c', enabled: true, kind: 'itemPrice', itemName: 'X', itemSize: 'simple', specialPrice: 10000, date: '2026-10-12' })
+  // un millón de simples: la cuenta no depende de la cantidad (antes apilaba uno por uno)
+  const t0 = Date.now()
+  assert.equal(P.calcPromoDiscount([burger('X', 'simple', 13500, 1_000_000)], bundle), 500_000 * 12000)
+  assert.equal(P.calcPromoDiscount([burger('X', 'simple', 13500, 1_000_001)], bundle), 500_000 * 12000)
+  assert.ok(Date.now() - t0 < 200, 'rápido')
+  // precios que no son números (texto, NaN, Infinity, negativos, null): esa línea no entra
+  const rotos = ['13500', NaN, Infinity, -Infinity, -13500, null, undefined, {}, [], true]
+  for (const r of rotos) {
+    for (const promo of [bundle, item]) {
+      const items = [{ kind: 'burger', name: 'X', size: 'simple', qty: 2, basePrice: r, price: r }, burger('X', 'simple', 13500, 2)]
+      const d = P.calcPromoDiscount(items, promo)
+      assert.ok(Number.isFinite(d) && d >= 0, `precio ${String(r)} → ${d}`)
+    }
+  }
+  // un precio roto no arruina el descuento de las líneas sanas
+  assert.equal(P.calcPromoDiscount([{ kind: 'burger', name: 'X', size: 'simple', qty: 3, basePrice: NaN, price: NaN }, burger('X', 'simple', 13500, 2)], bundle), 12000)
+  // cantidades raras
+  for (const q of [0, -3, NaN, Infinity, undefined, null, '2', 2.9, {}]) {
+    const d = P.calcPromoDiscount([{ ...burger('X', 'simple', 13500), qty: q }], bundle)
+    assert.ok(Number.isFinite(d) && d >= 0, `cantidad ${String(q)} → ${d}`)
+  }
+  // carrito o promo que no son lo que se espera
+  for (const rara of [null, undefined, 'x', 5, {}, [null], [undefined], [5]]) {
+    assert.equal(P.calcPromoDiscount(rara, bundle), 0, JSON.stringify(rara))
+  }
+  // una promo armada a mano con un precio roto no descuenta
+  for (const mala of [{ kind: 'simplesBundle', bundlePrice: NaN }, { kind: 'simplesBundle', bundlePrice: -1 }, { kind: 'simplesBundle' }, { kind: 'simplesBundle', bundlePrice: '15000' }]) {
+    assert.equal(P.calcPromoDiscount([burger('X', 'simple', 13500, 2)], mala), 0, JSON.stringify(mala))
+  }
+  // promo -1 de especial: tampoco
+  assert.equal(P.calcPromoDiscount([burger('X', 'simple', 13500, 2)], { kind: 'itemPrice', itemName: 'X', itemSize: 'simple', specialPrice: -1 }), 0)
+})
+
+// ─── Fechas en los bordes del calendario ─────────────────────────────────
+test('fechas: el último día que existe no tira (antes: TypeError que dejaba el sitio en blanco con ?promoDate=9999-12-31)', () => {
+  assert.equal(P.addDays('9999-12-31', 1), null)
+  assert.equal(P.addDays('9999-12-30', 1), '9999-12-31')
+  assert.equal(P.addDays('0100-01-01', -1), null) // año 99: ya no es AAAA
+  assert.equal(P.addDays('0100-01-01', 1), '0100-01-02') // el año se rellena con ceros
+  const p = guardada('f', { kind: 'simplesBundle', bundlePrice: 15000, weekdays: [0, 1, 2, 3, 4, 5, 6] })
+  for (const hoy of ['9999-12-31', '0100-01-01', '2026-12-31']) {
+    const r = P.promosActivas([p], hoy)
+    assert.equal(r.active?.id, 'f', `hoy ${hoy}`)
+  }
+  assert.equal(P.promosActivas([p], '9999-12-31').preview, null)
+  assert.equal(P.promosActivas([p], '2026-12-31').preview.id, 'f')
+})
+
+test('describeWhen y nextDateOf aguantan un "hoy" que no es fecha', () => {
+  for (const hoy of [undefined, null, 5, {}, 'hoy', '', '2026-02-30']) {
+    assert.equal(P.describeWhen({ date: '2026-10-16' }, hoy), 'Vie 16/10')
+    assert.equal(P.describeWhen({ weekdays: [5] }, hoy), 'Todos los viernes')
+    assert.equal(P.nextDateOf({ weekdays: [5] }, hoy), null)
+  }
+})
+
+test('semana, mes y año: el día de mañana de cada día de 2026 a 2028 cae bien', () => {
+  // Contra el calendario del propio JS, día por día (cubre cambios de mes, año y bisiesto)
+  for (const anio of [2026, 2027, 2028]) {
+    for (let d = new Date(Date.UTC(anio, 0, 1)); d.getUTCFullYear() === anio; d = new Date(d.getTime() + 86400000)) {
+      const hoy = d.toISOString().slice(0, 10)
+      const manana = new Date(d.getTime() + 86400000).toISOString().slice(0, 10)
+      assert.equal(P.addDays(hoy, 1), manana, hoy)
+      assert.equal(P.weekdayOf(hoy), d.getUTCDay(), hoy)
+      const semanal = guardada('w', { kind: 'simplesBundle', bundlePrice: 15000, weekdays: [new Date(manana + 'T00:00:00Z').getUTCDay()] })
+      assert.equal(P.promosActivas([semanal], hoy).preview?.id, 'w', `mañana de ${hoy}`)
+    }
+  }
+})
+
+test('domingo → lunes: una promo de lunes se anuncia el domingo y corre el lunes', () => {
+  const lunes = guardada('l', { kind: 'simplesBundle', bundlePrice: 15000, weekdays: [1] })
+  assert.equal(P.promosActivas([lunes], '2026-10-11').active, null)
+  assert.equal(P.promosActivas([lunes], '2026-10-11').preview.dateLabel, 'LUNES')
+  assert.equal(P.promosActivas([lunes], '2026-10-12').active.id, 'l')
+  assert.equal(P.promosActivas([lunes], '2026-10-12').preview, null)
+  assert.equal(P.promosActivas([lunes], '2026-10-13').active, null)
+})
+
+test('"hoy" del sitio es la fecha del reloj del dispositivo (documentado): 23:59 y 00:00 son días distintos', () => {
+  // localDateStr usa getFullYear/getMonth/getDate = la zona horaria del dispositivo
+  assert.equal(P.localDateStr(new Date(2026, 9, 11, 23, 59, 59)), '2026-10-11')
+  assert.equal(P.localDateStr(new Date(2026, 9, 12, 0, 0, 0)), '2026-10-12')
+  const promo = guardada('p', { kind: 'simplesBundle', bundlePrice: 15000, date: '2026-10-11' })
+  const antes = P.promosActivas([promo], P.localDateStr(new Date(2026, 9, 11, 23, 59, 59)))
+  const despues = P.promosActivas([promo], P.localDateStr(new Date(2026, 9, 12, 0, 0, 0)))
+  assert.ok(antes.active)
+  assert.equal(despues.active, null)
+})
+
+// ─── Freno contra precios de promo absurdos ──────────────────────────────
+test('una promo con un precio de error de tipeo ($15) no se aplica en el sitio', () => {
+  for (const precio of [1, 15, 150, 999]) {
+    const b = guardada('b', { kind: 'simplesBundle', bundlePrice: precio, date: '2026-10-12' })
+    const i = guardada('i', { kind: 'itemPrice', itemName: 'CURRI WHITE', itemSize: 'triple', specialPrice: precio, date: '2026-10-12' })
+    assert.deepEqual(P.promosActivas([b], '2026-10-12'), { active: null, preview: null }, `bundle ${precio}`)
+    assert.deepEqual(P.promosActivas([i], '2026-10-11'), { active: null, preview: null }, `item ${precio}`)
+    assert.ok(P.isCheapPromo(b) && P.isCheapPromo(i))
+  }
+  // el límite: $1.000 ya vale
+  const b = guardada('b', { kind: 'simplesBundle', bundlePrice: 1000, date: '2026-10-12' })
+  assert.ok(P.promosActivas([b], '2026-10-12').active)
+  assert.equal(P.isCheapPromo(b), false)
+  // y una promo barata no tapa a la siguiente de la lista
+  const sana = guardada('s', { kind: 'simplesBundle', bundlePrice: 15000, date: '2026-10-12' })
+  assert.equal(P.promosActivas([{ ...b, bundlePrice: 15 }, sana], '2026-10-12').active.id, 's')
+})
+
+test('cheapPromoError: dice qué promo es y qué hacer', () => {
+  const ok = guardada('a', { kind: 'simplesBundle', bundlePrice: 15000, date: '2026-10-12' })
+  assert.equal(P.cheapPromoError([ok]), null)
+  assert.equal(P.cheapPromoError([]), null)
+  assert.equal(P.cheapPromoError(undefined), null)
+  const msg = P.cheapPromoError([ok, { ...ok, id: 'b', bundlePrice: 15 }])
+  assert.match(msg, /^Promo 2: \$15 es demasiado poco/)
+  assert.match(msg, /ceros/)
+})
+
+// ─── Burger que no está en la carta ──────────────────────────────────────
+test('una promo de una burger que no existe en la carta no se anuncia ni se aplica', () => {
+  const carta = ['CURRI WHITE', 'OBRERA']
+  const existe = guardada('e', { kind: 'itemPrice', itemName: 'CURRI WHITE', itemSize: 'triple', specialPrice: 15000, date: '2026-10-12' })
+  const fantasma = guardada('f', { kind: 'itemPrice', itemName: 'CURRY WHITE', itemSize: 'triple', specialPrice: 15000, date: '2026-10-12' })
+  assert.equal(P.promosActivas([existe], '2026-10-12', { burgerNames: carta }).active.id, 'e')
+  assert.equal(P.promosActivas([fantasma], '2026-10-12', { burgerNames: carta }).active, null)
+  assert.equal(P.promosActivas([fantasma], '2026-10-11', { burgerNames: carta }).preview, null)
+  // una promo fantasma no tapa a la que sigue
+  assert.equal(P.promosActivas([fantasma, existe], '2026-10-12', { burgerNames: carta }).active.id, 'e')
+  // el bundle no depende de ninguna burger
+  const b = guardada('b', { kind: 'simplesBundle', bundlePrice: 15000, date: '2026-10-12' })
+  assert.equal(P.promosActivas([b], '2026-10-12', { burgerNames: [] }).active.id, 'b')
+  // sin lista de nombres (o con basura) no se filtra nada: no cambia lo que ya andaba
+  for (const sinLista of [undefined, null, 'x', {}]) {
+    assert.equal(P.promosActivas([fantasma], '2026-10-12', { burgerNames: sinLista }).active.id, 'f')
+  }
+  assert.equal(P.promosActivas([fantasma], '2026-10-12').active.id, 'f')
+})

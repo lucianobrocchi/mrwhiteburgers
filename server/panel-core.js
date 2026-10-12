@@ -13,7 +13,7 @@
 //   stats/AAAA-MM.json   los pedidos de cada mes (se lee/escribe uno por pedido)
 
 import { randomUUID, createHash, timingSafeEqual } from 'node:crypto'
-import { validatePromoList } from '../src/lib/promos.js'
+import { validatePromoList, cheapPromoError } from '../src/lib/promos.js'
 
 export const TZ = 'America/Argentina/Buenos_Aires'
 const PATH_CONFIG = 'config.json'
@@ -228,6 +228,9 @@ export function createPanel({ store, env = {} }) {
         if ('promos' in config) {
           const p = validatePromoList(config.promos)
           if (!p.ok) return json(400, { error: p.error })
+          // y un precio de promo que parece un error de tipeo ("15" en vez de "15.000")
+          const barata = cheapPromoError(p.promos)
+          if (barata) return json(400, { error: barata })
           aGuardar = { ...config, promos: p.promos }
         }
         let nuevoSha = null
