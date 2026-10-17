@@ -158,16 +158,18 @@ export default function HeroSection() {
           <StatusChip />
         </div>
 
-        {/* Logo */}
-        <motion.img
-          src={logoFull}
-          alt="Mr. White Burgers"
-          className="w-full max-w-[340px] md:max-w-[440px] h-auto mx-auto md:mx-0 select-none"
-          draggable={false}
-          initial={{ y: 40, opacity: 0, scale: 0.96 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          transition={{ duration: 1, ease, delay: 0.3 }}
-        />
+        {/* Logo: es el título de la página (H1) para Google y lectores de pantalla */}
+        <h1>
+          <motion.img
+            src={logoFull}
+            alt="Mr. White Burgers — Smash burgers en La Plata"
+            className="w-full max-w-[340px] md:max-w-[440px] h-auto mx-auto md:mx-0 select-none"
+            draggable={false}
+            initial={{ y: 40, opacity: 0, scale: 0.96 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{ duration: 1, ease, delay: 0.3 }}
+          />
+        </h1>
 
         {/* Divider */}
         <motion.div

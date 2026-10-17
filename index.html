@@ -6,7 +6,60 @@
     <link rel="apple-touch-icon" href="/favicon-burger.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MR. WHITE BURGERS — Smash Burger Premium</title>
-    <meta name="description" content="MR. WHITE BURGERS — Smash Burger Premium. Sin vueltas. Sin límites." />
+    <meta name="description" content="MR. WHITE BURGERS — Smash Burger Premium en La Plata. Armá tu pedido online y mandalo por WhatsApp: envíos y retiro en 27 esq. 80." />
+    <meta name="theme-color" content="#000000" />
+    <link rel="canonical" href="https://mrwhiteburgers.vercel.app/" />
+
+    <!-- Vista previa al compartir el link (WhatsApp, Instagram, Facebook, X) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:site_name" content="Mr. White Burgers" />
+    <meta property="og:title" content="MR. WHITE BURGERS — Smash Burger Premium" />
+    <meta property="og:description" content="Smash burgers en La Plata. Armá tu pedido y mandalo por WhatsApp." />
+    <meta property="og:url" content="https://mrwhiteburgers.vercel.app/" />
+    <meta property="og:image" content="https://mrwhiteburgers.vercel.app/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Mr. White Burgers: smash burger con cheddar y botón Pedí por WhatsApp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MR. WHITE BURGERS — Smash Burger Premium" />
+    <meta name="twitter:description" content="Smash burgers en La Plata. Armá tu pedido y mandalo por WhatsApp." />
+    <meta name="twitter:image" content="https://mrwhiteburgers.vercel.app/og.jpg" />
+
+    <!-- Datos del local para Google (horarios: los mismos de src/lib/schedule.js) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": "Mr. White Burgers",
+        "url": "https://mrwhiteburgers.vercel.app/",
+        "image": "https://mrwhiteburgers.vercel.app/og.jpg",
+        "logo": "https://mrwhiteburgers.vercel.app/favicon-burger.png",
+        "description": "Smash burgers premium en La Plata. Pedidos online por WhatsApp, envíos y retiro en el local.",
+        "servesCuisine": ["Hamburguesas", "Smash burgers"],
+        "priceRange": "$$",
+        "telephone": "+54 9 221 303-4143",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Calle 27 esq. 80",
+          "addressLocality": "La Plata",
+          "addressRegion": "Buenos Aires",
+          "addressCountry": "AR"
+        },
+        "geo": { "@type": "GeoCoordinates", "latitude": -34.955912, "longitude": -57.940273 },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            "opens": "19:30",
+            "closes": "22:30"
+          }
+        ],
+        "hasMenu": "https://mrwhiteburgers.vercel.app/#menu",
+        "acceptsReservations": false,
+        "sameAs": ["https://www.instagram.com/mr.whiteburgers/"]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
