@@ -194,10 +194,21 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
     setTimeout(() => URL.revokeObjectURL(a.href), 2000)
   }
 
+  // Borrar en dos toques dentro de la propia fila (el window.confirm del navegador
+  // a veces no aparece) y mostrando el error si el servidor lo rechaza.
+  const [confirmar, setConfirmar] = useState('')
+  const [errorBorrar, setErrorBorrar] = useState(null) // { id, msg }
   const borrar = async (o) => {
-    if (!window.confirm(`¿Borrar este pedido de ${money(o.total)}? No se puede deshacer.`)) return
+    setConfirmar('')
+    setErrorBorrar(null)
     setBorrando(o.id)
-    try { await onDelete(o.id) } finally { setBorrando('') }
+    try {
+      await onDelete(o.id)
+    } catch (e) {
+      setErrorBorrar({ id: o.id, msg: e?.message || 'No se pudo borrar. Probá de nuevo.' })
+    } finally {
+      setBorrando('')
+    }
   }
 
   // ─── Sin datos todavía ───
@@ -523,19 +534,41 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
               </span>
               <span className="flex items-center gap-2.5">
                 <span className="text-[#F0C832] text-base" style={anton}>{money(o.total)}</span>
-                {puedeBorrar && !o.demo && (
+                {puedeBorrar && !o.demo && (confirmar === o.id ? (
+                  <span className="flex items-center gap-1.5" style={font}>
+                    <button
+                      type="button"
+                      onClick={() => borrar(o)}
+                      className="px-2.5 py-1 rounded-full text-[11px] text-white"
+                      style={{ backgroundColor: '#DC2626' }}
+                    >
+                      Sí, borrar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmar('')}
+                      className="px-2.5 py-1 rounded-full text-[11px] text-white/70"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                    >
+                      No
+                    </button>
+                  </span>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => borrar(o)}
+                    onClick={() => { setErrorBorrar(null); setConfirmar(o.id) }}
                     disabled={borrando === o.id}
                     aria-label="Borrar pedido"
-                    className="text-white/25 hover:text-red-400 disabled:opacity-40"
+                    className="p-2 -m-2 text-white/40 hover:text-red-400 disabled:opacity-40"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={17} />
                   </button>
-                )}
+                ))}
               </span>
             </div>
+            {errorBorrar?.id === o.id && (
+              <p className="text-[12px] mt-1.5" style={{ ...font, color: '#F87171' }}>No se pudo borrar: {errorBorrar.msg}</p>
+            )}
             <p className="text-white/75 text-[13px] mt-1.5 leading-snug" style={font}>
               {o.items.map((i) => {
                 const ex = (i.x || []).length ? ` (+${i.x.map((e) => (e.q > 1 ? `${e.q} ` : '') + e.n).join(', ')})` : ''
