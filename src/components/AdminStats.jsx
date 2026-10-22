@@ -267,26 +267,6 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
         </div>
       )}
 
-      {/* ─── Lo que aporta la web ─── */}
-      <div
-        className="rounded-2xl p-5 mb-4 relative overflow-hidden"
-        style={{
-          background: 'radial-gradient(circle at 85% 0%, rgba(240,200,50,0.20), transparent 55%), #121212',
-          border: '1px solid rgba(240,200,50,0.35)',
-        }}
-      >
-        <p className="text-[#F0C832] text-[11px] tracking-[0.2em] uppercase" style={font}>Lo que aporta la web</p>
-        <p className="text-white text-5xl leading-none mt-3" style={anton}>{money(S.acumulado.ventas)}</p>
-        <p className="text-white/70 text-sm mt-2" style={font}>
-          en <b className="text-white">{num(S.acumulado.pedidos)} pedidos</b> enviados por WhatsApp
-          {S.acumulado.desde && <> desde el {fechaLarga(S.acumulado.desde)}</>}
-        </p>
-        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-[12px] text-white/50" style={font}>
-          <span>≈ <b className="text-white/80">{money(S.acumulado.ticket)}</b> por pedido</span>
-          <span>≈ <b className="text-white/80">{money(S.acumulado.porDiaActivo)}</b> por día con pedidos</span>
-        </div>
-      </div>
-
       {/* ─── Filtros ─── */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="flex gap-1.5 p-1 rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
