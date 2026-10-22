@@ -91,7 +91,7 @@ export function sanitizeOrder(b, now = new Date()) {
 // números chicos; nada que identifique a una persona.
 const eventPath = (ym) => `events/${ym}.json`
 const MAX_EVENT_NAMES_PER_DAY = 400
-const NOMBRE_EVENTO = /^[\p{L}\p{N}_:. +\-]{2,48}$/u
+const NOMBRE_EVENTO = /^[\p{L}\p{N}_:. +-]{2,48}$/u
 
 export function sanitizeEvents(b) {
   if (!b || typeof b.e !== 'object' || !b.e || Array.isArray(b.e)) return null
