@@ -11,10 +11,10 @@ import AdminPromos from './AdminPromos'
 import { validatePromo, validatePromoList, cheapPromoError } from '../lib/promos'
 import { leerPrecio, textoDePrecio } from '../lib/precio'
 
-// La pestaña "Números" (estadísticas de pedidos) queda apagada: es parte de la
-// versión paga. Los pedidos se siguen guardando igual en segundo plano, así que
+// La pestaña "Números" (estadísticas de pedidos) está prendida. Para apagarla, false:
+// los pedidos se siguen guardando igual en segundo plano, así que
 // al prenderla (true) ya hay historial. Apagada, el panel ni siquiera los pide.
-const MOSTRAR_NUMEROS = false
+const MOSTRAR_NUMEROS = true
 
 const inputCls =
   'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors scroll-mb-28'
