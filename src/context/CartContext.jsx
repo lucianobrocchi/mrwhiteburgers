@@ -2,6 +2,7 @@
    El contexto, el hook useCart y los helpers del carrito viven juntos a propósito. */
 import { createContext, useContext, useState, useCallback } from 'react'
 import { recordOrder } from '../lib/orders'
+import { trackPedido } from '../lib/track'
 import { findZone } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
 import { getConfig, todayOverride } from '../lib/config'
@@ -117,6 +118,7 @@ export function CartProvider({ children }) {
     if (!items.length) return
     // Registrar el pedido para las estadísticas del panel (no bloquea)
     recordOrder({ items, total: totalPrice, subtotal, discount, zone, promo: promo?.title })
+    trackPedido({ total: totalPrice, zona: zone?.name, promo: promo?.title })
     // Una línea por ítem. Si lleva extras, van abajo para que se lean bien en la cocina.
     const lines = items
       .map(i => {

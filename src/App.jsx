@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { CartProvider, useCart } from './context/CartContext'
+import { iniciarGA } from './lib/track'
 import Admin from './components/Admin'
 import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
@@ -52,6 +53,7 @@ function AddedToast() {
 }
 
 function Inner() {
+  useEffect(() => { iniciarGA() }, [])
   return (
     <main className="bg-black min-h-screen pt-9">
       <DiscountTicker />
