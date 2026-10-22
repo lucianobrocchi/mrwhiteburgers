@@ -1,8 +1,8 @@
 /* eslint-disable react-refresh/only-export-components --
    El contexto, el hook useCart y los helpers del carrito viven juntos a propósito. */
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { recordOrder } from '../lib/orders'
-import { trackPedido } from '../lib/track'
+import { trackPedido, registrar, hito } from '../lib/track'
 import { findZone } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
 import { getConfig, todayOverride } from '../lib/config'
@@ -37,11 +37,21 @@ export function CartProvider({ children }) {
   const setZone = useCallback((id) => {
     const z = findZone(id)
     if (!z) return setZoneState(null)
+    registrar('eligio_zona', z.name)
+    hito('eligio_zona')
     const override = getConfig()?.zones?.[z.id]?.price
     setZoneState(typeof override === 'number' ? { ...z, price: override } : z)
   }, [])
 
+  // Recorrido: abrir el carrito (una vez por visita para el embudo, y cada vez para el conteo)
+  useEffect(() => {
+    if (isOpen) { registrar('abrio_carrito'); hito('abrio_carrito') }
+  }, [isOpen])
+
   const pushItem = useCallback((nuevo, toastName) => {
+    registrar(nuevo.kind === 'drink' ? 'agrego_bebida' : 'agrego_burger', `${nuevo.name}${nuevo.kind === 'drink' ? ` ${nuevo.sizeLabel}` : ` ${nuevo.sizeLabel}`}`)
+    ;(nuevo.extras || []).forEach(e => registrar('agrego_extra', e.name))
+    hito('agrego')
     setItems(prev => {
       const existing = prev.find(i => i.key === nuevo.key)
       if (existing) return prev.map(i => i.key === nuevo.key ? { ...i, qty: i.qty + nuevo.qty } : i)
@@ -96,7 +106,10 @@ export function CartProvider({ children }) {
     }, `${name} ${size.label}`)
   }, [pushItem])
 
-  const removeItem = (key) => setItems(prev => prev.filter(i => i.key !== key))
+  const removeItem = (key) => {
+    registrar('saco_producto')
+    setItems(prev => prev.filter(i => i.key !== key))
+  }
 
   const updateQty = (key, delta) => {
     setItems(prev =>

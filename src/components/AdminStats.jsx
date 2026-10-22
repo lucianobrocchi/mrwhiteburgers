@@ -3,7 +3,7 @@ import {
   TrendingUp, TrendingDown, Download, RefreshCw, Trash2, Sparkles, ExternalLink, Info,
 } from 'lucide-react'
 import {
-  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART,
+  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART, porMes, recorrido,
 } from '../lib/statsCalc'
 import { generarDemo } from '../lib/statsDemo'
 import { sourceLabel } from '../lib/source'
@@ -18,6 +18,8 @@ const ROJO = '#F87171'
 
 const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR')
 const num = (n) => Math.round(n || 0).toLocaleString('es-AR')
+const nombreMes = (ym) =>
+  new Date(`${ym}-15T12:00:00`).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 const fechaLarga = (ds) =>
   new Date(`${ds}T12:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -178,6 +180,8 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
   )
   const S = useMemo(() => calcular(orders, rango), [orders, rango])
   const dichos = useMemo(() => frases(S, sourceLabel), [S])
+  const meses = useMemo(() => porMes(orders), [orders])
+  const R = useMemo(() => recorrido(stats?.events, S.rango.desde, S.rango.hasta), [stats, S])
 
   const hayDatos = orders.length > 0
 
@@ -471,6 +475,62 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
             </Tarjeta>
           )}
         </>
+      )}
+
+      {/* ─── Mes por mes ─── */}
+      {meses.length > 0 && (
+        <Tarjeta titulo="Mes por mes" subtitulo="Lo facturado en pedidos enviados por WhatsApp">
+          {meses.map((m) => (
+            <div key={m.ym} className="flex items-baseline justify-between gap-3 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="min-w-0">
+                <p className="text-white text-[13px] capitalize" style={{ ...font, fontWeight: 600 }}>{nombreMes(m.ym)}</p>
+                <p className="text-white/40 text-[11px]" style={font}>
+                  {m.pedidos} {m.pedidos === 1 ? 'pedido' : 'pedidos'} · ticket {money(m.ticket)}
+                  {m.mejorDia ? ` · mejor día ${fechaCorta(m.mejorDia.d)} (${money(m.mejorDia.ventas)})` : ''}
+                </p>
+              </div>
+              <p className="shrink-0 tabular-nums" style={{ ...anton, color: ORO, fontSize: 18 }}>{money(m.ventas)}</p>
+            </div>
+          ))}
+        </Tarjeta>
+      )}
+
+      {/* ─── Recorrido de la web ─── */}
+      {!demo && (
+        <Tarjeta
+          titulo="Recorrido de la web"
+          subtitulo="Dónde se cae la gente entre que entra y pide (cada paso cuenta visitas distintas)"
+        >
+          {!R.hayDatos ? (
+            <p className="text-white/55 text-[13px] leading-relaxed" style={font}>
+              Todavía no hay visitas registradas en este período. Se empiezan a anotar solas desde que se publicó esta versión.
+            </p>
+          ) : (
+            <>
+              {R.pasos.map((p, i) => (
+                <Ranking
+                  key={p.k}
+                  nombre={p.label}
+                  valor={p.n}
+                  max={R.pasos[0].n}
+                  derecha={i === 0 ? num(p.n) : `${num(p.n)} · ${Math.round(R.pasos[0].n ? (p.n / R.pasos[0].n) * 100 : 0)}%`}
+                  detalle={i > 0 && R.pasos[i - 1].n > 0 ? `${Math.round((p.n / R.pasos[i - 1].n) * 100)}% de los que llegaron al paso anterior` : undefined}
+                  color={i === R.pasos.length - 1 ? VERDE : ORO}
+                />
+              ))}
+              <p className="text-white/45 text-[11px] tracking-[0.14em] uppercase mt-5 mb-2" style={font}>Lo que más agregan al carrito</p>
+              {[...R.agregados.slice(0, 4), ...R.bebidas.slice(0, 2), ...R.extras.slice(0, 2)].map((x) => (
+                <p key={x.nombre} className="flex justify-between text-white/70 text-[13px] py-0.5" style={font}>
+                  <span className="truncate pr-3">{x.nombre}</span><span className="tabular-nums">{num(x.n)}</span>
+                </p>
+              ))}
+              <p className="text-white/35 text-[11px] leading-relaxed mt-4" style={font}>
+                Abrieron el carrito {num(R.carritos)} {R.carritos === 1 ? 'vez' : 'veces'} y sacaron algún producto {num(R.sacaron)}.
+                {R.sugerencias.length > 0 ? ` La bebida sugerida más tocada: ${R.sugerencias[0].nombre}.` : ''}
+              </p>
+            </>
+          )}
+        </Tarjeta>
       )}
 
       {/* ─── Últimos pedidos ─── */}

@@ -87,6 +87,22 @@ export function sanitizeOrder(b, now = new Date()) {
   }
 }
 
+// Eventos del recorrido: { "agrego_burger:OBRERA": 2, "s:pedido": 1 } → solo nombres y
+// números chicos; nada que identifique a una persona.
+const eventPath = (ym) => `events/${ym}.json`
+const MAX_EVENT_NAMES_PER_DAY = 400
+const NOMBRE_EVENTO = /^[\p{L}\p{N}_:. +\-]{2,48}$/u
+
+export function sanitizeEvents(b) {
+  if (!b || typeof b.e !== 'object' || !b.e || Array.isArray(b.e)) return null
+  const out = {}
+  for (const [k, v] of Object.entries(b.e).slice(0, 40)) {
+    const n = int(v, 200)
+    if (NOMBRE_EVENTO.test(k) && n > 0) out[k] = n
+  }
+  return Object.keys(out).length ? out : null
+}
+
 // Huella para detectar el mismo pedido enviado dos veces seguidas
 const huella = (o) =>
   JSON.stringify([
@@ -156,6 +172,15 @@ export function createPanel({ store, env = {} }) {
     return { orders, months: paths.map((p) => p.slice(6, 13)) }
   }
 
+  // Eventos de los últimos `meses` meses, juntos por día: { 'AAAA-MM-DD': { nombre: n } }
+  async function leerEventos(meses) {
+    const paths = (await store.listPaths('events/'))
+      .filter((p) => /^events\/\d{4}-\d{2}\.json$/.test(p))
+      .sort().reverse().slice(0, meses)
+    const archivos = await Promise.all(paths.map((p) => store.getJson(p)))
+    return Object.assign({}, ...archivos.map((a) => a?.data?.days || {}))
+  }
+
   return async function handler(req, res) {
     const action = String(req.query?.action || req.body?.action || '')
     const json = (code, obj) => res.status(code).json(obj)
@@ -195,6 +220,30 @@ export function createPanel({ store, env = {} }) {
         const r = await registrarPedido(pedido)
         if (r.lleno) return json(429, { error: 'límite del mes alcanzado' })
         return json(200, { ok: true, duplicado: r.duplicado })
+      } catch (e) {
+        return json(500, { error: e.message })
+      }
+    }
+
+    // Recorrido de la web: contadores por día (visitó, agregó, abrió el carrito…).
+    // Público; el navegador junta los toques y manda un solo envío por visita.
+    if (action === 'event' && req.method === 'POST') {
+      try {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+        const nuevos = sanitizeEvents(body)
+        if (!nuevos) return json(400, { error: 'eventos inválidos' })
+        const t = ahoraART()
+        await actualizar(eventPath(t.ym), (mes) => {
+          const days = { ...(mes?.days || {}) }
+          const dia = { ...(days[t.d] || {}) }
+          for (const [k, n] of Object.entries(nuevos)) {
+            if (!(k in dia) && Object.keys(dia).length >= MAX_EVENT_NAMES_PER_DAY) continue
+            dia[k] = (dia[k] || 0) + n
+          }
+          days[t.d] = dia
+          return { month: t.ym, days }
+        })
+        return json(200, { ok: true })
       } catch (e) {
         return json(500, { error: e.message })
       }
@@ -248,7 +297,8 @@ export function createPanel({ store, env = {} }) {
       if (action === 'stats') {
         const meses = Math.min(Math.max(Number(req.query?.months) || 6, 1), 24)
         const r = await leerPedidos(meses)
-        return json(200, { ...r, generatedAt: new Date().toISOString() })
+        const events = await leerEventos(meses)
+        return json(200, { ...r, events, generatedAt: new Date().toISOString() })
       }
 
       if (action === 'delete-order' && req.method === 'POST') {

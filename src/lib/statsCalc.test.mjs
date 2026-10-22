@@ -215,3 +215,42 @@ test('los días de la semana quedan en plural ("los sábados", "los viernes")', 
   const vie = frases(calcular(hacer('2026-10-09'), '7', AHORA)).find((f) => /concentran/.test(f))
   assert.match(vie, /^Los viernes concentran/)
 })
+
+// ─── Meses y recorrido ───────────────────────────────────────────────────
+import { porMes, recorrido, limitesDeRango } from './statsCalc.js'
+
+test('porMes junta pedidos, facturado, ticket y mejor día de cada mes (más nuevo primero)', () => {
+  const m = porMes([
+    pedido('2026-10-02', 21, 10000, [burger(1, 'OBRERA', 'doble', 1, 10000)]),
+    pedido('2026-10-02', 22, 20000, [burger(1, 'OBRERA', 'doble', 2, 10000)]),
+    pedido('2026-10-09', 21, 5000, [burger(1, 'OBRERA', 'simple', 1, 5000)]),
+    pedido('2026-09-30', 21, 7000, [burger(1, 'OBRERA', 'simple', 1, 7000)]),
+  ])
+  assert.deepEqual(m.map((x) => x.ym), ['2026-10', '2026-09'])
+  assert.equal(m[0].ventas, 35000)
+  assert.equal(m[0].pedidos, 3)
+  assert.equal(Math.round(m[0].ticket), 11667)
+  assert.deepEqual(m[0].mejorDia, { d: '2026-10-02', ventas: 30000 })
+})
+
+test('rangos por mes calendario: este mes y el mes pasado entero', () => {
+  const ahora = new Date('2026-10-20T15:00:00Z')
+  assert.deepEqual(limitesDeRango('mes', [], ahora).desde, '2026-10-01')
+  const pasado = limitesDeRango('mesant', [], ahora)
+  assert.equal(pasado.desde, '2026-09-01')
+  assert.equal(pasado.hasta, '2026-09-30')
+  assert.equal(pasado.previo.hasta, '2026-08-31')
+})
+
+test('recorrido arma el embudo y los más agregados dentro del rango', () => {
+  const ev = {
+    '2026-10-05': { 's:visita': 10, 's:vio_menu': 8, 's:agrego': 5, 's:pedido': 2, 'agrego_burger:OBRERA Doble': 4, 'agrego_extra:Bacon': 3 },
+    '2026-09-01': { 's:visita': 99 }, // fuera de rango
+  }
+  const r = recorrido(ev, '2026-10-01', '2026-10-31')
+  assert.equal(r.pasos[0].n, 10)
+  assert.equal(r.pasos.find((p) => p.k === 's:pedido').n, 2)
+  assert.deepEqual(r.agregados[0], { nombre: 'OBRERA Doble', n: 4 })
+  assert.equal(r.extras[0].nombre, 'Bacon')
+  assert.equal(recorrido({}, '2026-10-01', '2026-10-31').hayDatos, false)
+})

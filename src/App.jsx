@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { CartProvider, useCart } from './context/CartContext'
-import { iniciarGA } from './lib/track'
+import { iniciarTracking, hito } from './lib/track'
 import Admin from './components/Admin'
 import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
@@ -53,7 +53,21 @@ function AddedToast() {
 }
 
 function Inner() {
-  useEffect(() => { iniciarGA() }, [])
+  useEffect(() => {
+    iniciarTracking()
+    // Qué partes de la página llegan a verse (una vez por visita)
+    const vistas = { menu: 'vio_menu', bebidas: 'vio_bebidas', horarios: 'vio_horarios' }
+    if (typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver((entradas) => {
+      entradas.forEach((e) => {
+        if (!e.isIntersecting) return
+        hito(vistas[e.target.id])
+        io.unobserve(e.target)
+      })
+    }, { threshold: 0.2 })
+    Object.keys(vistas).forEach((id) => { const el = document.getElementById(id); if (el) io.observe(el) })
+    return () => io.disconnect()
+  }, [])
   return (
     <main className="bg-black min-h-screen pt-9">
       <DiscountTicker />

@@ -372,3 +372,31 @@ test('promos: 12 guardados a la vez con la misma versión → uno gana y los dem
   assert.equal(fin.promos.length, 1)
   assert.ok(Number.isInteger(fin.promos[0].bundlePrice) && fin.promos[0].bundlePrice >= 14000)
 })
+
+// ─── Recorrido de la web (eventos) ───────────────────────────────────────
+test('los eventos del recorrido se suman por día y salen en las estadísticas (solo con clave)', async () => {
+  const { h } = nuevo()
+  const hoy = ahoraART().d
+  for (let i = 0; i < 3; i++) {
+    const r = await llamar(h, { action: 'event', method: 'POST', body: { e: { 's:visita': 1, 'agrego_burger:OBRERA Doble': 2 } } })
+    assert.equal(r.code, 200)
+  }
+  const sin = await llamar(h, { action: 'stats' })
+  assert.equal(sin.code, 401)
+  const st = await llamar(h, { action: 'stats', key: CLAVE })
+  assert.equal(st.body.events[hoy]['s:visita'], 3)
+  assert.equal(st.body.events[hoy]['agrego_burger:OBRERA Doble'], 6)
+})
+
+test('eventos: se descartan nombres raros y cantidades absurdas, y 30 a la vez no se pisan', async () => {
+  const { h } = nuevo()
+  const malo = await llamar(h, { action: 'event', method: 'POST', body: { e: { '<script>': 5, x: 1 } } })
+  assert.equal(malo.code, 400)
+  await llamar(h, { action: 'event', method: 'POST', body: { e: { 'abrio_carrito': 9999, 'drop table': 1 } } })
+  await Promise.all(Array.from({ length: 30 }, () => llamar(h, { action: 'event', method: 'POST', body: { e: { 's:pedido': 1 } } })))
+  const st = await llamar(h, { action: 'stats', key: CLAVE })
+  const dia = Object.values(st.body.events)[0]
+  assert.equal(dia['abrio_carrito'], 200) // tope por envío
+  assert.equal(dia['s:pedido'], 30)
+  assert.equal(dia['<script>'], undefined)
+})

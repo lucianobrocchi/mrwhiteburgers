@@ -1,18 +1,61 @@
 import { track } from '@vercel/analytics'
 
-// ─── Google Analytics 4 ──────────────────────────────────────────────────
-// Sin cookies de publicidad ni datos personales. No se carga en localhost ni en
-// el panel (así no cuentan las pruebas ni las visitas del equipo).
+// ─── Recorrido de la web ─────────────────────────────────────────────────
+// Dos destinos: Google Analytics 4 (sin cookies de publicidad ni datos
+// personales; no carga en localhost) y los contadores propios del panel
+// (/api/panel?action=event). Los toques se juntan y salen en un solo envío
+// cuando la persona se va, así casi no se usa el almacenamiento.
 const GA_ID = 'G-6575KBW83F'
 let gaListo = false
+let activo = false
+const buf = {}
+let timer = null
+const ENVIO = '/api/panel?action=event'
 
-export function iniciarGA() {
-  if (gaListo || typeof window === 'undefined') return
+function volcar() {
+  const claves = Object.keys(buf)
+  if (!claves.length) return
+  const body = JSON.stringify({ e: { ...buf } })
+  claves.forEach((k) => delete buf[k])
+  try {
+    if (navigator.sendBeacon?.(ENVIO, new Blob([body], { type: 'application/json' }))) return
+    fetch(ENVIO, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {})
+  } catch {
+    /* sin red: se pierde ese lote */
+  }
+}
+
+// registrar('agrego_burger', 'OBRERA') suma 1 a "agrego_burger:OBRERA" en el día de hoy
+export function registrar(nombre, detalle) {
+  if (!activo) return
+  const k = detalle ? `${nombre}:${String(detalle).slice(0, 36)}` : nombre
+  buf[k] = (buf[k] || 0) + 1
+  clearTimeout(timer)
+  timer = setTimeout(volcar, 20000)
+}
+
+// Hito de la visita: cuenta una sola vez por visita (para armar el embudo)
+export function hito(nombre) {
+  try {
+    const key = `mw_h_${nombre}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+  } catch { /* sin sessionStorage: cuenta igual */ }
+  registrar(`s:${nombre}`)
+}
+
+export function iniciarTracking() {
+  if (typeof window === 'undefined' || activo) return
+  activo = true
+  hito('visita')
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') volcar() })
+  window.addEventListener('pagehide', volcar)
+
   const host = window.location.hostname
   if (host === 'localhost' || host === '127.0.0.1') return
   gaListo = true
   window.dataLayer = window.dataLayer || []
-  window.gtag = function gtag() { window.dataLayer.push(arguments) } // eslint-disable-line prefer-rest-params
+  window.gtag = function gtag() { window.dataLayer.push(arguments) }
   window.gtag('js', new Date())
   window.gtag('config', GA_ID, {
     anonymize_ip: true,
@@ -34,7 +77,6 @@ function ga(nombre, datos) {
 }
 
 // Eventos para Vercel Analytics (los ves en su pestaña Events, por nombre).
-// Si Analytics no está disponible (dev, bloqueado) no se rompe nada.
 function enviar(nombre, datos) {
   try {
     track(nombre, datos)
@@ -55,4 +97,7 @@ export const trackDrinkClick = (nombre) => {
 export const trackPedido = ({ total, zona, promo }) => {
   enviar('pedido_whatsapp', { total, zona: zona || 'sin elegir' })
   ga('begin_checkout', { currency: 'ARS', value: total, shipping_tier: zona || 'sin elegir', coupon: promo || undefined })
+  registrar('pedido')
+  hito('pedido')
+  volcar()
 }

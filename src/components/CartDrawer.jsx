@@ -4,6 +4,7 @@ import { useCart, formatPrice } from '../context/CartContext'
 import { usePromos } from '../lib/usePromos'
 import { DRINKS, drinkPrice, sizeOut, flavorOut } from '../lib/catalog'
 import { formatZonePrice } from '../lib/zones'
+import { registrar } from '../lib/track'
 import { getStatus } from '../lib/schedule'
 import { useConfig, todayOverride } from '../lib/config'
 import ZonePicker from './ZonePicker'
@@ -307,7 +308,7 @@ export default function CartDrawer() {
                         <motion.button
                           key={o.key}
                           type="button"
-                          onClick={() => addDrink(o.drink, { ...o.size, price: o.precio }, o.flavor, 1)}
+                          onClick={() => { registrar('sugerencia_bebida', o.nombre); addDrink(o.drink, { ...o.size, price: o.precio }, o.flavor, 1) }}
                           whileTap={{ scale: 0.96 }}
                           className="shrink-0 flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-2xl text-left"
                           style={{

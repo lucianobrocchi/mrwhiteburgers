@@ -35,12 +35,84 @@ export const RANGOS = [
   { id: 'hoy', label: 'Hoy', dias: 1 },
   { id: '7', label: '7 días', dias: 7 },
   { id: '30', label: '30 días', dias: 30 },
+  { id: 'mes', label: 'Este mes', dias: 'mes' },
+  { id: 'mesant', label: 'Mes pasado', dias: 'mesant' },
   { id: 'todo', label: 'Todo', dias: null },
 ]
+
+// Meses calendario: "este mes" va del 1 a hoy; "mes pasado" es el mes anterior entero
+function limitesMes(hoy, anterior) {
+  const primeroEste = `${hoy.slice(0, 7)}-01`
+  const ultimoPasado = sumarDias(primeroEste, -1)
+  const primeroPasado = `${ultimoPasado.slice(0, 7)}-01`
+  if (!anterior) return { desde: primeroEste, hasta: hoy, previo: { desde: primeroPasado, hasta: ultimoPasado } }
+  const ultimoAntepasado = sumarDias(primeroPasado, -1)
+  return {
+    desde: primeroPasado,
+    hasta: ultimoPasado,
+    previo: { desde: `${ultimoAntepasado.slice(0, 7)}-01`, hasta: ultimoAntepasado },
+  }
+}
+
+// Resumen mes por mes (el más nuevo primero): pedidos, facturado, ticket y mejor día
+export function porMes(orders) {
+  const meses = new Map()
+  for (const o of orders) {
+    const ym = o.d.slice(0, 7)
+    if (!meses.has(ym)) meses.set(ym, { ym, pedidos: 0, ventas: 0, dias: new Map() })
+    const m = meses.get(ym)
+    m.pedidos += 1
+    m.ventas += o.total
+    m.dias.set(o.d, (m.dias.get(o.d) || 0) + o.total)
+  }
+  return [...meses.values()]
+    .sort((a, b) => (a.ym < b.ym ? 1 : -1))
+    .map((m) => {
+      const mejor = [...m.dias.entries()].sort((a, b) => b[1] - a[1])[0]
+      return { ym: m.ym, pedidos: m.pedidos, ventas: m.ventas, ticket: m.pedidos ? m.ventas / m.pedidos : 0, diasConVentas: m.dias.size, mejorDia: mejor ? { d: mejor[0], ventas: mejor[1] } : null }
+    })
+}
+
+// Embudo de la visita (cada paso cuenta visitas distintas) con los eventos de la web
+export const PASOS_EMBUDO = [
+  ['s:visita', 'Entraron a la web'],
+  ['s:vio_menu', 'Llegaron al menú'],
+  ['s:agrego', 'Agregaron algo al carrito'],
+  ['s:abrio_carrito', 'Abrieron el carrito'],
+  ['s:eligio_zona', 'Eligieron cómo recibirlo'],
+  ['s:pedido', 'Tocaron “Pedir por WhatsApp”'],
+]
+
+export function recorrido(events, desde, hasta) {
+  const tot = {}
+  for (const [d, nombres] of Object.entries(events || {})) {
+    if (d < desde || d > hasta) continue
+    for (const [k, n] of Object.entries(nombres)) tot[k] = (tot[k] || 0) + n
+  }
+  const pasos = PASOS_EMBUDO.map(([k, label]) => ({ k, label, n: tot[k] || 0 }))
+  const top = (prefijo) =>
+    Object.entries(tot)
+      .filter(([k]) => k.startsWith(`${prefijo}:`))
+      .map(([k, n]) => ({ nombre: k.slice(prefijo.length + 1), n }))
+      .sort((a, b) => b.n - a.n)
+  return {
+    pasos,
+    hayDatos: pasos[0].n > 0,
+    agregados: top('agrego_burger'),
+    bebidas: top('agrego_bebida'),
+    extras: top('agrego_extra'),
+    sugerencias: top('sugerencia_bebida'),
+    zonas: top('eligio_zona'),
+    carritos: tot.abrio_carrito || 0,
+    sacaron: tot.saco_producto || 0,
+  }
+}
 
 export function limitesDeRango(rangoId, orders, now = new Date()) {
   const hoy = hoyART(now)
   const r = RANGOS.find((x) => x.id === rangoId) || RANGOS[1]
+  if (r.dias === 'mes') return limitesMes(hoy, false)
+  if (r.dias === 'mesant') return limitesMes(hoy, true)
   if (r.dias == null) {
     const primero = orders.length ? orders.reduce((m, o) => (o.d < m ? o.d : m), hoy) : hoy
     return { desde: primero, hasta: hoy, previo: null }

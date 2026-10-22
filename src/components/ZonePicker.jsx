@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { useCart } from '../context/CartContext'
 import { ZONES, PICKUP, OTHER, LOCAL, formatZonePrice, zonePrice, zonaDeCalles } from '../lib/zones'
 import { useConfig, todayOverride } from '../lib/config'
+import { registrar } from '../lib/track'
 
 // Mapas base. Los tiles de CARTO (el que usábamos) ahora piden API key y
 // devuelven un cartel "API KEY REQUIRED" en cada cuadro, así que usamos los de
@@ -192,6 +193,7 @@ function BuscaZona({ zona, setZone, cfg }) {
     const otro = set === setX ? y : x
     if (v !== '' && otro !== '') {
       const res = set === setX ? zonaDeCalles(Number(v), Number(otro)) : zonaDeCalles(Number(otro), Number(v))
+      if (res.zona || res.fuera) registrar('uso_buscador', res.zona ? res.zona.name : 'fuera de zona')
       if (res.zona) setZone(res.zona.id)
       else if (res.fuera) setZone(OTHER.id) // fuera de las zonas: el envío se coordina
     }
