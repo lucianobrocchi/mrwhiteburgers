@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { CartProvider, useCart } from './context/CartContext'
-import { iniciarTracking, hito } from './lib/track'
+import { iniciarTracking, hito, gaVioMenu } from './lib/track'
 import Admin from './components/Admin'
 import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
@@ -62,6 +62,7 @@ function Inner() {
       entradas.forEach((e) => {
         if (!e.isIntersecting) return
         hito(vistas[e.target.id])
+        if (e.target.id === 'menu') gaVioMenu()
         io.unobserve(e.target)
       })
     }, { threshold: 0.2 })

@@ -14,8 +14,16 @@
 // Los textos que ve el cliente (headline, ticker, short, bigPrice, bigSub) se
 // derivan de esos campos en normalizePromo(): Joaco no escribe ninguno.
 
-export const PROMO_KINDS = ['simplesBundle', 'itemPrice']
+//   { id, enabled, title?, kind: 'bundle', qty, size, itemName?, bundlePrice, ... }     <- N burgers por $X ("2 triples a $30.000")
+//   { id, enabled, title?, kind: 'nthPct', nth, pct, size, itemName?, ... }           <- la 2a (3a...) con X% off; 100% = 2x1
+//   { id, enabled, title?, kind: 'pctOff', pct, size, itemName?, ... }                <- X% off en las burgers
+//   { id, enabled, title?, kind: 'amountOff', amount, minSpend, ... }                 <- $X off desde cierto gasto
+//   { id, enabled, title?, kind: 'freeShipping', minSpend, ... }                      <- envio gratis (desde cierto gasto)
+// `size` es 'any' (cualquier tamaño), 'simple', 'doble' o 'triple'; `itemName` limita la
+// promo a una sola burger (sin él vale para cualquiera).
 export const PROMO_SIZES = ['simple', 'doble', 'triple']
+export const PROMO_SCOPES = ['any', ...PROMO_SIZES]
+export const PROMO_KINDS = ['simplesBundle', 'itemPrice', 'bundle', 'nthPct', 'pctOff', 'amountOff', 'freeShipping']
 export const MAX_PROMOS = 30
 
 const MAX_PRICE = 500_000
@@ -103,7 +111,48 @@ export function validatePromo(raw) {
   if (!kind) errors.kind = 'Elegí qué tipo de promo es.'
 
   let bundlePrice, itemName, itemSize, specialPrice
-  if (kind === 'simplesBundle') {
+  let qty, nth, pct, size, amount, minSpend, soloBurger
+  const entero = (v, min, max) => Number.isInteger(v) && v >= min && v <= max
+  // A qué burgers se aplica: un tamaño (o cualquiera) y, opcionalmente, una sola burger
+  const alcance = () => {
+    if (hasValue(raw.size)) {
+      if (PROMO_SCOPES.includes(raw.size)) size = raw.size
+      else errors.size = 'Elegí el tamaño.'
+    } else size = 'any'
+    if (hasValue(raw.itemName)) {
+      const n = typeof raw.itemName === 'string' ? raw.itemName.trim() : ''
+      if (n && n.length <= MAX_NAME) soloBurger = n
+      else errors.itemName = 'Elegí la burger.'
+    }
+  }
+  const gastoMinimo = () => {
+    if (!hasValue(raw.minSpend)) minSpend = 0
+    else if (entero(raw.minSpend, 0, MAX_PRICE)) minSpend = raw.minSpend
+    else errors.minSpend = 'El gasto mínimo tiene que ser un número entero (0 si no hay mínimo).'
+  }
+  if (kind === 'bundle') {
+    alcance()
+    if (entero(raw.qty, 2, 6)) qty = raw.qty
+    else errors.qty = 'Cuántas burgers entran en la promo (de 2 a 6).'
+    if (isPrice(raw.bundlePrice)) bundlePrice = raw.bundlePrice
+    else errors.bundlePrice = 'Cargá el precio del combo (un número entero mayor a 0).'
+  } else if (kind === 'nthPct') {
+    alcance()
+    if (entero(raw.nth, 2, 4)) nth = raw.nth
+    else errors.nth = 'Elegí cuál burger lleva el descuento (la 2ª, 3ª o 4ª).'
+    if (entero(raw.pct, 1, 100)) pct = raw.pct
+    else errors.pct = 'El descuento va de 1% a 100%.'
+  } else if (kind === 'pctOff') {
+    alcance()
+    if (entero(raw.pct, 1, 90)) pct = raw.pct
+    else errors.pct = 'El descuento va de 1% a 90%.'
+  } else if (kind === 'amountOff') {
+    if (isPrice(raw.amount)) amount = raw.amount
+    else errors.amount = 'Cargá cuánto se descuenta (un número entero mayor a 0).'
+    gastoMinimo()
+  } else if (kind === 'freeShipping') {
+    gastoMinimo()
+  } else if (kind === 'simplesBundle') {
     if (isPrice(raw.bundlePrice)) bundlePrice = raw.bundlePrice
     else errors.bundlePrice = 'Cargá el precio de los 2 simples (un número entero mayor a 0).'
   } else if (kind === 'itemPrice') {
@@ -140,10 +189,29 @@ export function validatePromo(raw) {
   promo.kind = kind
   if (kind === 'simplesBundle') {
     promo.bundlePrice = bundlePrice
-  } else {
+  } else if (kind === 'itemPrice') {
     promo.itemName = itemName
     promo.itemSize = itemSize
     promo.specialPrice = specialPrice
+  } else if (kind === 'bundle') {
+    promo.qty = qty
+    promo.size = size
+    if (soloBurger) promo.itemName = soloBurger
+    promo.bundlePrice = bundlePrice
+  } else if (kind === 'nthPct') {
+    promo.nth = nth
+    promo.pct = pct
+    promo.size = size
+    if (soloBurger) promo.itemName = soloBurger
+  } else if (kind === 'pctOff') {
+    promo.pct = pct
+    promo.size = size
+    if (soloBurger) promo.itemName = soloBurger
+  } else if (kind === 'amountOff') {
+    promo.amount = amount
+    promo.minSpend = minSpend
+  } else if (kind === 'freeShipping') {
+    promo.minSpend = minSpend
   }
   if (date) promo.date = date
   else promo.weekdays = weekdays
@@ -181,7 +249,10 @@ export function validatePromoList(list) {
 export const MIN_PROMO_PRICE = 1000
 
 // Precio que la promo le pone a las burgers (el del par de simples o el especial)
-export const promoPrice = (p) => (p?.kind === 'simplesBundle' ? p.bundlePrice : p?.specialPrice)
+export const promoPrice = (p) =>
+  p?.kind === 'simplesBundle' ? p.bundlePrice
+    : p?.kind === 'bundle' ? p.bundlePrice / p.qty // lo que sale cada burger dentro del combo
+      : p?.specialPrice
 
 export const isCheapPromo = (p) => {
   const v = promoPrice(p)
@@ -211,6 +282,37 @@ function tituloPorDefecto(dateLabel) {
   return 'Promo'
 }
 
+const PLURAL = { simple: 'simples', doble: 'dobles', triple: 'triples' }
+// "burgers", "burgers dobles", "CURRI WHITE" o "CURRI WHITE triple"
+const alcanceTexto = (p) =>
+  p.itemName
+    ? (p.size && p.size !== 'any' ? `${p.itemName} ${p.size}` : p.itemName)
+    : (p.size && p.size !== 'any' ? `burgers ${PLURAL[p.size]}` : 'burgers')
+
+// Textos de las promos "genéricas" (combos, % off, monto, envío gratis)
+function textosGenericos(p) {
+  if (p.kind === 'bundle') {
+    const palabra = p.itemName
+      ? `${p.itemName}${p.size !== 'any' ? ` ${PLURAL[p.size]}` : ''}`
+      : (p.size !== 'any' ? PLURAL[p.size] : 'burgers')
+    return { headline: `${p.qty} ${palabra} x ${money(p.bundlePrice)}`, bigPrice: money(p.bundlePrice), bigSub: `${p.qty} ${palabra}` }
+  }
+  if (p.kind === 'nthPct') {
+    if (p.pct === 100 && p.nth === 2) return { headline: `2x1 en ${alcanceTexto(p)}`, bigPrice: '2x1', bigSub: alcanceTexto(p) }
+    return { headline: `La ${p.nth}ª con ${p.pct}% off en ${alcanceTexto(p)}`, bigPrice: `${p.pct}%`, bigSub: `OFF en la ${p.nth}ª` }
+  }
+  if (p.kind === 'pctOff') return { headline: `${p.pct}% off en ${alcanceTexto(p)}`, bigPrice: `${p.pct}%`, bigSub: 'OFF' }
+  if (p.kind === 'amountOff') {
+    return p.minSpend > 0
+      ? { headline: `${money(p.amount)} off desde ${money(p.minSpend)}`, bigPrice: money(p.amount), bigSub: `OFF desde ${money(p.minSpend)}` }
+      : { headline: `${money(p.amount)} off en tu pedido`, bigPrice: money(p.amount), bigSub: 'OFF' }
+  }
+  // freeShipping
+  return p.minSpend > 0
+    ? { headline: `Envío gratis desde ${money(p.minSpend)}`, bigPrice: 'GRATIS', bigSub: 'el envío' }
+    : { headline: 'Envío gratis', bigPrice: 'GRATIS', bigSub: 'el envío' }
+}
+
 // Promo cruda → promo lista para mostrar, o null si no es válida.
 // Suma a los campos guardados: title (con valor por defecto), customTitle,
 // dateLabel, headline, ticker, short, bigPrice y bigSub.
@@ -226,11 +328,17 @@ export function normalizePromo(raw, ctx = {}) {
     ticker = headline.toUpperCase()
     bigPrice = money(p.bundlePrice)
     bigSub = '2 simples'
-  } else {
+  } else if (p.kind === 'itemPrice') {
     headline = `${p.itemName} ${p.itemSize} a ${money(p.specialPrice)}`
     ticker = `${p.itemName} ${p.itemSize.toUpperCase()} X ${money(p.specialPrice)}`.toUpperCase()
     bigPrice = money(p.specialPrice)
     bigSub = `${p.itemName} ${p.itemSize}`
+  } else {
+    const t = textosGenericos(p)
+    headline = t.headline
+    ticker = headline.toUpperCase()
+    bigPrice = t.bigPrice
+    bigSub = t.bigSub
   }
   return {
     ...p,
@@ -305,7 +413,7 @@ export function promosActivas(promos, hoyStr, { burgerNames } = {}) {
     if (!r.ok || !r.promo.enabled || isCheapPromo(r.promo)) continue
     // Una burger que no está en la carta (se renombró o se borró) no se puede vender
     // a precio especial: mejor no anunciar nada que anunciar algo que no existe.
-    if (r.promo.kind === 'itemPrice' && Array.isArray(burgerNames) && !burgerNames.includes(r.promo.itemName)) continue
+    if (r.promo.itemName && Array.isArray(burgerNames) && !burgerNames.includes(r.promo.itemName)) continue
     if (!active && promoAppliesOn(r.promo, hoyStr)) active = normalizePromo(r.promo, { dateLabel: 'HOY' })
     if (!preview && promoAppliesOn(r.promo, manana)) preview = normalizePromo(r.promo, { dateLabel: etiquetaManana })
     if (active && preview) break
@@ -375,6 +483,33 @@ export function calcPromoDiscount(items, promo) {
       const sp = itemPromoPrice(promo, it.name, it.size, base)
       if (sp != null && esPrecio(sp)) discount += (base - sp) * n
     }
+  } else if (['bundle', 'nthPct', 'pctOff'].includes(promo.kind)) {
+    // Unidades sueltas de las burgers a las que aplica la promo, de la más cara a la más barata
+    const unidades = []
+    for (const it of burgers) {
+      const base = precioBase(it)
+      const n = cantidadDe(it)
+      if (!esPrecio(base) || !n) continue
+      if (promo.size && promo.size !== 'any' && it.size !== promo.size) continue
+      if (promo.itemName && it.name !== promo.itemName) continue
+      for (let i = 0; i < n && unidades.length < 500; i++) unidades.push(base)
+    }
+    unidades.sort((a, b) => b - a)
+    if (promo.kind === 'bundle' && esPrecio(promo.bundlePrice) && promo.qty >= 2) {
+      // Cada grupo de `qty` sale bundlePrice (se arman con las más caras primero)
+      for (let i = 0; i + promo.qty <= unidades.length; i += promo.qty) {
+        const suma = unidades.slice(i, i + promo.qty).reduce((t, x) => t + x, 0)
+        discount += Math.max(0, suma - promo.bundlePrice)
+      }
+    } else if (promo.kind === 'nthPct' && promo.nth >= 2 && promo.pct > 0) {
+      // De cada grupo de `nth` burgers, la más barata lleva el descuento
+      for (let i = promo.nth - 1; i < unidades.length; i += promo.nth) discount += Math.round((unidades[i] * promo.pct) / 100)
+    } else if (promo.kind === 'pctOff' && promo.pct > 0) {
+      discount += Math.round((unidades.reduce((t, x) => t + x, 0) * promo.pct) / 100)
+    }
+  } else if (promo.kind === 'amountOff') {
+    const base = burgers.reduce((t, it) => (esPrecio(precioBase(it)) ? t + precioBase(it) * cantidadDe(it) : t), 0)
+    if (base > 0 && base >= (promo.minSpend || 0) && esPrecio(promo.amount)) discount = promo.amount
   }
   // Tope de seguridad: jamás más que las burgers a precio base
   const tope = burgers.reduce((s, it) => {
@@ -382,4 +517,10 @@ export function calcPromoDiscount(items, promo) {
     return esPrecio(base) ? s + base * cantidadDe(it) : s
   }, 0)
   return Number.isFinite(discount) ? Math.min(Math.max(discount, 0), tope) : 0
+}
+
+// ¿La promo de hoy deja el envío gratis? `subtotal` = lo que suma el pedido (burgers,
+// extras y bebidas) antes del descuento. Sin zona elegida o con retiro no hay nada que bonificar.
+export function envioGratis(promo, subtotal) {
+  return !!promo && promo.kind === 'freeShipping' && Number.isFinite(subtotal) && subtotal >= (promo.minSpend || 0)
 }

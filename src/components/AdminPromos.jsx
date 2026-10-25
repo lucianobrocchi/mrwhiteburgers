@@ -6,7 +6,7 @@ import { SCHEDULE } from '../lib/schedule'
 import { leerPrecio, textoDePrecio, muyBarato, mensajeMuyBarato } from '../lib/precio'
 import {
   MAX_PROMOS, DAY_SHORT, DAY_NAMES, WEEK_ORDER,
-  validatePromo, normalizePromo, describeWhen, promoAppliesOn, nextDateOf, addDays, weekdayOf, money,
+  validatePromo, normalizePromo, calcPromoDiscount, describeWhen, promoAppliesOn, nextDateOf, addDays, weekdayOf, money,
 } from '../lib/promos'
 
 // ─── Pestaña "Promos" del panel ──────────────────────────────────────────
@@ -69,6 +69,35 @@ function seSuperponen(a, b, hoy) {
 // Cuánto se ahorra con la promo, en palabras, y avisos si no baja el precio o si
 // baja tanto que parece un error de tipeo
 function resumenAhorro(promo, cfg) {
+  if (promo.kind === 'freeShipping') {
+    return {
+      texto: promo.minSpend > 0
+        ? `El envío sale gratis cuando el pedido suma ${money(promo.minSpend)} o más (retiro y "otra zona" no cambian).`
+        : 'El envío sale gratis en todos los pedidos con zona (retiro y "otra zona" no cambian).',
+      avisos: [],
+    }
+  }
+  if (['bundle', 'nthPct', 'pctOff', 'amountOff'].includes(promo.kind)) {
+    // Pedido de ejemplo con las burgers que toca la promo, para mostrar cuánto se ahorra
+    const burger = BURGERS.find((b) => b.name === promo.itemName) || BURGERS[0]
+    const size = promo.size && promo.size !== 'any' ? promo.size : 'doble'
+    const precio = precioVigente(cfg, burger, size)
+    let n = promo.kind === 'bundle' ? promo.qty : promo.kind === 'nthPct' ? promo.nth : 2
+    if (promo.kind === 'amountOff') n = Math.max(1, Math.ceil((promo.minSpend || 0) / precio))
+    const items = [{ kind: 'burger', name: burger.name, size, qty: n, basePrice: precio, price: precio }]
+    const ahorroEj = calcPromoDiscount(items, promo)
+    const total = precio * n
+    const avisos = []
+    if (ahorroEj <= 0) {
+      avisos.push(`Con ${n} ${burger.name} ${size} (${money(total)}) la promo no baja nada: revisá el precio o los datos.`)
+    } else if (ahorroEj >= total) {
+      avisos.push('Con esta promo el pedido de ejemplo sale gratis: revisá que los datos estén bien escritos.')
+    }
+    return {
+      texto: `Ejemplo: ${n} ${burger.name} ${size} suman ${money(total)} y con la promo el cliente ahorra ${money(ahorroEj)}.`,
+      avisos,
+    }
+  }
   if (promo.kind === 'simplesBundle') {
     const precios = BURGERS.map((b) => precioVigente(cfg, b, 'simple'))
     const min = Math.min(...precios)
@@ -191,7 +220,7 @@ const bordeError = (hay) => (hay ? { borderColor: 'rgba(248,113,113,0.7)' } : un
 // Campo de precio: texto con teclado numérico que lee "15.000" como 15000 (no como 15),
 // muestra cómo lo entendió y frena los precios que parecen un error de tipeo.
 // `valor` es sólo el inicial: lo que se ve lo manda el texto que va escribiendo.
-function PrecioInput({ etiqueta, valor, onChange, error, className = '' }) {
+function PrecioInput({ etiqueta, valor, onChange, error, className = '', bajoOk = false }) {
   const [texto, setTexto] = useState(textoDePrecio(valor))
   const [editando, setEditando] = useState(false)
   const leido = leerPrecio(texto)
@@ -202,12 +231,12 @@ function PrecioInput({ etiqueta, valor, onChange, error, className = '' }) {
     ? 'Escribí sólo números, sin centavos. Por ejemplo: 15000.'
     : leido === 0
       ? 'El precio tiene que ser mayor a $0.'
-      : muyBarato(leido)
+      : !bajoOk && muyBarato(leido)
         ? mensajeMuyBarato(leido)
         : null
   // con el campo vacío, el reproche de la validación habla de "números enteros": mejor un ejemplo
   const mensaje = (!editando && local) || (error && (texto.trim() === '' ? 'Cargá el precio. Por ejemplo: 15000.' : error))
-  const bueno = Number.isFinite(leido) && leido > 0 && !muyBarato(leido)
+  const bueno = Number.isFinite(leido) && leido > 0 && (bajoOk || !muyBarato(leido))
   const formateado = bueno ? textoDePrecio(leido) : ''
   return (
     <Campo etiqueta={etiqueta} error={mensaje} className={className}>
@@ -234,6 +263,71 @@ function PrecioInput({ etiqueta, valor, onChange, error, className = '' }) {
       )}
     </Campo>
   )
+}
+
+// Número entero chico (cantidad, porcentaje)
+function NumeroInput({ etiqueta, valor, onChange, error, sufijo, className = '' }) {
+  return (
+    <Campo etiqueta={etiqueta} error={error} className={className}>
+      <div className="relative">
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          className={`${inputCls} ${sufijo ? 'pr-9' : ''}`}
+          style={bordeError(!!error)}
+          value={valor ?? ''}
+          onChange={(e) => {
+            const t = e.target.value.replace(/\D/g, '').slice(0, 3)
+            onChange(t === '' ? undefined : Number(t))
+          }}
+        />
+        {sufijo && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/55 text-sm pointer-events-none" aria-hidden="true">{sufijo}</span>
+        )}
+      </div>
+    </Campo>
+  )
+}
+
+// A qué burgers vale la promo: un tamaño (o cualquiera) y una burger (o cualquiera)
+function Alcance({ p, onChange, err, burgerEnMenu }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 mt-3">
+      <Campo etiqueta="Tamaño" error={err('size')}>
+        <select
+          className={inputCls}
+          style={{ colorScheme: 'dark', ...bordeError(err('size')) }}
+          value={p.size || 'any'}
+          onChange={(e) => onChange({ size: e.target.value })}
+        >
+          <option value="any">Cualquiera</option>
+          {SIZES.map((sz) => <option key={sz.key} value={sz.key}>{SIZE_LABEL[sz.key]}</option>)}
+        </select>
+      </Campo>
+      <Campo etiqueta="Burger" error={err('itemName')}>
+        <select
+          className={inputCls}
+          style={{ colorScheme: 'dark', ...bordeError(err('itemName')) }}
+          value={p.itemName || ''}
+          onChange={(e) => onChange({ itemName: e.target.value || undefined })}
+        >
+          <option value="">Cualquiera</option>
+          {p.itemName && !burgerEnMenu && <option value={p.itemName}>{p.itemName} (ya no está en la carta)</option>}
+          {BURGERS.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
+        </select>
+      </Campo>
+    </div>
+  )
+}
+
+// Valores con los que arranca cada tipo de promo al elegirlo
+const ARRANQUE = {
+  bundle: { qty: 2, size: 'doble' },
+  nthPct: { nth: 2, pct: 20, size: 'any' },
+  pctOff: { pct: 10, size: 'any' },
+  amountOff: { minSpend: 0 },
+  freeShipping: { minSpend: 0 },
 }
 
 const TONOS = {
@@ -438,8 +532,16 @@ function Promo({ clave, promo: p, indice, lista, cfg, hoy, sinGuardar, verErrore
           <Opciones
             nombre="Tipo de promo"
             valor={p.kind}
-            onChange={(k) => onChange({ kind: k })}
-            opciones={[['simplesBundle', '2 simples por $X'], ['itemPrice', 'Una burger a precio especial']]}
+            onChange={(k) => onChange({ kind: k, ...(ARRANQUE[k] || {}) })}
+            opciones={[
+              ['simplesBundle', '2 simples por $X'],
+              ['itemPrice', 'Una burger a precio especial'],
+              ['bundle', 'Combo: varias burgers por $X'],
+              ['nthPct', 'La 2ª con X% off (o 2x1)'],
+              ['pctOff', 'X% off en burgers'],
+              ['amountOff', '$X off desde un gasto'],
+              ['freeShipping', 'Envío gratis'],
+            ]}
           />
           {err('kind') && (
             <p className="text-red-300 text-xs mt-1.5" role="alert">{err('kind')}</p>
@@ -487,6 +589,55 @@ function Promo({ clave, promo: p, indice, lista, cfg, hoy, sinGuardar, verErrore
                 onChange={(n) => onChange({ specialPrice: n })}
               />
             </div>
+          )}
+
+          {p.kind === 'bundle' && (
+            <>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <NumeroInput etiqueta="Cantidad de burgers" valor={p.qty} error={err('qty')} onChange={(n) => onChange({ qty: n })} />
+                <PrecioInput etiqueta="Precio del combo" valor={p.bundlePrice} error={err('bundlePrice')} onChange={(n) => onChange({ bundlePrice: n })} />
+              </div>
+              <Alcance p={p} onChange={onChange} err={err} burgerEnMenu={burgerEnMenu} />
+            </>
+          )}
+
+          {p.kind === 'nthPct' && (
+            <>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <Campo etiqueta="Cuál burger lleva el descuento" error={err('nth')}>
+                  <select
+                    className={inputCls}
+                    style={{ colorScheme: 'dark', ...bordeError(err('nth')) }}
+                    value={p.nth || ''}
+                    onChange={(e) => onChange({ nth: Number(e.target.value) || undefined })}
+                  >
+                    <option value="2">La 2ª</option>
+                    <option value="3">La 3ª</option>
+                    <option value="4">La 4ª</option>
+                  </select>
+                </Campo>
+                <NumeroInput etiqueta="Descuento (100 = gratis)" valor={p.pct} sufijo="%" error={err('pct')} onChange={(n) => onChange({ pct: n })} />
+              </div>
+              <Alcance p={p} onChange={onChange} err={err} burgerEnMenu={burgerEnMenu} />
+            </>
+          )}
+
+          {p.kind === 'pctOff' && (
+            <>
+              <NumeroInput etiqueta="Descuento" valor={p.pct} sufijo="%" error={err('pct')} onChange={(n) => onChange({ pct: n })} className="mt-3" />
+              <Alcance p={p} onChange={onChange} err={err} burgerEnMenu={burgerEnMenu} />
+            </>
+          )}
+
+          {p.kind === 'amountOff' && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <PrecioInput etiqueta="Cuánto se descuenta" valor={p.amount} bajoOk error={err('amount')} onChange={(n) => onChange({ amount: n })} />
+              <PrecioInput etiqueta="Desde un gasto de (opcional)" valor={p.minSpend || undefined} bajoOk error={err('minSpend')} onChange={(n) => onChange({ minSpend: n })} />
+            </div>
+          )}
+
+          {p.kind === 'freeShipping' && (
+            <PrecioInput etiqueta="Desde un gasto de (opcional)" valor={p.minSpend || undefined} bajoOk error={err('minSpend')} onChange={(n) => onChange({ minSpend: n })} className="mt-3" />
           )}
         </div>
 

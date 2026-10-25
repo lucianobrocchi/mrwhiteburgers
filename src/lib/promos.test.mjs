@@ -690,3 +690,85 @@ test('una promo de una burger que no existe en la carta no se anuncia ni se apli
   }
   assert.equal(P.promosActivas([fantasma], '2026-10-12').active.id, 'f')
 })
+
+// ─── Promos nuevas: combos, % off, 2x1, monto y envío gratis ─────────────
+const base = { id: 'n', enabled: true, date: '2026-10-11' }
+const val = (extra) => P.validatePromo({ ...base, ...extra })
+const desc = (promo, items) => P.calcPromoDiscount(items, val(promo).promo)
+
+test('20% off en la 2ª burger de cualquiera: descuenta solo la más barata de cada par', () => {
+  const promo = { kind: 'nthPct', nth: 2, pct: 20, size: 'any' }
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 1)]), 0) // una sola: nada
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 1), burger('CURRI WHITE', 'triple', 16500, 1)]), 2800) // 20% de 14.000
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 3)]), 2800) // 3 burgers: solo la 2ª
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 4)]), 5600) // 4 burgers: la 2ª y la 4ª
+})
+
+test('2x1: la segunda sale gratis', () => {
+  const promo = { kind: 'nthPct', nth: 2, pct: 100, size: 'any' }
+  assert.equal(desc(promo, [burger('OBRERA', 'simple', 12500, 2)]), 12500)
+  assert.equal(P.normalizePromo({ ...base, ...promo }).headline, '2x1 en burgers')
+})
+
+test('dos triples a tanto: solo cuentan los triples y el precio es del par', () => {
+  const promo = { kind: 'bundle', qty: 2, size: 'triple', bundlePrice: 30000 }
+  assert.equal(desc(promo, [burger('CURRI WHITE', 'triple', 16500, 2)]), 3000) // 33.000 → 30.000
+  assert.equal(desc(promo, [burger('CURRI WHITE', 'triple', 16500, 1), burger('OBRERA', 'doble', 14000, 1)]), 0)
+  assert.equal(desc(promo, [burger('CURRI WHITE', 'triple', 16500, 3)]), 3000) // el 3º queda a precio normal
+  assert.equal(desc(promo, [burger('CURRI WHITE', 'triple', 16500, 4)]), 6000)
+  assert.equal(P.normalizePromo({ ...base, ...promo }).headline, '2 triples x $30.000')
+})
+
+test('combo que no baja el precio no regala nada', () => {
+  const promo = { kind: 'bundle', qty: 2, size: 'doble', bundlePrice: 40000 }
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 2)]), 0)
+})
+
+test('X% off en las burgers de un tamaño, sin tocar extras ni bebidas', () => {
+  const promo = { kind: 'pctOff', pct: 10, size: 'doble' }
+  const items = [burger('OBRERA', 'doble', 14000, 1, 800), burger('BIG WHITE', 'simple', 13500, 1), bebida('Coca-Cola', 'lata', 2500)]
+  assert.equal(desc(promo, items), 1400) // 10% de 14.000, sin los extras
+})
+
+test('promo de una sola burger: solo esa lleva el descuento', () => {
+  const promo = { kind: 'pctOff', pct: 50, size: 'any', itemName: 'OBRERA' }
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 1), burger('BIG WHITE', 'doble', 15000, 1)]), 7000)
+})
+
+test('$X off desde cierto gasto en burgers', () => {
+  const promo = { kind: 'amountOff', amount: 2000, minSpend: 25000 }
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 1)]), 0) // no llega
+  assert.equal(desc(promo, [burger('OBRERA', 'doble', 14000, 2)]), 2000)
+  assert.equal(P.normalizePromo({ ...base, ...promo }).headline, '$2.000 off desde $25.000')
+})
+
+test('envío gratis: no descuenta burgers pero marca el envío como gratis desde el mínimo', () => {
+  const promo = val({ kind: 'freeShipping', minSpend: 25000 }).promo
+  assert.equal(P.calcPromoDiscount([burger('OBRERA', 'doble', 14000, 2)], promo), 0)
+  assert.equal(P.envioGratis(promo, 28000), true)
+  assert.equal(P.envioGratis(promo, 20000), false)
+  assert.equal(P.envioGratis({ kind: 'pctOff' }, 99999), false)
+  assert.equal(P.normalizePromo({ ...base, kind: 'freeShipping', minSpend: 0 }).headline, 'Envío gratis')
+})
+
+test('validación de las promos nuevas: rangos y campos que sobran', () => {
+  assert.equal(val({ kind: 'nthPct', nth: 2, pct: 0 }).ok, false)
+  assert.equal(val({ kind: 'nthPct', nth: 5, pct: 20 }).ok, false)
+  assert.equal(val({ kind: 'pctOff', pct: 95 }).ok, false) // 90% es el tope
+  assert.equal(val({ kind: 'bundle', qty: 1, bundlePrice: 20000 }).ok, false)
+  assert.equal(val({ kind: 'bundle', qty: 2, size: 'gigante', bundlePrice: 20000 }).ok, false)
+  assert.equal(val({ kind: 'amountOff', amount: 0 }).ok, false)
+  const ok = val({ kind: 'nthPct', nth: 2, pct: 20, size: 'doble', precioViejo: 5, bundlePrice: 1 })
+  assert.deepEqual(Object.keys(ok.promo).sort(), ['date', 'enabled', 'id', 'kind', 'nth', 'pct', 'size'])
+})
+
+test('un combo con precio absurdo por burger se frena igual que las otras promos', () => {
+  assert.equal(P.isCheapPromo({ kind: 'bundle', qty: 2, bundlePrice: 1500 }), true) // $750 cada una
+  assert.equal(P.isCheapPromo({ kind: 'bundle', qty: 2, bundlePrice: 30000 }), false)
+})
+
+test('la promo de una burger que ya no está en la carta no se anuncia', () => {
+  const lista = [{ ...base, kind: 'pctOff', pct: 10, size: 'any', itemName: 'FANTASMA' }]
+  assert.equal(P.promosActivas(lista, '2026-10-11', { burgerNames: ['OBRERA'] }).active, null)
+  assert.ok(P.promosActivas(lista, '2026-10-11', { burgerNames: ['FANTASMA'] }).active)
+})

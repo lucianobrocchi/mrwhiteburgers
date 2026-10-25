@@ -40,7 +40,7 @@ function opcionesDeBebida(cfg) {
 const ease = [0.16, 1, 0.3, 1]
 
 export default function CartDrawer() {
-  const { items, addDrink, zone, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, sendToWhatsApp, clear } = useCart()
+  const { items, addDrink, zone, envioBonificado, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, sendToWhatsApp, clear } = useCart()
   const cfg = useConfig()
   const { active: promo } = usePromos()
   const status = getStatus(new Date(), todayOverride(cfg))
@@ -418,7 +418,7 @@ export default function CartDrawer() {
                     className={zone ? 'text-white/70 text-sm' : 'text-white/40 text-xs'}
                     style={{ fontFamily: 'DM Sans, sans-serif' }}
                   >
-                    {zone ? formatZonePrice(zone) : 'Elegí retiro o envío arriba'}
+                    {zone ? (envioBonificado ? 'Gratis · promo' : formatZonePrice(zone)) : 'Elegí retiro o envío arriba'}
                   </span>
                 </div>
 

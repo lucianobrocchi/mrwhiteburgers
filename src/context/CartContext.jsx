@@ -2,12 +2,12 @@
    El contexto, el hook useCart y los helpers del carrito viven juntos a propósito. */
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { recordOrder } from '../lib/orders'
-import { trackPedido, registrar, hito } from '../lib/track'
+import { trackPedido, registrar, hito, gaAgrego, gaSaco, gaVioCarrito, gaEligioZona, recordarCarrito } from '../lib/track'
 import { findZone } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
 import { getConfig, todayOverride } from '../lib/config'
 import { extrasLabel } from '../lib/catalog'
-import { calcPromoDiscount } from '../lib/promos'
+import { calcPromoDiscount, envioGratis } from '../lib/promos'
 import { usePromos } from '../lib/usePromos'
 
 const CartContext = createContext()
@@ -39,19 +39,16 @@ export function CartProvider({ children }) {
     if (!z) return setZoneState(null)
     registrar('eligio_zona', z.name)
     hito('eligio_zona')
+    gaEligioZona(z.name)
     const override = getConfig()?.zones?.[z.id]?.price
     setZoneState(typeof override === 'number' ? { ...z, price: override } : z)
   }, [])
-
-  // Recorrido: abrir el carrito (una vez por visita para el embudo, y cada vez para el conteo)
-  useEffect(() => {
-    if (isOpen) { registrar('abrio_carrito'); hito('abrio_carrito') }
-  }, [isOpen])
 
   const pushItem = useCallback((nuevo, toastName) => {
     registrar(nuevo.kind === 'drink' ? 'agrego_bebida' : 'agrego_burger', `${nuevo.name}${nuevo.kind === 'drink' ? ` ${nuevo.sizeLabel}` : ` ${nuevo.sizeLabel}`}`)
     ;(nuevo.extras || []).forEach(e => registrar('agrego_extra', e.name))
     hito('agrego')
+    gaAgrego(nuevo)
     setItems(prev => {
       const existing = prev.find(i => i.key === nuevo.key)
       if (existing) return prev.map(i => i.key === nuevo.key ? { ...i, qty: i.qty + nuevo.qty } : i)
@@ -108,6 +105,8 @@ export function CartProvider({ children }) {
 
   const removeItem = (key) => {
     registrar('saco_producto')
+    const quitado = items.find(i => i.key === key)
+    if (quitado) gaSaco(quitado)
     setItems(prev => prev.filter(i => i.key !== key))
   }
 
@@ -124,14 +123,25 @@ export function CartProvider({ children }) {
   const totalItems = items.reduce((acc, i) => acc + i.qty, 0)
   const subtotal   = items.reduce((acc, i) => acc + i.price * i.qty, 0)
   const discount   = calcPromoDiscount(items, promo)
-  const shipping   = zone?.price || 0
+  // Promo de envío gratis: solo si la zona tiene precio (retiro y "a coordinar" no cambian)
+  const envioBonificado = !!zone?.price && envioGratis(promo, subtotal)
+  const shipping   = envioBonificado ? 0 : zone?.price || 0
   const totalPrice = subtotal - discount + shipping
+
+  // Al abrir el carrito: recorrido (embudo del panel) y view_cart / begin_checkout de GA4
+  useEffect(() => { recordarCarrito(items, totalPrice) })
+  useEffect(() => {
+    if (!isOpen) return
+    registrar('abrio_carrito')
+    hito('abrio_carrito')
+    gaVioCarrito()
+  }, [isOpen])
 
   const sendToWhatsApp = () => {
     if (!items.length) return
     // Registrar el pedido para las estadísticas del panel (no bloquea)
     recordOrder({ items, total: totalPrice, subtotal, discount, zone, promo: promo?.title })
-    trackPedido({ total: totalPrice, zona: zone?.name, promo: promo?.title })
+    trackPedido({ id: `MW-${Date.now().toString(36)}`, items, total: totalPrice, shipping, zona: zone?.name, promo: promo?.title })
     // Una línea por ítem. Si lleva extras, van abajo para que se lean bien en la cocina.
     const lines = items
       .map(i => {
@@ -148,7 +158,9 @@ export function CartProvider({ children }) {
       ? ''
       : zone.price == null
         ? `\nEnvío ${zone.name}: a coordinar`
-        : zone.price
+        : envioBonificado
+          ? `\nEnvío ${zone.name}: GRATIS (${promo.short})`
+          : zone.price
           ? `\nEnvío ${zone.name}: ${formatPrice(zone.price)}`
           : `\n${zone.name}`
     // Si está cerrado, se avisa que el pedido es para cuando abran.
@@ -168,7 +180,7 @@ export function CartProvider({ children }) {
   return (
     <CartContext.Provider value={{
       items, addItem, addDrink, removeItem, updateQty,
-      totalItems, subtotal, discount, shipping, totalPrice,
+      totalItems, subtotal, discount, shipping, envioBonificado, totalPrice,
       zone, setZone,
       isOpen, setIsOpen, clear, sendToWhatsApp, toast,
     }}>

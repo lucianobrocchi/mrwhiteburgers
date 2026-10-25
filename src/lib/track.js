@@ -85,18 +85,56 @@ function enviar(nombre, datos) {
   }
 }
 
-export const trackBurgerClick = (burger) => {
-  enviar('burger_add', { burger: burger.name })
-  ga('add_to_cart', { items: [{ item_name: burger.name, item_category: 'burger' }] })
+// ─── Comercio electrónico de GA4 ─────────────────────────────────────────
+// Recorrido estándar que GA4 entiende (sirve para informes y para anuncios):
+// view_item_list → add_to_cart → view_cart → begin_checkout → add_shipping_info → purchase.
+// "purchase" se manda cuando toca "Pedir por WhatsApp": es el pedido enviado, no
+// confirma que se haya cobrado (eso pasa en el chat).
+const gaItem = (i) => ({
+  item_id: `${i.kind || 'burger'}-${i.id}`,
+  item_name: i.name,
+  item_category: i.kind === 'drink' ? 'bebida' : 'burger',
+  item_variant: i.sizeLabel,
+  price: Math.round(i.price),
+  quantity: i.qty,
+})
+const valorDe = (items) => items.reduce((s, i) => s + i.price * i.qty, 0)
+
+// Lo último que se ve en el carrito (lo actualiza CartContext), para los eventos que
+// se disparan desde callbacks sueltos
+let ultimo = { items: [], total: 0 }
+export const recordarCarrito = (items, total) => { ultimo = { items, total } }
+
+export const gaVioMenu = () => ga('view_item_list', { item_list_id: 'menu', item_list_name: 'Menú' })
+export const gaAgrego = (item) =>
+  ga('add_to_cart', { currency: 'ARS', value: Math.round(item.price * item.qty), items: [gaItem(item)] })
+export const gaSaco = (item) =>
+  ga('remove_from_cart', { currency: 'ARS', value: Math.round(item.price * item.qty), items: [gaItem(item)] })
+export const gaVioCarrito = () => {
+  const items = ultimo.items
+  if (!items.length) return
+  const base = { currency: 'ARS', value: Math.round(valorDe(items)), items: items.map(gaItem) }
+  ga('view_cart', base)
+  ga('begin_checkout', base)
 }
-export const trackDrinkClick = (nombre) => {
-  enviar('drink_add', { drink: nombre })
-  ga('add_to_cart', { items: [{ item_name: nombre, item_category: 'bebida' }] })
-}
+export const gaEligioZona = (zona) =>
+  ga('add_shipping_info', { currency: 'ARS', value: Math.round(ultimo.total), shipping_tier: zona, items: ultimo.items.map(gaItem) })
+
+export const trackBurgerClick = (burger) => enviar('burger_add', { burger: burger.name })
+export const trackDrinkClick = (nombre) => enviar('drink_add', { drink: nombre })
+
 // Tocó "Pedir por WhatsApp": es lo más parecido a una venta que vemos desde el sitio
-export const trackPedido = ({ total, zona, promo }) => {
+export const trackPedido = ({ id, items, total, shipping, zona, promo }) => {
   enviar('pedido_whatsapp', { total, zona: zona || 'sin elegir' })
-  ga('begin_checkout', { currency: 'ARS', value: total, shipping_tier: zona || 'sin elegir', coupon: promo || undefined })
+  ga('purchase', {
+    transaction_id: id,
+    currency: 'ARS',
+    value: Math.round(total),
+    shipping: Math.round(shipping || 0),
+    coupon: promo || undefined,
+    affiliation: 'WhatsApp',
+    items: items.map(gaItem),
+  })
   registrar('pedido')
   hito('pedido')
   volcar()
