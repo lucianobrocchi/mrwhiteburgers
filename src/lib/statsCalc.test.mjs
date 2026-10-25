@@ -254,3 +254,22 @@ test('recorrido arma el embudo y los más agregados dentro del rango', () => {
   assert.equal(r.extras[0].nombre, 'Bacon')
   assert.equal(recorrido({}, '2026-10-01', '2026-10-31').hayDatos, false)
 })
+
+import { detalleDiario } from './statsCalc.js'
+
+test('detalleDiario: cuánto se facturó cada día, partido en productos, envío y descuento', () => {
+  const o1 = pedido('2026-10-14', 20, 16000, [burger(1, 'OBRERA', 'doble', 1, 14000)], { subtotal: 14000, discount: 0, at: '2026-10-14T23:00:00Z' })
+  const o2 = pedido('2026-10-14', 21, 22000, [burger(1, 'OBRERA', 'doble', 2, 14000)], { subtotal: 28000, discount: 8000, at: '2026-10-15T00:10:00Z' })
+  const o3 = pedido('2026-10-10', 21, 10000, [burger(2, 'BIG WHITE', 'simple', 1, 10000)], { subtotal: 10000, discount: 0, at: '2026-10-10T23:30:00Z' })
+  const fuera = pedido('2026-09-01', 21, 5000, [burger(1, 'OBRERA', 'simple', 1, 5000)], { subtotal: 5000, at: '2026-09-01T23:30:00Z' })
+  const r = detalleDiario([o3, o2, o1, fuera], '2026-10-01', '2026-10-31')
+  assert.deepEqual(r.map((x) => x.d), ['2026-10-14', '2026-10-10']) // más nuevo primero, sin el de septiembre
+  assert.equal(r[0].pedidos, 2)
+  assert.equal(r[0].ventas, 38000)
+  assert.equal(r[0].productos, 34000) // 14.000 + (28.000 - 8.000)
+  assert.equal(r[0].descuentos, 8000)
+  assert.equal(r[0].envios, 4000) // 2.000 + 2.000
+  assert.equal(r[0].ticket, 19000)
+  assert.equal(r[0].w, 3) // miércoles
+  assert.deepEqual(r[0].lista.map((o) => o.h), [20, 21]) // de la mañana a la noche
+})

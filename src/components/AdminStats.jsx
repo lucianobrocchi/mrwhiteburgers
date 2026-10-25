@@ -3,7 +3,7 @@ import {
   TrendingUp, TrendingDown, Download, RefreshCw, Trash2, Sparkles, ExternalLink, Info,
 } from 'lucide-react'
 import {
-  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART, porMes, recorrido,
+  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART, porMes, recorrido, detalleDiario, DIAS_LARGO,
 } from '../lib/statsCalc'
 import { generarDemo } from '../lib/statsDemo'
 import { sourceLabel } from '../lib/source'
@@ -181,6 +181,8 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
   const S = useMemo(() => calcular(orders, rango), [orders, rango])
   const dichos = useMemo(() => frases(S, sourceLabel), [S])
   const meses = useMemo(() => porMes(orders), [orders])
+  const detalle = useMemo(() => detalleDiario(orders, S.rango.desde, S.rango.hasta), [orders, S])
+  const [diaAbierto, setDiaAbierto] = useState('')
   const R = useMemo(() => recorrido(stats?.events, S.rango.desde, S.rango.hasta), [stats, S])
 
   const hayDatos = orders.length > 0
@@ -466,6 +468,68 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
             </Tarjeta>
           )}
         </>
+      )}
+
+      {/* ─── Facturación día por día ─── */}
+      {detalle.length > 0 && (
+        <Tarjeta
+          titulo="Facturación día por día"
+          subtitulo={`${fechaLarga(S.rango.desde)}${S.rango.desde !== S.rango.hasta ? ` al ${fechaLarga(S.rango.hasta)}` : ''} · tocá un día para ver sus pedidos`}
+        >
+          <div className="flex items-baseline justify-between gap-3 pb-3">
+            <span className="text-white/55 text-xs" style={font}>
+              {num(S.actual.pedidos)} {S.actual.pedidos === 1 ? 'pedido' : 'pedidos'} en {detalle.length} {detalle.length === 1 ? 'día' : 'días'}
+            </span>
+            <span className="tabular-nums" style={{ ...anton, color: ORO, fontSize: 22 }}>{money(S.actual.ventas)}</span>
+          </div>
+          {detalle.map((dia) => {
+            const abierto = diaAbierto === dia.d
+            return (
+              <div key={dia.d} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <button
+                  type="button"
+                  onClick={() => setDiaAbierto(abierto ? '' : dia.d)}
+                  aria-expanded={abierto}
+                  className="w-full flex items-center justify-between gap-3 py-3 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-white text-[13px] capitalize" style={{ ...font, fontWeight: 600 }}>
+                      {DIAS_LARGO[dia.w]} {fechaCorta(dia.d)}
+                    </span>
+                    <span className="block text-white/40 text-[11px]" style={font}>
+                      {dia.pedidos} {dia.pedidos === 1 ? 'pedido' : 'pedidos'} · ticket {money(dia.ticket)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums" style={{ ...anton, color: ORO, fontSize: 18 }}>{money(dia.ventas)}</span>
+                </button>
+                {abierto && (
+                  <div className="pb-3">
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {[['Productos', dia.productos], ['Envíos', dia.envios], ['Descuentos', -dia.descuentos]].map(([et, v]) => (
+                        <div key={et} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                          <p className="text-white/40 text-[10px] tracking-[0.12em] uppercase" style={font}>{et}</p>
+                          <p className="text-white text-[13px] tabular-nums" style={{ ...font, fontWeight: 600 }}>{v < 0 ? `− ${money(-v)}` : money(v)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {dia.lista.map((o) => (
+                      <div key={o.id} className="flex items-baseline justify-between gap-3 py-1.5">
+                        <span className="min-w-0 text-[12px] leading-snug text-white/70" style={font}>
+                          <b className="text-white/90">
+                            {new Date(o.at).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })}
+                          </b>{' '}
+                          {o.items.map((i) => `${i.q}× ${i.n}${i.k === 'd' ? ' ' + i.sl : ' ' + (i.sl || i.s)}`).join(' · ')}
+                          {o.zone ? ` · ${o.zone}` : ''}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-white/90 text-[13px]" style={font}>{money(o.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </Tarjeta>
       )}
 
       {/* ─── Mes por mes ─── */}

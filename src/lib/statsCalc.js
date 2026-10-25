@@ -386,3 +386,33 @@ export function aCSV(orders) {
   }
   return '﻿' + filas.join('\n') // BOM para que Excel respete los acentos
 }
+
+// ─── Facturación día por día ─────────────────────────────────────────────
+// Un renglón por día con pedidos (el más nuevo primero), con lo facturado partido en
+// productos, envíos y descuentos, y los pedidos del día de la mañana a la noche.
+export function detalleDiario(orders, desde, hasta) {
+  const dias = new Map()
+  for (const o of orders) {
+    if (o.d < desde || o.d > hasta) continue
+    if (!dias.has(o.d)) dias.set(o.d, [])
+    dias.get(o.d).push(o)
+  }
+  return [...dias.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([d, lista]) => {
+      const ventas = suma(lista, (o) => o.total)
+      const descuentos = suma(lista, (o) => o.discount || 0)
+      const productos = suma(lista, (o) => (o.subtotal || 0) - (o.discount || 0))
+      return {
+        d,
+        w: diaSemanaDe(d),
+        pedidos: lista.length,
+        ventas,
+        productos,
+        descuentos,
+        envios: Math.max(0, ventas - productos),
+        ticket: ventas / lista.length,
+        lista: [...lista].sort((a, b) => (a.at < b.at ? -1 : 1)),
+      }
+    })
+}
