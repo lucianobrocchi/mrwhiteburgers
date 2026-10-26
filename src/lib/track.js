@@ -26,8 +26,13 @@ function volcar() {
 }
 
 // registrar('agrego_burger', 'OBRERA') suma 1 a "agrego_burger:OBRERA" en el día de hoy
+// Los contadores propios gastan almacenamiento de Vercel Blob (cada visita = una escritura).
+// Pausados para no pasarse del límite gratis; el recorrido se ve en Google Analytics.
+// Con true vuelven a anotarse en el panel (Números → Recorrido de la web).
+const EVENTOS_PROPIOS = false
+
 export function registrar(nombre, detalle) {
-  if (!activo) return
+  if (!activo || !EVENTOS_PROPIOS) return
   const k = detalle ? `${nombre}:${String(detalle).slice(0, 36)}` : nombre
   buf[k] = (buf[k] || 0) + 1
   clearTimeout(timer)

@@ -558,7 +558,7 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
         >
           {!R.hayDatos ? (
             <p className="text-white/55 text-[13px] leading-relaxed" style={font}>
-              Todavía no hay visitas registradas en este período. Se empiezan a anotar solas desde que se publicó esta versión.
+              El recorrido propio está pausado para no gastar el almacenamiento de Vercel. Se ve en Google Analytics: Explorar → Exploración de embudo.
             </p>
           ) : (
             <>
