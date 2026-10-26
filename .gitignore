@@ -25,3 +25,8 @@ dist-ssr
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Claves y datos de Cloudflare (nunca al repo)
+ACCESO-PANEL.txt
+.wrangler/
+.dev.vars

@@ -145,6 +145,11 @@ export function createPanel({ store, env = {} }) {
   }
 
   async function registrarPedido(pedido) {
+    // Con una tabla de pedidos (D1): una fila por pedido
+    if (store.orders) {
+      const r = await store.orders.add(pedido, { ventanaMs: DUP_WINDOW_MS, huella })
+      return { duplicado: !!r.duplicado, lleno: false }
+    }
     let duplicado = false
     let lleno = false
     await actualizar(monthPath(mesDeId(pedido.id) || ahoraART().ym), (mes) => {
@@ -161,6 +166,13 @@ export function createPanel({ store, env = {} }) {
   }
 
   async function leerPedidos(meses) {
+    if (store.orders) {
+      const [y, m] = ahoraART().d.split('-').map(Number)
+      const primero = new Date(Date.UTC(y, m - 1 - (meses - 1), 1))
+      const desde = `${primero.getUTCFullYear()}-${String(primero.getUTCMonth() + 1).padStart(2, '0')}-01`
+      const orders = await store.orders.list(desde) // más nuevos primero
+      return { orders, months: [...new Set(orders.map((o) => o.d.slice(0, 7)))] }
+    }
     const paths = (await store.listPaths('stats/'))
       .filter((p) => /^stats\/\d{4}-\d{2}\.json$/.test(p))
       .sort()
@@ -306,6 +318,9 @@ export function createPanel({ store, env = {} }) {
         const id = String(body?.id || '')
         const ym = mesDeId(id)
         if (!ym) return json(400, { error: 'id inválido' })
+        if (store.orders) {
+          return (await store.orders.remove(id)) ? json(200, { ok: true }) : json(404, { error: 'no encontré ese pedido' })
+        }
         let borrado = false
         await actualizar(monthPath(ym), (mes) => {
           if (!mes?.orders?.some((o) => o.id === id)) return undefined

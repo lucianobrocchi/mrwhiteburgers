@@ -1,0 +1,15 @@
+name = "mrwhite"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# Base D1 compartida por todos los clientes ("negocios")
+[[d1_databases]]
+binding = "DB"
+database_name = "negocios"
+database_id = "765b57aa-454b-41b9-850e-8d0d1a3c74ce"
+migrations_dir = "migrations"
+
+[vars]
+SITE_ID = "mrwhite"
+# PANEL_PASSWORD no va acá: es un secreto (wrangler pages secret put PANEL_PASSWORD)
