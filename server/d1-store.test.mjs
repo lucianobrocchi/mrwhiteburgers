@@ -88,7 +88,7 @@ test('D1: se puede borrar un pedido, y un cliente no borra los de otro', async (
 
 test('D1: la config se guarda, el sitio público la ve y la segunda edición con versión vieja recibe aviso', async () => {
   const { h } = nuevo()
-  assert.equal((await llamar(h, { action: 'public-config' })).code, 404)
+  assert.deepEqual((await llamar(h, { action: 'public-config' })).body, {}) // todavía no hay
   const g1 = await llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config: { ticker: 'hola' }, sha: null } })
   assert.equal(g1.code, 200)
   assert.equal((await llamar(h, { action: 'public-config' })).body.ticker, 'hola')

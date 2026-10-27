@@ -120,7 +120,7 @@ function ExtrasPicker({ picked, setPicked, cfg }) {
         ) : (
           <ChevronDown
             size={16}
-            className="text-white/40 shrink-0"
+            className="text-white/55 shrink-0"
             style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .25s ease' }}
           />
         )}
@@ -150,7 +150,7 @@ function ExtrasPicker({ picked, setPicked, cfg }) {
                         {e.name.replace(/ (?=gr$)/, ' ')}
                       </p>
                       {e.desc && (
-                        <p className="text-white/40 text-[11px] mt-0.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                        <p className="text-white/55 text-[11px] mt-0.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
                           {e.desc}
                         </p>
                       )}
@@ -482,7 +482,7 @@ function BurgerCard({ burger, index }) {
               {burger.name.charAt(0)}
             </span>
             <span
-              className="mt-3 text-[10px] tracking-[0.2em] uppercase text-white/40"
+              className="mt-3 text-[10px] tracking-[0.2em] uppercase text-white/55"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
               Foto próximamente
@@ -535,7 +535,7 @@ function BurgerCard({ burger, index }) {
         {/* Price */}
         <div className="flex items-baseline justify-between">
           <span
-            className="text-[10px] tracking-[0.18em] uppercase text-white/40"
+            className="text-[10px] tracking-[0.18em] uppercase text-white/55"
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
             Precio
@@ -544,7 +544,7 @@ function BurgerCard({ burger, index }) {
             <div className="flex items-baseline gap-2">
               {promoPrice != null && (
                 <span
-                  className="text-lg text-white/35 line-through"
+                  className="text-lg text-white/55 line-through"
                   style={{ fontFamily: 'Anton, sans-serif' }}
                 >
                   {formatPrice(price + extrasUnit)}

@@ -207,7 +207,8 @@ export function createPanel({ store, env = {} }) {
       if (!store) return json(404, { error: 'sin backend' })
       try {
         const c = await store.getJson(PATH_CONFIG)
-        if (!c?.data) return json(404, { error: 'sin config' })
+        // Todavía no se guardó nada desde el panel: vacío (no 404, que ensucia la consola); el sitio usa su archivo
+        if (!c?.data) return json(200, {})
         res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=15, stale-while-revalidate=60')
         return json(200, c.data)
       } catch {

@@ -11,6 +11,8 @@ function BrandLogo() {
     <img
       src={logoChars}
       alt="Mr. White Burgers"
+      width={440}
+      height={272}
       className="h-10 md:h-12 w-auto object-contain select-none"
       draggable={false}
     />

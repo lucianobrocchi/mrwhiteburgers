@@ -84,7 +84,7 @@ export default function HoursSection() {
                 {h.label}
               </span>
               <span
-                className={h.closed ? 'text-white/30 text-sm' : 'text-white/85 text-sm'}
+                className={h.closed ? 'text-white/55 text-sm' : 'text-white/85 text-sm'}
                 style={{ fontFamily: 'DM Sans, sans-serif' }}
               >
                 {h.hours}
@@ -168,7 +168,7 @@ export default function HoursSection() {
               </div>
             ))}
             <p
-              className="text-white/35 text-[11px] mt-2.5"
+              className="text-white/55 text-[11px] mt-2.5"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
               En el carrito ponés tu esquina (por ejemplo 12 y 60) y te decimos tu zona.

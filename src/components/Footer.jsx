@@ -160,7 +160,7 @@ export default function Footer() {
           style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
         >
           <p
-            className="text-xs text-white/35 tracking-wide"
+            className="text-xs text-white/55 tracking-wide"
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
             © 2025 Mr. White Burgers. Todos los derechos reservados.

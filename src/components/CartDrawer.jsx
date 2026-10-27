@@ -130,7 +130,7 @@ export default function CartDrawer() {
                       border: '1px solid rgba(255,255,255,0.06)',
                     }}
                   >
-                    <ShoppingBag size={32} className="text-white/30" />
+                    <ShoppingBag size={32} className="text-white/55" />
                   </div>
                   <p
                     className="text-white/55 text-sm leading-relaxed"
@@ -210,7 +210,7 @@ export default function CartDrawer() {
                           {/* Quitar */}
                           <motion.button
                             onClick={() => removeItem(item.key)}
-                            className="w-8 h-8 -mt-1 -mr-1.5 shrink-0 rounded-full flex items-center justify-center text-white/35 hover:text-red-400 hover:bg-red-400/10"
+                            className="w-8 h-8 -mt-1 -mr-1.5 shrink-0 rounded-full flex items-center justify-center text-white/55 hover:text-red-400 hover:bg-red-400/10"
                             whileTap={{ scale: 0.9 }}
                             aria-label={`Quitar ${item.name}`}
                           >
@@ -349,7 +349,7 @@ export default function CartDrawer() {
 
                 <button
                   onClick={clear}
-                  className="block mx-auto mt-4 text-xs text-white/35 hover:text-white/60 transition-colors py-2 px-4"
+                  className="block mx-auto mt-4 text-xs text-white/55 hover:text-white/60 transition-colors py-2 px-4"
                   style={{ fontFamily: 'DM Sans, sans-serif' }}
                 >
                   Vaciar carrito
@@ -415,7 +415,7 @@ export default function CartDrawer() {
                     {zone ? zone.name : 'Entrega'}
                   </span>
                   <span
-                    className={zone ? 'text-white/70 text-sm' : 'text-white/40 text-xs'}
+                    className={zone ? 'text-white/70 text-sm' : 'text-white/55 text-xs'}
                     style={{ fontFamily: 'DM Sans, sans-serif' }}
                   >
                     {zone ? (envioBonificado ? 'Gratis · promo' : formatZonePrice(zone)) : 'Elegí retiro o envío arriba'}

@@ -264,7 +264,7 @@ function DrinkCard({ drink, index }) {
         {/* Precio */}
         <div className="flex items-baseline justify-between mt-auto">
           <span
-            className="text-[10px] tracking-[0.18em] uppercase text-white/40"
+            className="text-[10px] tracking-[0.18em] uppercase text-white/55"
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
             Precio

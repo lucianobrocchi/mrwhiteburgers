@@ -200,7 +200,7 @@ function BuscaZona({ zona, setZone, cfg }) {
   }
 
   const campo =
-    'w-full min-w-0 text-center text-white text-base rounded-lg py-2 outline-none placeholder:text-white/25 focus:border-[#F0C832]/60'
+    'w-full min-w-0 text-center text-white text-base rounded-lg py-2 outline-none placeholder:text-white/55 focus:border-[#F0C832]/60'
 
   return (
     <div
@@ -211,7 +211,7 @@ function BuscaZona({ zona, setZone, cfg }) {
         <MapPin size={13} className="text-[#F0C832]" />
         ¿En qué zona estás?
       </p>
-      <p className="text-white/40 text-[11px] mt-0.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+      <p className="text-white/55 text-[11px] mt-0.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
         Poné las dos calles de tu esquina, por ejemplo 12 y 60.
       </p>
       <div className="flex items-center gap-2 mt-2.5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
@@ -364,7 +364,7 @@ export default function ZonePicker() {
               </span>
             </div>
             <p
-              className="text-white/40 text-[11px] mt-1 pl-[22px]"
+              className="text-white/55 text-[11px] mt-1 pl-[22px]"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
               {isPickup ? '27 esq. 80 · Altos de San Lorenzo' : z.bounds}

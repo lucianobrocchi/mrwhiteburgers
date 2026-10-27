@@ -154,7 +154,9 @@ test('las estadísticas juntan varios meses, más nuevos primero', async () => {
 // ─── Config del panel ────────────────────────────────────────────────────
 test('la config se guarda, se lee y el sitio público la ve (sin clave)', async () => {
   const { h } = nuevo()
-  assert.equal((await llamar(h, { action: 'public-config' })).code, 404) // todavía no hay
+  const vacia = await llamar(h, { action: 'public-config' }) // todavía no hay: vacío, no 404
+  assert.equal(vacia.code, 200)
+  assert.deepEqual(vacia.body, {})
 
   assert.equal((await llamar(h, { action: 'save-config', method: 'POST', body: { config: { stock: { 'extra:bacon': true } } } })).code, 401)
   const g0 = await llamar(h, { action: 'get-config', key: CLAVE })

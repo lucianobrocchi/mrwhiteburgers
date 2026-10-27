@@ -122,7 +122,7 @@ function Banner({ promo, isLive }) {
             >
               <Package size={13} className="text-[#F0C832]" /> Take away
             </div>
-            <span className="text-white/30 text-xs">·</span>
+            <span className="text-white/55 text-xs">·</span>
             <div className="inline-flex items-center gap-1.5 text-white/75 text-xs tracking-wide"
               style={{ fontFamily: 'DM Sans, sans-serif' }}
             >
