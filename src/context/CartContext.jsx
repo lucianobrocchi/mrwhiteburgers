@@ -7,7 +7,7 @@ import { findZone } from '../lib/zones'
 import { getStatus } from '../lib/schedule'
 import { getConfig, todayOverride } from '../lib/config'
 import { extrasLabel } from '../lib/catalog'
-import { calcPromoDiscount, envioGratis } from '../lib/promos'
+import { calcPromoDiscount, envioGratis, promoRige, minutosAR } from '../lib/promos'
 import { usePromos } from '../lib/usePromos'
 import { SIZES } from '../lib/sizes'
 
@@ -28,7 +28,7 @@ export function CartProvider({ children }) {
   const [toast, setToast]     = useState(null) // { name, id }
   const [zone, setZoneState]  = useState(null) // zona de envío elegida
   // La promo de hoy sale de la config del panel (se actualiza sola al cargar)
-  const { active: promo } = usePromos()
+  const { active: promoDeHoy } = usePromos()
 
   // El precio de envío puede venir pisado por el panel (config.zones)
   const setZone = useCallback((id) => {
@@ -119,6 +119,8 @@ export function CartProvider({ children }) {
 
   const totalItems = items.reduce((acc, i) => acc + i.qty, 0)
   const subtotal   = items.reduce((acc, i) => acc + i.price * i.qty, 0)
+  // La promo de hoy rige solo si se cumple su modalidad (retiro/envío) y su horario, si los tiene
+  const promo = promoDeHoy && promoRige(promoDeHoy, { zoneId: zone?.id, minutes: minutosAR() }) ? promoDeHoy : null
   const discount   = calcPromoDiscount(items, promo)
   // Promo de envío gratis: solo si la zona tiene precio (retiro y "a coordinar" no cambian)
   const envioBonificado = !!zone?.price && envioGratis(promo, subtotal)

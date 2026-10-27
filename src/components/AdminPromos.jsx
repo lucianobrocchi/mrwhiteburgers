@@ -532,7 +532,7 @@ function Promo({ clave, promo: p, indice, lista, cfg, hoy, sinGuardar, verErrore
           <Opciones
             nombre="Tipo de promo"
             valor={p.kind}
-            onChange={(k) => onChange({ kind: k, ...(ARRANQUE[k] || {}) })}
+            onChange={(k) => onChange({ kind: k, ...(ARRANQUE[k] || {}), ...(k === 'itemPrice' ? { via: undefined, timeFrom: undefined, timeTo: undefined } : {}) })}
             opciones={[
               ['simplesBundle', '2 simples por $X'],
               ['itemPrice', 'Una burger a precio especial'],
@@ -639,6 +639,37 @@ function Promo({ clave, promo: p, indice, lista, cfg, hoy, sinGuardar, verErrore
           {p.kind === 'freeShipping' && (
             <PrecioInput etiqueta="Desde un gasto de (opcional)" valor={p.minSpend || undefined} bajoOk error={err('minSpend')} onChange={(n) => onChange({ minSpend: n })} className="mt-3" />
           )}
+        </div>
+
+        {/* Condiciones (opcional): solo retirando / solo con envío y horario */}
+        <div>
+          <p className={`${labelCls} mb-2`}>Condiciones (opcional)</p>
+          {p.kind === 'itemPrice' ? (
+            <p className="text-white/45 text-xs" style={font}>El precio especial de una burger vale todo el día, con envío o retiro.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              <Campo etiqueta="Modalidad" error={err('via')}>
+                <select
+                  className={inputCls}
+                  value={p.via || ''}
+                  onChange={(e) => onChange({ via: e.target.value || undefined })}
+                >
+                  <option value="">Cualquiera</option>
+                  <option value="retiro">Solo retirando</option>
+                  <option value="delivery">Solo con envío</option>
+                </select>
+              </Campo>
+              <Campo etiqueta="Desde (hora)" error={err('time')}>
+                <input type="time" className={inputCls} value={p.timeFrom || ''} onChange={(e) => onChange({ timeFrom: e.target.value || undefined })} />
+              </Campo>
+              <Campo etiqueta="Hasta (hora)">
+                <input type="time" className={inputCls} value={p.timeTo || ''} onChange={(e) => onChange({ timeTo: e.target.value || undefined })} />
+              </Campo>
+            </div>
+          )}
+          <p className="text-white/40 text-[11px] mt-1.5 leading-relaxed" style={font}>
+            Con “solo retirando” o “solo con envío”, la promo se aplica cuando el cliente elige cómo recibirlo. El horario es el de Argentina.
+          </p>
         </div>
 
         {/* Título */}

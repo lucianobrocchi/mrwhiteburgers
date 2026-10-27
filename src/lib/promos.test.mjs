@@ -772,3 +772,54 @@ test('la promo de una burger que ya no está en la carta no se anuncia', () => {
   assert.equal(P.promosActivas(lista, '2026-10-11', { burgerNames: ['OBRERA'] }).active, null)
   assert.ok(P.promosActivas(lista, '2026-10-11', { burgerNames: ['FANTASMA'] }).active)
 })
+
+// ─── Condiciones: modalidad y horario ────────────────────────────────────
+const base2 = { id: 'x', enabled: true, kind: 'pctOff', pct: 20, size: 'any', weekdays: [1, 2, 3, 4, 5, 6, 0] }
+
+test('modalidad y horario: se validan y se guardan solo si están', () => {
+  const sin = P.validatePromo(base2)
+  assert.ok(sin.ok && !('via' in sin.promo) && !('timeFrom' in sin.promo))
+  const con = P.validatePromo({ ...base2, via: 'retiro', timeFrom: '20:00', timeTo: '21:30' })
+  assert.ok(con.ok)
+  assert.equal(con.promo.via, 'retiro')
+  assert.equal(con.promo.timeFrom, '20:00')
+  assert.equal(con.promo.timeTo, '21:30')
+  assert.ok(!P.validatePromo({ ...base2, via: 'volando' }).ok)
+  assert.ok(!P.validatePromo({ ...base2, timeFrom: '20:00' }).ok) // falta "hasta"
+  assert.ok(!P.validatePromo({ ...base2, timeFrom: '25:00', timeTo: '26:00' }).ok)
+})
+
+test('el precio especial de una burger no admite modalidad ni horario', () => {
+  const item = { id: 'i', enabled: true, kind: 'itemPrice', itemName: 'OBRERA', itemSize: 'doble', specialPrice: 9000, weekdays: [5] }
+  assert.ok(P.validatePromo(item).ok)
+  assert.ok(!P.validatePromo({ ...item, via: 'retiro' }).ok)
+  assert.ok(!P.validatePromo({ ...item, timeFrom: '20:00', timeTo: '21:00' }).ok)
+})
+
+test('promoRige: retiro, envío y horario (incluido el que cruza la medianoche)', () => {
+  const retiro = { via: 'retiro' }
+  assert.ok(P.promoRige(retiro, { zoneId: 'retiro' }))
+  assert.ok(!P.promoRige(retiro, { zoneId: 'z1' }))
+  assert.ok(!P.promoRige(retiro, {})) // todavía no eligió
+  const envio = { via: 'delivery' }
+  assert.ok(P.promoRige(envio, { zoneId: 'z3' }) && P.promoRige(envio, { zoneId: 'otra' }))
+  assert.ok(!P.promoRige(envio, { zoneId: 'retiro' }) && !P.promoRige(envio, {}))
+  const hh = { timeFrom: '20:00', timeTo: '21:00' }
+  assert.ok(P.promoRige(hh, { minutes: 20 * 60 + 15 }))
+  assert.ok(!P.promoRige(hh, { minutes: 21 * 60 }))
+  const noche = { timeFrom: '23:00', timeTo: '01:00' }
+  assert.ok(P.promoRige(noche, { minutes: 23 * 60 + 30 }) && P.promoRige(noche, { minutes: 30 }) && !P.promoRige(noche, { minutes: 12 * 60 }))
+  assert.ok(P.promoRige({}, {}) && !P.promoRige(null, {})) // sin condiciones, siempre
+})
+
+test('el texto de la promo avisa las condiciones', () => {
+  const p = P.validatePromo({ ...base2, via: 'retiro', timeFrom: '20:00', timeTo: '21:00' }).promo
+  const n = P.normalizePromo(p, { dateLabel: 'HOY' })
+  assert.match(n.headline, /solo retirando en el local · de 20:00 a 21:00 hs/)
+  assert.match(n.ticker, /SOLO RETIRANDO EN EL LOCAL/)
+  assert.equal(P.condicionesTexto(base2), '')
+})
+
+test('minutosAR da la hora de Argentina', () => {
+  assert.equal(P.minutosAR(new Date('2026-10-27T23:30:00Z')), 20 * 60 + 30) // UTC-3
+})

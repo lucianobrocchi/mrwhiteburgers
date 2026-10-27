@@ -83,6 +83,7 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 // ─── Validación ──────────────────────────────────────────────────────────
 const isPrice = (n) => typeof n === 'number' && Number.isInteger(n) && n > 0 && n <= MAX_PRICE
 const hasValue = (v) => v !== undefined && v !== null && v !== ''
+const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 
 // Revisa una promo sin tirar nunca (viene del panel, de un archivo o de basura).
 //   { ok: true,  promo }    → promo limpia, solo con los campos que le corresponden
@@ -182,6 +183,20 @@ export function validatePromo(raw) {
     errors.when = 'Elegí cuándo vale la promo: un día puntual o días de la semana.'
   }
 
+  // Condiciones extra (opcionales): solo retirando / solo delivery, y un horario (happy hour)
+  let via, timeFrom, timeTo
+  if (hasValue(raw.via)) {
+    if (raw.via === 'retiro' || raw.via === 'delivery') via = raw.via
+    else errors.via = 'La modalidad tiene que ser retiro o delivery.'
+  }
+  if (hasValue(raw.timeFrom) || hasValue(raw.timeTo)) {
+    if (HORA_RE.test(raw.timeFrom || '') && HORA_RE.test(raw.timeTo || '')) { timeFrom = raw.timeFrom; timeTo = raw.timeTo }
+    else errors.time = 'Para limitar por horario completá "desde" y "hasta" (por ejemplo 20:00 y 21:00).'
+  }
+  if ((via || timeFrom) && kind === 'itemPrice') {
+    errors.via = 'El precio especial de una burger vale todo el día, con envío o retiro.'
+  }
+
   if (Object.keys(errors).length) return { ok: false, errors }
 
   const promo = { id, enabled: raw.enabled === true }
@@ -215,6 +230,8 @@ export function validatePromo(raw) {
   }
   if (date) promo.date = date
   else promo.weekdays = weekdays
+  if (via) promo.via = via
+  if (timeFrom) { promo.timeFrom = timeFrom; promo.timeTo = timeTo }
   return { ok: true, promo }
 }
 
@@ -340,14 +357,15 @@ export function normalizePromo(raw, ctx = {}) {
     bigPrice = t.bigPrice
     bigSub = t.bigSub
   }
+  const cond = condicionesTexto(p)
   return {
     ...p,
     title: p.title || tituloPorDefecto(dateLabel),
     customTitle: !!p.title,
     dateLabel,
-    headline,
-    ticker,
-    short: headline,
+    headline: headline + cond,
+    ticker: ticker + cond.toUpperCase(),
+    short: headline + cond,
     bigPrice,
     bigSub,
   }
@@ -373,6 +391,43 @@ export function describeWhen(p, hoy) {
   }
   const nombres = dias.map((d) => DAY_SHORT[d])
   return `Todos los ${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`
+}
+
+// ─── Condiciones: modalidad y horario ────────────────────────────────────
+const horaAMin = (h) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3))
+
+// "(solo retirando en el local · de 20:00 a 21:00 hs)" o '' si la promo no tiene condiciones
+export function condicionesTexto(p) {
+  const c = []
+  if (p?.via === 'retiro') c.push('solo retirando en el local')
+  if (p?.via === 'delivery') c.push('solo con envío')
+  if (p?.timeFrom && p?.timeTo) c.push(`de ${p.timeFrom} a ${p.timeTo} hs`)
+  return c.length ? ` (${c.join(' · ')})` : ''
+}
+
+// Minutos desde las 00:00 en Argentina
+export function minutosAR(now = new Date()) {
+  const partes = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(now)
+  const h = Number(partes.find((x) => x.type === 'hour')?.value) % 24
+  const m = Number(partes.find((x) => x.type === 'minute')?.value)
+  return h * 60 + m
+}
+
+// ¿La promo de hoy rige en este momento? Mira la modalidad (por la zona elegida: 'retiro' o una
+// zona de envío) y el horario. Sin condiciones, siempre rige. Con "solo retirando" o "solo con
+// envío", mientras el cliente no elige cómo recibirlo, no se aplica.
+export function promoRige(p, { zoneId, minutes } = {}) {
+  if (!p) return false
+  if (p.via === 'retiro' && zoneId !== 'retiro') return false
+  if (p.via === 'delivery' && (!zoneId || zoneId === 'retiro')) return false
+  if (p.timeFrom && p.timeTo && Number.isFinite(minutes)) {
+    const a = horaAMin(p.timeFrom), b = horaAMin(p.timeTo)
+    const dentro = a <= b ? minutes >= a && minutes < b : minutes >= a || minutes < b
+    if (!dentro) return false
+  }
+  return true
 }
 
 // ─── Qué promo corre ─────────────────────────────────────────────────────

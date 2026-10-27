@@ -8,6 +8,12 @@
     <link rel="preload" as="image" href="./videos/hero-poster.webp" fetchpriority="high" />
     <link rel="preload" as="image" href="./img/logo_full.webp" />
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <!-- Foto de portada ya en el HTML: se ve antes de que cargue el JavaScript (React la reemplaza al arrancar) -->
+    <style>
+      #hero-estatico{position:relative;min-height:100vh;background:#000;overflow:hidden}
+      #hero-estatico img{position:absolute;top:0;left:0;width:100%;height:500px;object-fit:cover;object-position:50% 30%}
+      @media (min-width:768px){#hero-estatico img{left:45%;width:55%;height:100%;object-position:50% 35%}}
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>%SEO_TITULO%</title>
     <meta name="description" content="%SEO_DESCRIPCION%" />
@@ -39,7 +45,7 @@
     <!--SEO_JSONLD-->
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="hero-estatico"><img src="./videos/hero-poster.webp" alt="" width="900" height="820" fetchpriority="high" decoding="async" /></div></div>
     <!--SEO_NOSCRIPT-->
     <script type="module" src="/src/main.jsx"></script>
   </body>
