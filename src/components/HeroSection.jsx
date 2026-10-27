@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import imgHero from '../assets/burgers/curri_white_hero.jpg'
 import logoFull from '../assets/logo_full.jpg'
 import { getStatus } from '../lib/schedule'
 import { useConfig, todayOverride } from '../lib/config'
@@ -48,7 +47,7 @@ function HeroVideo({ className, style }) {
     <video
       ref={ref}
       src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
-      poster={imgHero}
+      poster={`${import.meta.env.BASE_URL}videos/hero-poster.webp`}
       autoPlay
       loop
       muted
