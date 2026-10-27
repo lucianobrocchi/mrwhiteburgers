@@ -132,6 +132,9 @@ const suma = (arr, f) => arr.reduce((s, x) => s + f(x), 0)
 const pct = (parte, todo) => (todo > 0 ? (parte / todo) * 100 : 0)
 const promedio = (arr, f) => (arr.length ? suma(arr, f) / arr.length : 0)
 
+// Lo que el cliente pagó de envío: el total menos los productos ya con el descuento aplicado
+export const envioDe = (o) => (o.subtotal ? Math.max(0, o.total - (o.subtotal - (o.discount || 0))) : 0)
+
 const burgersDe = (o) => o.items.filter((i) => i.k !== 'd')
 const bebidasDe = (o) => o.items.filter((i) => i.k === 'd')
 const extrasDe = (o) => burgersDe(o).flatMap((i) => (i.x || []).map((e) => ({ ...e, mult: i.q })))
@@ -198,10 +201,11 @@ export function calcular(orders, rangoId, now = new Date()) {
   const bMap = new Map()
   for (const o of act) {
     for (const i of burgersDe(o)) {
-      const g = bMap.get(i.id) || { id: i.id, nombre: i.n, unidades: 0, ventas: 0 }
+      const g = bMap.get(i.id) || { id: i.id, nombre: i.n, unidades: 0, ventas: 0, tam: { simple: 0, doble: 0, triple: 0 } }
       g.unidades += i.q
       g.ventas += i.u * i.q
       g.nombre = i.n
+      if (i.s in g.tam) g.tam[i.s] += i.q
       bMap.set(i.id, g)
     }
   }
@@ -260,7 +264,13 @@ export function calcular(orders, rangoId, now = new Date()) {
   const conEnvio = act.filter((o) => o.zoneId && o.zoneId !== 'retiro' && o.zoneId !== 'otra')
   const zonas = agrupar(act, (o) => o.zone || 'Sin elegir')
     .sort((a, b) => b.pedidos - a.pedidos)
-    .map((g) => ({ nombre: g.clave, pedidos: g.pedidos, ventas: g.ventas, pct: pct(g.pedidos, act.length) }))
+    .map((g) => ({
+      nombre: g.clave,
+      pedidos: g.pedidos,
+      ventas: g.ventas,
+      envios: suma(act.filter((o) => (o.zone || 'Sin elegir') === g.clave), envioDe),
+      pct: pct(g.pedidos, act.length),
+    }))
   const entrega = {
     envio: conEnvio.length + aCoordinar.length,
     retiro: retiro.length,
@@ -286,10 +296,28 @@ export function calcular(orders, rangoId, now = new Date()) {
     nSinBebida: act.length - conBebida.length,
   }
 
+  // Qué promo se usó: veces, lo descontado y lo facturado en esos pedidos
+  const pMap = new Map()
+  for (const o of act.filter((x) => (x.discount || 0) > 0 || x.promo)) {
+    const nombre = o.promo || 'Promo sin nombre'
+    const g = pMap.get(nombre) || { nombre, pedidos: 0, descuentos: 0, ventas: 0 }
+    g.pedidos += 1
+    g.descuentos += o.discount || 0
+    g.ventas += o.total
+    pMap.set(nombre, g)
+  }
   const promos = {
     pedidos: act.filter((o) => (o.discount || 0) > 0).length,
     descuentos: k.descuentos,
+    ranking: [...pMap.values()].sort((a, b) => b.pedidos - a.pedidos),
   }
+
+  // De dónde sale lo facturado: productos (sin descuento), descuentos y envíos
+  const bruto = suma(act, (o) => o.subtotal || 0)
+  const envios = suma(act, envioDe)
+  const desglose = { productos: bruto, descuentos: k.descuentos, envios, total: k.ventas }
+  const totales = act.map((o) => o.total)
+  const extremos = { max: totales.length ? Math.max(...totales) : 0, min: totales.length ? Math.min(...totales) : 0 }
 
   // Lo "mejor"
   const mejorDiaSemana = [...porSemana].sort((a, b) => b.pedidos - a.pedidos)[0]
@@ -314,7 +342,7 @@ export function calcular(orders, rangoId, now = new Date()) {
     },
     porDia, porSemana, porHora,
     burgers, tamanos, extras, bebidas,
-    entrega, zonas, origenes, ticket, promos,
+    entrega, zonas, origenes, ticket, promos, desglose, extremos,
     mejor: { diaSemana: mejorDiaSemana, hora: mejorHora, dia: mejorDia, diasConPedidos },
     acumulado: { ...todos, desde: primero, diasActivos, porDiaActivo: diasActivos ? todos.ventas / diasActivos : 0 },
     vacio: act.length === 0,

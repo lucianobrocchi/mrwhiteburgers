@@ -273,3 +273,21 @@ test('detalleDiario: cuánto se facturó cada día, partido en productos, envío
   assert.equal(r[0].w, 3) // miércoles
   assert.deepEqual(r[0].lista.map((o) => o.h), [20, 21]) // de la mañana a la noche
 })
+
+import { envioDe } from './statsCalc.js'
+
+test('desglose: productos − descuentos + envíos = total, y promos por nombre', () => {
+  const a = pedido('2026-10-10', 20, 16000, [burger(1, 'OBRERA', 'doble', 1, 14000)], { subtotal: 14000, discount: 0, zoneId: 'z1', zone: 'Zona 1' })
+  const b = pedido('2026-10-10', 21, 22000, [burger(1, 'OBRERA', 'doble', 2, 14000)], { subtotal: 28000, discount: 8000, promo: '2x1 OBRERA', zoneId: 'z1', zone: 'Zona 1' })
+  const c = pedido('2026-10-09', 21, 10000, [burger(2, 'BIG WHITE', 'simple', 1, 10000)], { subtotal: 10000, discount: 0 })
+  assert.equal(envioDe(a), 2000)
+  assert.equal(envioDe(b), 2000)
+  assert.equal(envioDe(c), 0)
+  const S = calcular([a, b, c], '7', AHORA)
+  assert.deepEqual(S.desglose, { productos: 52000, descuentos: 8000, envios: 4000, total: 48000 })
+  assert.equal(S.desglose.productos - S.desglose.descuentos + S.desglose.envios, S.desglose.total)
+  assert.deepEqual(S.promos.ranking, [{ nombre: '2x1 OBRERA', pedidos: 1, descuentos: 8000, ventas: 22000 }])
+  assert.deepEqual(S.extremos, { max: 22000, min: 10000 })
+  assert.equal(S.zonas.find((z) => z.nombre === 'Zona 1').envios, 4000)
+  assert.deepEqual(S.burgers.find((x) => x.id === 1).tam, { simple: 0, doble: 3, triple: 0 })
+})

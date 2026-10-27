@@ -3,7 +3,7 @@ import {
   TrendingUp, TrendingDown, Download, RefreshCw, Trash2, Sparkles, ExternalLink, Info,
 } from 'lucide-react'
 import {
-  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART, porMes, recorrido, detalleDiario, DIAS_LARGO,
+  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART, porMes, recorrido, detalleDiario, DIAS_LARGO, envioDe,
 } from '../lib/statsCalc'
 import { generarDemo } from '../lib/statsDemo'
 import { sourceLabel } from '../lib/source'
@@ -18,8 +18,22 @@ const ROJO = '#F87171'
 
 const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR')
 const num = (n) => Math.round(n || 0).toLocaleString('es-AR')
-const nombreMes = (ym) =>
-  new Date(`${ym}-15T12:00:00`).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+// $38.000 → "38k", $1.250.000 → "1,2M": para el número sobre cada barra
+const corto = (n) => {
+  const v = Math.round(n || 0)
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1).replace('.', ',')}M`
+  if (v >= 1000) return `${Math.round(v / 1000)}k`
+  return String(v)
+}
+const hora = (at) =>
+  new Date(at).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })
+// "2× OBRERA doble (+ Bacon, 2 Cheddar)" / "1× Coca-Cola 1,5 L"
+const lineaItem = (i) => {
+  const ex = (i.x || []).length ? ` (+${i.x.map((e) => (e.q > 1 ? `${e.q} ` : '') + e.n).join(', ')})` : ''
+  return `${i.q}× ${i.n}${i.k === 'd' ? ' ' + i.sl : ' ' + (i.sl || i.s)}${ex}`
+}
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const nombreMes = (ym) => `${MESES[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`
 const fechaLarga = (ds) =>
   new Date(`${ds}T12:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -71,7 +85,7 @@ function Dato({ etiqueta, valor, variacion, nota }) {
 }
 
 // Barras verticales (pedidos por día, por hora, por día de la semana)
-function Barras({ datos, alto = 120, mostrarValores = true, resaltar }) {
+function Barras({ datos, alto = 120, mostrarValores = true, resaltar, formato = String }) {
   const max = Math.max(1, ...datos.map((d) => d.valor))
   return (
     <div className="flex items-end gap-[3px] w-full" style={{ height: alto + 34 }}>
@@ -84,7 +98,7 @@ function Barras({ datos, alto = 120, mostrarValores = true, resaltar }) {
               className="text-[10px] tabular-nums leading-none mb-1"
               style={{ ...font, color: 'rgba(255,255,255,0.6)', visibility: mostrarValores && d.valor > 0 ? 'visible' : 'hidden' }}
             >
-              {d.valor}
+              {formato(d.valor)}
             </span>
             <div
               className="w-full rounded-t-[4px]"
@@ -168,11 +182,12 @@ function catalogoDemo() {
 }
 
 // ─── Pantalla ────────────────────────────────────────────────────────────
-export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, recargando, registroActivo = true, pasosBlob }) {
+export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, recargando }) {
   const [rango, setRango] = useState('7')
   const [demo, setDemo] = useState(false)
   const [borrando, setBorrando] = useState('')
   const [verTodos, setVerTodos] = useState(false)
+  const [medida, setMedida] = useState('ventas') // el gráfico por día: en pesos o en cantidad de pedidos
 
   const orders = useMemo(
     () => (demo ? generarDemo({ ...catalogoDemo() }) : stats?.orders || []),
@@ -217,19 +232,10 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
   if (!hayDatos) {
     return (
       <>
-        {!registroActivo && (
-          <Tarjeta titulo="Falta un paso para activar las estadísticas">
-            <p className="text-white/60 text-sm leading-relaxed mb-4" style={font}>
-              Los pedidos todavía <b className="text-white">no se están registrando</b>, porque falta conectar
-              el almacenamiento de Vercel. Son 3 pasos y no hay que copiar ninguna clave:
-            </p>
-            {pasosBlob}
-          </Tarjeta>
-        )}
-        <Tarjeta titulo={registroActivo ? 'Todavía no hay pedidos registrados' : 'Cómo se van a ver'}>
+        <Tarjeta titulo="Todavía no hay pedidos registrados">
           <p className="text-white/60 text-sm leading-relaxed mb-4" style={font}>
             Cada vez que un cliente toca <b className="text-white">“Pedir por WhatsApp”</b> en la web, el pedido
-            {registroActivo ? ' queda anotado acá' : ' va a quedar anotado acá'}: qué pidió, cuánto, a qué zona y de dónde
+ queda anotado acá: qué pidió, cuánto, a qué zona y de dónde
             llegó. No se guarda nombre, teléfono ni dirección.
           </p>
           <p className="text-white/45 text-xs leading-relaxed mb-5" style={font}>
@@ -340,6 +346,93 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
             <Dato etiqueta="Burgers vendidas" valor={num(S.actual.burgers)} variacion={S.delta.burgers} nota={S.actual.bebidas ? `+ ${num(S.actual.bebidas)} bebidas` : ''} />
           </div>
 
+          {/* ─── De dónde sale lo facturado ─── */}
+          <Tarjeta titulo="Cómo se arma lo facturado" subtitulo="Todo el período, partido en sus partes">
+            {[
+              ['Productos', S.desglose.productos, '#fff'],
+              ['Descuentos de promos', -S.desglose.descuentos, ROJO],
+              ['Envíos cobrados', S.desglose.envios, '#fff'],
+            ].filter(([, v]) => v !== 0).map(([et, v, color]) => (
+              <div key={et} className="flex items-baseline justify-between py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <span className="text-white/65 text-[13px]" style={font}>{et}</span>
+                <span className="tabular-nums text-[14px]" style={{ ...font, fontWeight: 600, color }}>
+                  {v < 0 ? `− ${money(-v)}` : money(v)}
+                </span>
+              </div>
+            ))}
+            <div className="flex items-baseline justify-between pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+              <span className="text-white text-[13px] uppercase tracking-wider" style={{ ...font, fontWeight: 700 }}>Total facturado</span>
+              <span className="tabular-nums" style={{ ...anton, color: ORO, fontSize: 24 }}>{money(S.desglose.total)}</span>
+            </div>
+            <p className="text-white/40 text-[11px] mt-3 leading-relaxed" style={font}>
+              Pedido más grande {money(S.extremos.max)} · más chico {money(S.extremos.min)} · promedio por día con ventas{' '}
+              {money(S.mejor.diasConPedidos ? S.actual.ventas / S.mejor.diasConPedidos : 0)}
+            </p>
+          </Tarjeta>
+
+          {/* ─── Facturación día por día ─── */}
+          {detalle.length > 0 && (
+            <Tarjeta
+              titulo="Facturación día por día"
+              subtitulo="Tocá un día para ver cada pedido: hora, qué llevó, envío, promo y total"
+            >
+              {detalle.map((dia) => {
+                const abierto = diaAbierto === dia.d
+                return (
+                  <div key={dia.d} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDiaAbierto(abierto ? '' : dia.d)}
+                      aria-expanded={abierto}
+                      className="w-full flex items-center justify-between gap-3 py-3 text-left"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-white text-[13px] first-letter:uppercase" style={{ ...font, fontWeight: 600 }}>
+                          {DIAS_LARGO[dia.w]} {Number(dia.d.slice(8))} de {MESES[Number(dia.d.slice(5, 7)) - 1]}
+                        </span>
+                        <span className="block text-white/40 text-[11px]" style={font}>
+                          {dia.pedidos} {dia.pedidos === 1 ? 'pedido' : 'pedidos'} · ticket {money(dia.ticket)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 tabular-nums" style={{ ...anton, color: ORO, fontSize: 18 }}>{money(dia.ventas)}</span>
+                    </button>
+                    {abierto && (
+                      <div className="pb-3">
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {[['Productos', dia.productos + dia.descuentos], ['Descuentos', -dia.descuentos], ['Envíos', dia.envios]].map(([et, v]) => (
+                            <div key={et} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                              <p className="text-white/40 text-[10px] tracking-[0.12em] uppercase" style={font}>{et}</p>
+                              <p className="text-white text-[13px] tabular-nums" style={{ ...font, fontWeight: 600 }}>{v < 0 ? `− ${money(-v)}` : money(v)}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {dia.lista.map((o) => (
+                          <div key={o.id} className="rounded-lg px-3 py-2.5 mb-1.5" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                            <div className="flex items-baseline justify-between gap-3">
+                              <span className="text-white/90 text-[12px]" style={{ ...font, fontWeight: 700 }}>
+                                {hora(o.at)} · {o.zone || 'Sin zona'}
+                              </span>
+                              <span className="shrink-0 tabular-nums text-white text-[14px]" style={{ ...font, fontWeight: 700 }}>{money(o.total)}</span>
+                            </div>
+                            <p className="text-white/70 text-[12px] leading-snug mt-1" style={font}>
+                              {o.items.map(lineaItem).join(' · ')}
+                            </p>
+                            <p className="text-white/35 text-[11px] mt-1" style={font}>
+                              Productos {money(o.subtotal)}
+                              {o.discount > 0 && ` · ${o.promo ? o.promo + ' ' : 'Descuento '}−${money(o.discount)}`}
+                              {envioDe(o) > 0 ? ` · Envío ${money(envioDe(o))}` : ' · Sin envío'}
+                              {` · ${sourceLabel(o.src)}`}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </Tarjeta>
+          )}
+
           {/* ─── Lo que dicen los números ─── */}
           {dichos.length > 0 && (
             <Tarjeta titulo="Lo que dicen los números">
@@ -356,14 +449,33 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
 
           {/* ─── Pedidos por día ─── */}
           {S.porDia.length > 1 && (
-            <Tarjeta titulo="Pedidos por día" subtitulo={`Mejor día: ${S.mejor.dia && S.mejor.dia.ventas > 0 ? `${fechaCorta(S.mejor.dia.d)} con ${money(S.mejor.dia.ventas)}` : '—'}`}>
+            <Tarjeta titulo="Día por día" subtitulo={`Mejor día: ${S.mejor.dia && S.mejor.dia.ventas > 0 ? `${fechaCorta(S.mejor.dia.d)} con ${money(S.mejor.dia.ventas)}` : '—'}`}>
+              <div className="flex gap-1.5 mb-3">
+                {[['ventas', 'Facturación $'], ['pedidos', 'Cantidad de pedidos']].map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setMedida(id)}
+                    className="px-3 py-1 rounded-full text-[11px]"
+                    style={{
+                      ...font,
+                      backgroundColor: medida === id ? 'rgba(240,200,50,0.18)' : 'rgba(255,255,255,0.05)',
+                      color: medida === id ? ORO : 'rgba(255,255,255,0.55)',
+                      border: `1px solid ${medida === id ? 'rgba(240,200,50,0.5)' : 'transparent'}`,
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <Barras
                 alto={110}
                 mostrarValores={!muchosDias}
+                formato={medida === 'ventas' ? corto : String}
                 resaltar={(d) => d.clave === hoyART()}
                 datos={S.porDia.map((d, i) => ({
                   clave: d.d,
-                  valor: d.pedidos,
+                  valor: medida === 'ventas' ? d.ventas : d.pedidos,
                   titulo: `${fechaCorta(d.d)}: ${d.pedidos} pedidos · ${money(d.ventas)}`,
                   etiqueta: muchosDias ? (i % 5 === 0 ? d.d.slice(8) : '') : `${DIAS_CORTO[d.w].charAt(0)}${d.d.slice(8)}`,
                 }))}
@@ -379,6 +491,12 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
               resaltar={(d) => d.valor > 0 && d.valor === Math.max(...S.porSemana.map((x) => x.pedidos))}
               datos={S.porSemana.map((d) => ({ clave: d.w, valor: d.pedidos, etiqueta: DIAS_CORTO[d.w], titulo: `${DIAS_CORTO[d.w]}: ${d.pedidos} pedidos · ${money(d.ventas)}` }))}
             />
+            {S.porSemana.filter((d) => d.pedidos > 0).map((d) => (
+              <div key={d.w} className="flex items-baseline justify-between py-1 text-[13px]" style={font}>
+                <span className="text-white/70 capitalize">{DIAS_LARGO[d.w]}</span>
+                <span className="text-white/50 tabular-nums">{d.pedidos} · <span className="text-white/80">{money(d.ventas)}</span></span>
+              </div>
+            ))}
             <p className="text-white/45 text-[11px] tracking-[0.14em] uppercase mt-5 mb-2" style={font}>Por hora</p>
             <Barras
               alto={80}
@@ -396,7 +514,7 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
                 valor={b.unidades}
                 max={maxBurger}
                 derecha={`${b.unidades} · ${Math.round(b.pct)}%`}
-                detalle={money(b.ventas)}
+                detalle={`${money(b.ventas)} facturados · ${[['simple', 'simples'], ['doble', 'dobles'], ['triple', 'triples']].filter(([t]) => b.tam[t] > 0).map(([t, l]) => `${b.tam[t]} ${b.tam[t] === 1 ? l.slice(0, -1) : l}`).join(', ')}`}
               />
             ))}
             <p className="text-white/45 text-[11px] tracking-[0.14em] uppercase mt-5 mb-3" style={font}>Tamaños</p>
@@ -440,7 +558,10 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
               {S.zonas.map((z) => (
                 <div key={z.nombre} className="flex items-baseline justify-between py-1 text-[13px]" style={font}>
                   <span className="text-white/70">{z.nombre}</span>
-                  <span className="text-white/50 tabular-nums">{z.pedidos} · <span className="text-white/80">{money(z.ventas)}</span></span>
+                  <span className="text-white/50 tabular-nums">
+                    {z.pedidos} · <span className="text-white/80">{money(z.ventas)}</span>
+                    {z.envios > 0 && <span className="text-white/35"> (envíos {money(z.envios)})</span>}
+                  </span>
                 </div>
               ))}
             </div>
@@ -462,74 +583,22 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
 
           {S.promos.pedidos > 0 && (
             <Tarjeta titulo="Promos">
-              <p className="text-white/70 text-[13px]" style={font}>
+              <p className="text-white/70 text-[13px] mb-3" style={font}>
                 {S.promos.pedidos} {S.promos.pedidos === 1 ? 'pedido usó' : 'pedidos usaron'} una promo, con {money(S.promos.descuentos)} de descuento en total.
               </p>
+              {S.promos.ranking.map((p) => (
+                <Ranking
+                  key={p.nombre}
+                  nombre={p.nombre}
+                  valor={p.pedidos}
+                  max={S.promos.ranking[0].pedidos}
+                  derecha={`${p.pedidos} ${p.pedidos === 1 ? 'vez' : 'veces'}`}
+                  detalle={`${money(p.ventas)} facturados · ${money(p.descuentos)} descontados`}
+                />
+              ))}
             </Tarjeta>
           )}
         </>
-      )}
-
-      {/* ─── Facturación día por día ─── */}
-      {detalle.length > 0 && (
-        <Tarjeta
-          titulo="Facturación día por día"
-          subtitulo={`${fechaLarga(S.rango.desde)}${S.rango.desde !== S.rango.hasta ? ` al ${fechaLarga(S.rango.hasta)}` : ''} · tocá un día para ver sus pedidos`}
-        >
-          <div className="flex items-baseline justify-between gap-3 pb-3">
-            <span className="text-white/55 text-xs" style={font}>
-              {num(S.actual.pedidos)} {S.actual.pedidos === 1 ? 'pedido' : 'pedidos'} en {detalle.length} {detalle.length === 1 ? 'día' : 'días'}
-            </span>
-            <span className="tabular-nums" style={{ ...anton, color: ORO, fontSize: 22 }}>{money(S.actual.ventas)}</span>
-          </div>
-          {detalle.map((dia) => {
-            const abierto = diaAbierto === dia.d
-            return (
-              <div key={dia.d} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button
-                  type="button"
-                  onClick={() => setDiaAbierto(abierto ? '' : dia.d)}
-                  aria-expanded={abierto}
-                  className="w-full flex items-center justify-between gap-3 py-3 text-left"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-white text-[13px] capitalize" style={{ ...font, fontWeight: 600 }}>
-                      {DIAS_LARGO[dia.w]} {fechaCorta(dia.d)}
-                    </span>
-                    <span className="block text-white/40 text-[11px]" style={font}>
-                      {dia.pedidos} {dia.pedidos === 1 ? 'pedido' : 'pedidos'} · ticket {money(dia.ticket)}
-                    </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums" style={{ ...anton, color: ORO, fontSize: 18 }}>{money(dia.ventas)}</span>
-                </button>
-                {abierto && (
-                  <div className="pb-3">
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      {[['Productos', dia.productos], ['Envíos', dia.envios], ['Descuentos', -dia.descuentos]].map(([et, v]) => (
-                        <div key={et} className="rounded-lg px-2.5 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                          <p className="text-white/40 text-[10px] tracking-[0.12em] uppercase" style={font}>{et}</p>
-                          <p className="text-white text-[13px] tabular-nums" style={{ ...font, fontWeight: 600 }}>{v < 0 ? `− ${money(-v)}` : money(v)}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {dia.lista.map((o) => (
-                      <div key={o.id} className="flex items-baseline justify-between gap-3 py-1.5">
-                        <span className="min-w-0 text-[12px] leading-snug text-white/70" style={font}>
-                          <b className="text-white/90">
-                            {new Date(o.at).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })}
-                          </b>{' '}
-                          {o.items.map((i) => `${i.q}× ${i.n}${i.k === 'd' ? ' ' + i.sl : ' ' + (i.sl || i.s)}`).join(' · ')}
-                          {o.zone ? ` · ${o.zone}` : ''}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-white/90 text-[13px]" style={font}>{money(o.total)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </Tarjeta>
       )}
 
       {/* ─── Mes por mes ─── */}
@@ -538,7 +607,7 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
           {meses.map((m) => (
             <div key={m.ym} className="flex items-baseline justify-between gap-3 py-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="min-w-0">
-                <p className="text-white text-[13px] capitalize" style={{ ...font, fontWeight: 600 }}>{nombreMes(m.ym)}</p>
+                <p className="text-white text-[13px] first-letter:uppercase" style={{ ...font, fontWeight: 600 }}>{nombreMes(m.ym)}</p>
                 <p className="text-white/40 text-[11px]" style={font}>
                   {m.pedidos} {m.pedidos === 1 ? 'pedido' : 'pedidos'} · ticket {money(m.ticket)}
                   {m.mejorDia ? ` · mejor día ${fechaCorta(m.mejorDia.d)} (${money(m.mejorDia.ventas)})` : ''}
@@ -558,7 +627,7 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
         >
           {!R.hayDatos ? (
             <p className="text-white/55 text-[13px] leading-relaxed" style={font}>
-              El recorrido propio está pausado para no gastar el almacenamiento de Vercel. Se ve en Google Analytics: Explorar → Exploración de embudo.
+              El recorrido de las visitas (cuántos entran, agregan al carrito y piden) se mide en Google Analytics: Explorar → Exploración de embudo.
             </p>
           ) : (
             <>
@@ -634,14 +703,12 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
               <p className="text-[12px] mt-1.5" style={{ ...font, color: '#F87171' }}>No se pudo borrar: {errorBorrar.msg}</p>
             )}
             <p className="text-white/75 text-[13px] mt-1.5 leading-snug" style={font}>
-              {o.items.map((i) => {
-                const ex = (i.x || []).length ? ` (+${i.x.map((e) => (e.q > 1 ? `${e.q} ` : '') + e.n).join(', ')})` : ''
-                return `${i.q}× ${i.n}${i.k === 'd' ? ' ' + i.sl : ' ' + (i.sl || i.s)}${ex}`
-              }).join(' · ')}
+              {o.items.map(lineaItem).join(' · ')}
             </p>
             <p className="text-white/35 text-[11px] mt-1" style={font}>
-              {o.zone || 'Sin zona'} · {sourceLabel(o.src)}
-              {o.discount > 0 && ` · desc −${money(o.discount)}`}
+              {o.zone || 'Sin zona'} · {sourceLabel(o.src)} · Productos {money(o.subtotal)}
+              {o.discount > 0 && ` · ${o.promo ? o.promo + ' ' : 'Descuento '}−${money(o.discount)}`}
+              {envioDe(o) > 0 ? ` · Envío ${money(envioDe(o))}` : ''}
             </p>
           </div>
         ))}
@@ -673,12 +740,12 @@ function Pie() {
         No confirman si el pedido se concretó ni se pagó.
       </p>
       <a
-        href="https://vercel.com/lucianobrocchi-2489s-projects/mrwhiteburgers/analytics"
+        href="https://analytics.google.com/"
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 mt-2 text-[#F0C832]/70 hover:text-[#F0C832]"
       >
-        Ver las visitas a la web (Vercel Analytics) <ExternalLink size={11} />
+        Ver las visitas a la web (Google Analytics) <ExternalLink size={11} />
       </a>
     </div>
   )

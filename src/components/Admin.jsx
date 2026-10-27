@@ -337,14 +337,6 @@ const normalizar = (c) => ({
 const claveDePromos = (lista) =>
   JSON.stringify((lista || []).map((p) => { const r = validatePromo(p); return r.ok ? r.promo : p }))
 
-const PASOS_BLOB = (
-  <ol className="list-decimal ml-5 space-y-1.5 text-white/65 text-xs leading-relaxed" style={font}>
-    <li>En Vercel, abrí el proyecto <b>mrwhiteburgers</b> → pestaña <b>Storage</b> → <b>Create Database</b> → <b>Blob</b> y conectalo al proyecto.</li>
-    <li>En <b>Settings → Environment Variables</b> agregá <b>PANEL_PASSWORD</b> con la clave que quieras (tildá Production).</li>
-    <li>En <b>Deployments</b> → los 3 puntitos del último → <b>Redeploy</b>.</li>
-  </ol>
-)
-
 export default function Admin() {
   const [logueado, setLogueado] = useState(panel.estaLogueado())
   const [cfg, setCfg] = useState(null)
@@ -745,8 +737,6 @@ export default function Admin() {
         {MOSTRAR_NUMEROS && tab === 'stats' && (
           <AdminStats
             stats={stats}
-            registroActivo={alInstante}
-            pasosBlob={PASOS_BLOB}
             onReload={recargarStats}
             recargando={recargando}
             puedeBorrar={alInstante}
