@@ -54,6 +54,7 @@ export const SOURCE_LABEL = {
   facebook: 'Facebook',
   whatsapp: 'WhatsApp',
   google: 'Google',
+  'perfil-google': 'Perfil de Google (Maps)',
   tiktok: 'TikTok',
   twitter: 'X / Twitter',
   directo: 'Directo / link',

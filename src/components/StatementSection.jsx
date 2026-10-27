@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import imgDesglose from '../assets/burgers/chesse_joa_desglose.jpg'
+const imgDesglose = `${import.meta.env.BASE_URL}img/chesse_joa_desglose.webp`
 import { WHATSAPP_NUMBER } from '../context/CartContext'
 
 const ease = [0.16, 1, 0.3, 1]
@@ -23,7 +23,7 @@ export default function StatementSection() {
       {/* Background image */}
       <img
         src={imgDesglose}
-        alt="Chesse Joa desglose"
+        alt="La Cheese Joa: smash burger con cheddar, desglosada capa por capa"
         className="absolute inset-0 w-full h-full object-cover object-center"
         loading="lazy"
       />

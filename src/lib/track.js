@@ -1,5 +1,3 @@
-import { track } from '@vercel/analytics'
-
 // ─── Recorrido de la web ─────────────────────────────────────────────────
 // Dos destinos: Google Analytics 4 (sin cookies de publicidad ni datos
 // personales; no carga en localhost) y los contadores propios del panel
@@ -98,15 +96,6 @@ function ga(nombre, datos) {
   }
 }
 
-// Eventos para Vercel Analytics (los ves en su pestaña Events, por nombre).
-function enviar(nombre, datos) {
-  try {
-    track(nombre, datos)
-  } catch {
-    /* analytics no disponible */
-  }
-}
-
 // ─── Comercio electrónico de GA4 ─────────────────────────────────────────
 // Recorrido estándar que GA4 entiende (sirve para informes y para anuncios):
 // view_item_list → add_to_cart → view_cart → begin_checkout → add_shipping_info → purchase.
@@ -144,12 +133,8 @@ export const gaVioCarrito = () => {
 export const gaEligioZona = (zona) =>
   ga('add_shipping_info', { currency: 'ARS', value: Math.round(ultimo.total), shipping_tier: zona, items: ultimo.items.map(gaItem) })
 
-export const trackBurgerClick = (burger) => enviar('burger_add', { burger: burger.name })
-export const trackDrinkClick = (nombre) => enviar('drink_add', { drink: nombre })
-
 // Tocó "Pedir por WhatsApp": es lo más parecido a una venta que vemos desde el sitio
-export const trackPedido = ({ id, items, total, shipping, zona, promo }) => {
-  enviar('pedido_whatsapp', { total, zona: zona || 'sin elegir' })
+export const trackPedido = ({ id, items, total, shipping, promo }) => {
   ga('purchase', {
     transaction_id: id,
     currency: 'ARS',

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import logoFull from '../assets/logo_full.jpg'
+const logoFull = `${import.meta.env.BASE_URL}img/logo_full.webp`
 import { getStatus } from '../lib/schedule'
 import { useConfig, todayOverride } from '../lib/config'
 
@@ -161,6 +161,8 @@ export default function HeroSection() {
         <h1>
           <motion.img
             src={logoFull}
+              width={880}
+              height={587}
             alt="Mr. White Burgers — Smash burgers en La Plata"
             className="w-full max-w-[340px] md:max-w-[440px] h-auto mx-auto md:mx-0 select-none"
             draggable={false}

@@ -5,7 +5,6 @@ import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice, SIZES } from '../context/CartContext'
 import { usePromos } from '../lib/usePromos'
 import { itemPromoPrice } from '../lib/promos'
-import { trackBurgerClick } from '../lib/track'
 import { flyToCart, popCartBadge } from '../lib/flyToCart'
 import { useConfig } from '../lib/config'
 import { BURGERS } from '../lib/menu'
@@ -231,7 +230,6 @@ function CartControls({ burger, size, onAdded, imgRef, extras, extrasUnit }) {
     const extrasAlAgregar = extras
     setQty(1)
     onAdded?.()
-    trackBurgerClick(burger)
     // La foto vuela al carrito y el ítem se suma al aterrizar, así el contador
     // sube justo cuando llega (con reduced-motion se suma al instante).
     flyToCart(imgRef?.current, () => {
@@ -426,14 +424,15 @@ function BurgerCard({ burger, index }) {
             {/* Foto base (fondo negro) */}
             <img
               src={burger.image}
-              alt={burger.name}
+              alt={`${burger.name} — smash burger de Mr. White Burgers en La Plata`}
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
+              decoding="async"
             />
             {/* Foto alternativa (con papel) — crossfade */}
             <motion.img
               src={burger.imageAlt}
-              alt={`${burger.name} — servida`}
+              alt={`${burger.name} servida: ${burger.description}`}
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
               initial={false}
@@ -660,7 +659,7 @@ export default function MenuSection() {
           animate={headerInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.7, delay: 0.4 }}
         >
-          Todas las hamburguesas vienen con papas fritas.
+          Smash burgers en La Plata, en pan de papa. Todas vienen con papas fritas: elegí simple, doble o triple.
         </motion.p>
 
         {/* Grid */}

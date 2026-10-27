@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
-import { Analytics } from '@vercel/analytics/react'
 import { CartProvider, useCart } from './context/CartContext'
 import { iniciarTracking, hito, gaVioMenu } from './lib/track'
 import CartDrawer from './components/CartDrawer'
@@ -13,6 +12,7 @@ import MenuSection from './components/MenuSection'
 import DrinksSection from './components/DrinksSection'
 import MarqueeStrip from './components/MarqueeStrip'
 import HoursSection from './components/HoursSection'
+import FaqSection from './components/FaqSection'
 import StatementSection from './components/StatementSection'
 import Footer from './components/Footer'
 import CartFab from './components/CartFab'
@@ -84,6 +84,7 @@ function Inner() {
       <MarqueeStrip />
       <StatementSection />
       <HoursSection />
+      <FaqSection />
       <Footer />
     </main>
   )
@@ -93,7 +94,6 @@ export default function App() {
   return (
     <CartProvider>
       <Inner />
-      <Analytics />
     </CartProvider>
   )
 }

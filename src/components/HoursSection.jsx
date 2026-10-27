@@ -4,6 +4,7 @@ import { Clock, MapPin, Bike } from 'lucide-react'
 import { ADDRESS, scheduleSummary, getStatus } from '../lib/schedule'
 import { ZONES, formatZonePrice, zonePrice } from '../lib/zones'
 import { useConfig, todayOverride } from '../lib/config'
+import { linkMapa } from '../lib/negocio'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -126,6 +127,15 @@ export default function HoursSection() {
           >
             {ADDRESS.barrio} · {ADDRESS.city}
           </p>
+          <a
+            href={linkMapa(ADDRESS.lat, ADDRESS.lng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center min-h-[44px] mt-2 text-[13px] text-[#F0C832] hover:underline"
+            style={{ fontFamily: 'DM Sans, sans-serif' }}
+          >
+            Cómo llegar en Google Maps →
+          </a>
 
           <div
             className="mt-4 pt-4"

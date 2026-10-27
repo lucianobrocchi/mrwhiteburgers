@@ -1,0 +1,12 @@
+# Cloudflare Pages: caché larga para fotos y videos (los archivos del panel llevan hash en el nombre)
+/img/*
+  Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
+/videos/*
+  Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+/panel/*
+  X-Robots-Tag: noindex, nofollow

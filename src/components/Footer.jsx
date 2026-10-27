@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import logoFull from '../assets/logo_full.jpg'
+const logoFull = `${import.meta.env.BASE_URL}img/logo_full.webp`
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -36,6 +36,8 @@ export default function Footer() {
           <div>
             <img
               src={logoFull}
+              width={880}
+              height={587}
               alt="Mr. White Burgers"
               className="w-56 md:w-64 h-auto select-none"
               draggable={false}

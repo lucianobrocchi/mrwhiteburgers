@@ -4,7 +4,6 @@ import { CupSoda, GlassWater, Droplets, Plus, Minus, ShoppingBag, Check } from '
 import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice } from '../context/CartContext'
 import { useConfig } from '../lib/config'
-import { trackDrinkClick } from '../lib/track'
 import { flyToCart, popCartBadge } from '../lib/flyToCart'
 import { DRINKS, drinkPrice, sizeOut, flavorOut } from '../lib/catalog'
 
@@ -56,7 +55,6 @@ function DrinkCard({ drink, index }) {
     setAdded(true)
     clearTimeout(addedTimer.current)
     addedTimer.current = setTimeout(() => setAdded(false), 1400)
-    trackDrinkClick(`${flavor ? flavor.label : drink.name} ${size.label}`)
     flyToCart(iconRef.current, () => {
       addDrink(drink, { ...size, price }, flavor, n)
       if (!wasEmpty) setTimeout(popCartBadge, 0)
