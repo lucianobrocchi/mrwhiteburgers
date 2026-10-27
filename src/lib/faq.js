@@ -6,6 +6,7 @@
 import { ADDRESS, scheduleSummary } from './schedule.js'
 import { BURGERS_BASE } from './menuBase.js'
 import { NEGOCIO } from './negocio.js'
+import { ZONES } from './zones.js'
 
 const minus = (s) => s.charAt(0).toLowerCase() + s.slice(1)
 
@@ -33,7 +34,7 @@ export function faqList() {
     },
     {
       q: '¿Hacen envíos a domicilio en La Plata?',
-      a: 'Sí. Enviamos a domicilio en La Plata y el costo depende de la zona: en el carrito escribís tu esquina y te mostramos el precio al instante. También podés retirar en el local sin costo de envío.',
+      a: `Sí. Enviamos a domicilio en La Plata y el costo depende de la zona (desde $${Math.min(...ZONES.map((z) => z.price)).toLocaleString('es-AR')}): en el carrito escribís tu esquina y te mostramos el precio al instante. También podés retirar en el local sin costo de envío.`,
     },
     {
       q: '¿Cómo hago un pedido?',

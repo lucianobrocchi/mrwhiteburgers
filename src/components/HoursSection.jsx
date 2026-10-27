@@ -173,6 +173,13 @@ export default function HoursSection() {
             >
               En el carrito ponés tu esquina (por ejemplo 12 y 60) y te decimos tu zona.
             </p>
+            <a
+              href="/envios/"
+              className="inline-flex items-center min-h-[44px] text-[13px] text-[#F0C832] hover:underline"
+              style={{ fontFamily: 'DM Sans, sans-serif' }}
+            >
+              Ver zonas y precios de envío en detalle →
+            </a>
           </div>
         </div>
       </motion.div>

@@ -10,9 +10,7 @@ Guía para sacarle el jugo a Google. Lo que hace falta hacer **desde la cuenta d
 
 Es lo que aparece en Google Maps y en el recuadro lateral cuando buscan "hamburguesas La Plata" desde el celular. Para un local con delivery, **pesa más que la web**.
 
-**Primero:** buscá "Mr. White Burgers" en Google Maps.
-- Si ya existe una ficha → tocá **"Reclamar este negocio"** y verificá (llamada, SMS o video).
-- Si no existe → creala en <https://business.google.com> con el mismo mail con que se maneja Analytics.
+**Estado actual (27/10/2026):** la ficha **ya existe** ("Mr White Burgers La Plata", <https://www.google.com/maps?cid=11826860148380739577>) y tiene reseñas, pero **figura sin reclamar** (se ve "¿Eres propietario de esta empresa?"). Hay que reclamarla: entrá a esa ficha → **"Reclamar este negocio"** → verificá (llamada, SMS o video). Hasta entonces no se pueden editar fotos, horarios ni responder reseñas. La web ya enlaza a esta ficha en "Cómo llegar".
 
 ### Datos para cargar (todos tienen que ser idénticos en todos lados)
 

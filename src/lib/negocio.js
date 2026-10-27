@@ -9,9 +9,8 @@ export const NEGOCIO = {
   telefono: '+54 9 221 303-4143',
   whatsapp: '5492213034143',
   instagram: 'https://www.instagram.com/mr.whiteburgers/',
-  // Link de "Compartir" del perfil de Google (Maps). Cuando esté verificado el perfil,
-  // pegarlo acá: la web lo usa en "Cómo llegar" y en los datos para Google.
-  perfilGoogle: '',
+  // Ficha de Google Maps ("Mr White Burgers La Plata"). La web la usa en "Cómo llegar" y en los datos para Google.
+  perfilGoogle: 'https://www.google.com/maps?cid=11826860148380739577',
   // Coordenadas y dirección: salen de ADDRESS en schedule.js
 }
 
