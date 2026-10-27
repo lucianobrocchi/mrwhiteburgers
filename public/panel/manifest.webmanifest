@@ -1,0 +1,11 @@
+{
+  "name": "Panel Mr. White",
+  "short_name": "Panel",
+  "description": "Pedidos, precios, promos y números de Mr. White Burgers",
+  "start_url": "/panel/",
+  "scope": "/panel/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [{ "src": "/favicon-burger.png", "sizes": "256x256", "type": "image/png", "purpose": "any" }]
+}

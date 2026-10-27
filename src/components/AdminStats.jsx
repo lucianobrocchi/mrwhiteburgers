@@ -7,7 +7,7 @@ import {
 } from '../lib/statsCalc'
 import { generarDemo } from '../lib/statsDemo'
 import { sourceLabel } from '../lib/source'
-import { BURGERS } from '../lib/menu'
+import { BURGERS_BASE as BURGERS } from '../lib/menuBase'
 import { EXTRAS, DRINKS } from '../lib/catalog'
 
 const font = { fontFamily: 'DM Sans, sans-serif' }
@@ -182,7 +182,7 @@ function catalogoDemo() {
 }
 
 // ─── Pantalla ────────────────────────────────────────────────────────────
-export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, recargando }) {
+export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, recargando, actualizado, errorRecarga }) {
   const [rango, setRango] = useState('7')
   const [demo, setDemo] = useState(false)
   const [borrando, setBorrando] = useState('')
@@ -306,6 +306,11 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
           ))}
         </div>
         <div className="flex-1" />
+        {!demo && actualizado && (
+          <span className="text-white/30 text-[11px]" style={font}>
+            Actualizado {actualizado.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
         {!demo && onReload && (
           <button
             type="button"
@@ -327,6 +332,11 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
         </button>
       </div>
 
+      {errorRecarga && !demo && (
+        <p className="text-[12px] mb-3" style={{ ...font, color: ROJO }} role="alert">
+          No se pudo actualizar ({errorRecarga}). Se muestran los últimos datos que llegaron.
+        </p>
+      )}
       <p className="text-white/35 text-[11px] mb-3" style={font}>
         {fechaLarga(S.rango.desde)}{S.rango.desde !== S.rango.hasta && <> al {fechaLarga(S.rango.hasta)}</>}
         {S.previo && ' · comparado con el período anterior'}

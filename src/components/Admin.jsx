@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Check, AlertTriangle, RefreshCw, ExternalLink, Clock, Ban, Zap, Timer } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  Check, AlertTriangle, RefreshCw, Ban, Zap, ChevronDown, RotateCcw, Eye, EyeOff, ArrowRight,
+} from 'lucide-react'
 import * as panel from '../lib/panelApi'
-import { DEFAULT_CONFIG } from '../lib/config'
-import { scheduleSummary } from '../lib/schedule'
+import { DEFAULT_CONFIG, todayOverride } from '../lib/config'
+import { scheduleSummary, getStatus } from '../lib/schedule'
 import { ZONES, formatZonePrice } from '../lib/zones'
-import { SIZES } from '../context/CartContext'
+import { SIZES } from '../lib/sizes'
 import { EXTRAS, DRINKS, extraKey, drinkKey, flavorKey } from '../lib/catalog'
+import { hoyART, kpis } from '../lib/statsCalc'
 import AdminStats from './AdminStats'
 import AdminPromos from './AdminPromos'
 import { validatePromo, validatePromoList, cheapPromoError } from '../lib/promos'
@@ -16,15 +19,19 @@ import { leerPrecio, textoDePrecio } from '../lib/precio'
 // al prenderla (true) ya hay historial. Apagada, el panel ni siquiera los pide.
 const MOSTRAR_NUMEROS = true
 
+// Los números se refrescan solos cada tanto mientras el panel está a la vista
+const REFRESCO_MS = 3 * 60 * 1000
+
 const inputCls =
-  'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors scroll-mb-28'
+  'w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F0C832]/60 transition-colors scroll-mb-28'
 const labelCls = 'text-[10px] tracking-[0.16em] uppercase text-white/40'
 const font = { fontFamily: 'DM Sans, sans-serif' }
 const anton = { fontFamily: 'Anton, sans-serif' }
+const ORO = '#F0C832'
 
-// Las burgers y sus precios de la carta salen del código; el panel solo guarda
-// lo que se cambió.
-import { BURGERS } from '../lib/menu'
+// Las burgers y sus precios de la carta salen del código (sin fotos, para que el
+// panel cargue liviano); el panel solo guarda lo que se cambió.
+import { BURGERS_BASE as BURGERS } from '../lib/menuBase'
 
 const hoyStr = () => {
   const d = new Date()
@@ -32,33 +39,16 @@ const hoyStr = () => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-function Login({ onOk }) {
+const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR')
+const horaCorta = (d) => d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+const fechaHora = (iso) =>
+  new Date(iso).toLocaleString('es-AR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+function Login({ onOk, aviso = '' }) {
   const [t, setT] = useState('')
-  const [err, setErr] = useState('')
+  const [err, setErr] = useState(aviso)
   const [cargando, setCargando] = useState(false)
-  const [diag, setDiag] = useState('')
-  const [modo, setModo] = useState(null)
-
-  useEffect(() => { panel.detectarModo().then(setModo) }, [])
-  const conClave = modo === 'api'
-
-  // Comprueba si este dispositivo puede llegar a GitHub, sin token de por medio.
-  const probarConexion = async () => {
-    setDiag('probando…')
-    try {
-      const r = await fetch('https://api.github.com/repos/lucianobrocchi/mrwhiteburgers')
-      setDiag(
-        r.ok
-          ? '✅ Llego bien a GitHub. Si falla al entrar, el problema es el token.'
-          : `⚠️ GitHub respondió ${r.status}.`,
-      )
-    } catch {
-      setDiag(
-        '❌ Este dispositivo NO llega a GitHub. Es tu red o navegador: probá ' +
-        'apagar el bloqueador de anuncios / la VPN, o usá los datos del celular.',
-      )
-    }
-  }
+  const [ver, setVer] = useState(false)
 
   const entrar = async (e) => {
     e.preventDefault()
@@ -78,24 +68,33 @@ function Login({ onOk }) {
         <h1 className="text-4xl text-white uppercase mb-1" style={anton}>
           Mr. White <span className="text-[#F0C832]">Panel</span>
         </h1>
-        <p className="text-white/50 text-sm mb-6">
-          {conClave ? 'Ingresá la clave del panel.' : 'Pegá tu token de GitHub para entrar.'}
-        </p>
+        <p className="text-white/50 text-sm mb-6">Ingresá la clave del panel.</p>
 
         <label className="flex flex-col gap-1.5 mb-3">
-          <span className={labelCls}>{conClave ? 'Clave' : 'Token'}</span>
-          <input
-            type="password"
-            value={t}
-            onChange={(e) => setT(e.target.value)}
-            className={inputCls}
-            placeholder={conClave ? '••••••••' : 'github_pat_...'}
-            autoComplete="off"
-          />
+          <span className={labelCls}>Clave</span>
+          <span className="relative block">
+            <input
+              type={ver ? 'text' : 'password'}
+              value={t}
+              onChange={(e) => setT(e.target.value)}
+              className={`${inputCls} pr-11`}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => setVer((v) => !v)}
+              aria-label={ver ? 'Ocultar clave' : 'Mostrar clave'}
+              className="absolute right-0 top-0 h-full w-11 flex items-center justify-center text-white/45 hover:text-white"
+            >
+              {ver ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </span>
         </label>
 
         {err && (
-          <p className="text-red-300 text-sm mb-3 flex items-start gap-2">
+          <p className="text-red-300 text-sm mb-3 flex items-start gap-2" role="alert">
             <AlertTriangle size={15} className="mt-0.5 shrink-0" /> {err}
           </p>
         )}
@@ -103,83 +102,16 @@ function Login({ onOk }) {
         <button
           type="submit"
           disabled={cargando || !t.trim()}
-          className="w-full py-3 rounded-full text-black text-sm tracking-widest uppercase disabled:opacity-50"
-          style={{ ...anton, backgroundColor: '#F0C832' }}
+          className="w-full py-3 min-h-[48px] rounded-full text-black text-sm tracking-widest uppercase disabled:opacity-50"
+          style={{ ...anton, backgroundColor: ORO }}
         >
           {cargando ? 'Verificando…' : 'Entrar'}
         </button>
 
-        {!conClave && (
-          <>
-            <button
-              type="button"
-              onClick={probarConexion}
-              className="w-full mt-3 py-2.5 rounded-full text-xs uppercase tracking-widest text-white/60 hover:text-white"
-              style={{ border: '1px solid rgba(255,255,255,0.15)' }}
-            >
-              Probar conexión con GitHub
-            </button>
-            {diag && (
-              <p className="text-white/70 text-xs mt-3 leading-relaxed">{diag}</p>
-            )}
-          </>
-        )}
-
-        {conClave ? (
-          <p className="mt-6 text-white/40 text-xs leading-relaxed">
-            El panel habla con tu propio sitio, así que ningún bloqueador lo corta.
-            Los cambios se ven en la web en segundos.
-          </p>
-        ) : (
-        <>
-        {/* Cómo pasar al modo con clave (sin token en el teléfono) */}
-        <details className="mt-5 rounded-xl p-3" style={{ backgroundColor: 'rgba(240,200,50,0.07)', border: '1px solid rgba(240,200,50,0.25)' }}>
-          <summary className="text-[#F0C832] text-xs cursor-pointer">
-            ¿Te da "failed to fetch"? Tocá acá
-          </summary>
-          <div className="text-white/60 text-xs leading-relaxed mt-3">
-            <p className="mb-2">
-              Ese error es tu red o un bloqueador cortando <b>api.github.com</b>.
-              Se arregla para siempre en 3 pasos, sin copiar ningún token:
-            </p>
-            <ol className="list-decimal ml-4 space-y-1.5">
-              <li>
-                En Vercel → pestaña <b className="text-white/80">Storage</b> →
-                <b className="text-white/80"> Create Database</b> → elegí <b className="text-white/80">Blob</b> →
-                conectalo al proyecto <b>mrwhiteburgers</b>.
-              </li>
-              <li>
-                Settings → <b className="text-white/80">Environment Variables</b> → agregá
-                <b className="text-white/80"> PANEL_PASSWORD</b> con la clave que quieras
-                (tildá Production).
-              </li>
-              <li>Deployments → los 3 puntitos del último → <b className="text-white/80">Redeploy</b>.</li>
-            </ol>
-            <p className="mt-2">
-              Listo: entrás con esa clave, se acaba el error, los cambios se ven
-              al instante y arrancan las estadísticas de pedidos.
-            </p>
-          </div>
-        </details>
-        <div className="mt-6 text-white/45 text-xs leading-relaxed">
-          <p className="mb-2">El token queda guardado solo en este dispositivo. Para crear uno:</p>
-          <ol className="list-decimal ml-4 space-y-1">
-            <li>Entrá a github.com → Settings → Developer settings</li>
-            <li>Fine-grained tokens → Generate new token</li>
-            <li>Repository access: solo <b>mrwhiteburgers</b></li>
-            <li>Permissions → Contents: <b>Read and write</b></li>
-          </ol>
-          <a
-            href="https://github.com/settings/personal-access-tokens/new"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 mt-3 text-[#F0C832]/80 hover:text-[#F0C832]"
-          >
-            Crear token <ExternalLink size={12} />
-          </a>
-        </div>
-        </>
-        )}
+        <p className="mt-6 text-white/40 text-xs leading-relaxed">
+          Los cambios se ven en la web en segundos. Si usás el celular, podés agregar esta página a la
+          pantalla de inicio para abrirla como una app.
+        </p>
       </form>
     </div>
   )
@@ -191,7 +123,7 @@ function Seccion({ titulo, children, extra, nota }) {
       className="rounded-2xl p-5 mb-4"
       style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)' }}
     >
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between gap-3 mb-1">
         <h2 className="text-xl text-white uppercase" style={anton}>{titulo}</h2>
         {extra}
       </div>
@@ -209,13 +141,36 @@ const Grupo = ({ children }) => (
   </p>
 )
 
+// Bloque que se abre y se cierra (para no tener una lista interminable en el celular)
+function Plegable({ titulo, badge, abierto0 = false, children }) {
+  const [abierto, setAbierto] = useState(abierto0)
+  return (
+    <div className="mt-3 first:mt-0">
+      <button
+        type="button"
+        onClick={() => setAbierto((a) => !a)}
+        aria-expanded={abierto}
+        className="w-full flex items-center justify-between gap-3 min-h-[44px] text-left"
+      >
+        <span className="text-white/40 text-[10px] tracking-[0.18em] uppercase" style={font}>
+          {titulo}
+          {badge ? <span className="ml-2 normal-case tracking-normal text-[11px]" style={{ color: '#F87171' }}>{badge}</span> : null}
+        </span>
+        <ChevronDown size={16} className={`text-white/40 transition-transform ${abierto ? 'rotate-180' : ''}`} />
+      </button>
+      {abierto && <div className="pt-1">{children}</div>}
+    </div>
+  )
+}
+
 // Fila que se toca para alternar entre "disponible" y "SIN STOCK"
 function Interruptor({ nombre, detalle, sinStock, onToggle }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl mb-2 text-left"
+      aria-pressed={sinStock}
+      className="w-full flex items-center justify-between gap-3 px-3 py-3 min-h-[52px] rounded-xl mb-2 text-left"
       style={{
         backgroundColor: sinStock ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.03)',
         border: `1px solid ${sinStock ? 'rgba(248,113,113,0.4)' : 'rgba(255,255,255,0.08)'}`,
@@ -279,14 +234,45 @@ const avisoPrecioMalo = (
   </p>
 )
 
-// Campo de precio: vacío = usa el precio de la carta (el que está en el código)
+// Botón para volver al precio de la carta
+function BotonCarta({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Volver al precio de la carta"
+      title="Volver al precio de la carta"
+      className="w-10 h-10 shrink-0 rounded-lg flex items-center justify-center text-white/45 hover:text-white"
+      style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+    >
+      <RotateCcw size={15} />
+    </button>
+  )
+}
+
+// Campo de precio: vacío = usa el precio de la carta (el que está en el código).
+// Si se cambió, marca el precio original y deja volver con un toque.
 function EntradaPrecio({ etiqueta, defecto, valor, onChange }) {
   const [malo, setMalo] = useState(false)
+  const [reinicio, setReinicio] = useState(0) // cambia la key para que el campo se vacíe
+  const cambiado = valor != null && valor !== defecto
   return (
     <>
-      <div className="grid grid-cols-[1fr_120px] gap-3 items-center mb-2">
-        <span className="text-white/70 text-sm min-w-0 truncate" style={font}>{etiqueta}</span>
-        <InputPrecio valor={valor} placeholder={textoDePrecio(defecto)} onChange={onChange} onMalo={setMalo} />
+      <div className="grid grid-cols-[1fr_auto] gap-3 items-center mb-2">
+        <span className="min-w-0">
+          <span className="block text-white/70 text-sm truncate" style={font}>{etiqueta}</span>
+          {cambiado && (
+            <span className="block text-[11px]" style={{ ...font, color: ORO }}>
+              Cambiado · en la carta {money(defecto)}
+            </span>
+          )}
+        </span>
+        <span className="flex items-center gap-2">
+          {cambiado && <BotonCarta onClick={() => { setReinicio((n) => n + 1); onChange(null) }} />}
+          <span className="w-[116px]">
+            <InputPrecio key={reinicio} valor={valor} placeholder={textoDePrecio(defecto)} onChange={onChange} onMalo={setMalo} />
+          </span>
+        </span>
       </div>
       {malo && avisoPrecioMalo}
     </>
@@ -296,6 +282,8 @@ function EntradaPrecio({ etiqueta, defecto, valor, onChange }) {
 // Precio de una zona de envío (vacío = el de siempre)
 function FilaZona({ z, valor, onChange }) {
   const [malo, setMalo] = useState(false)
+  const [reinicio, setReinicio] = useState(0)
+  const cambiado = valor != null && valor !== z.price
   return (
     <div className="mb-3">
       <div className="flex items-center gap-3">
@@ -303,12 +291,15 @@ function FilaZona({ z, valor, onChange }) {
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm uppercase truncate" style={anton}>{z.name}</p>
           <p className="text-white/40 text-xs">{z.bounds}</p>
+          {cambiado && <p className="text-[11px]" style={{ ...font, color: ORO }}>Cambiado · antes {money(z.price)}</p>}
           {z.calles.length > 0 && (
             <p className="text-white/25 text-[10px] leading-snug mt-0.5">{z.calles.join('  ·  ')}</p>
           )}
         </div>
+        {cambiado && <BotonCarta onClick={() => { setReinicio((n) => n + 1); onChange(undefined) }} />}
         <InputPrecio
-          className="w-32 shrink-0"
+          key={reinicio}
+          className="w-28 shrink-0"
           valor={valor}
           placeholder={textoDePrecio(z.price)}
           onChange={(n) => onChange(n ?? undefined)}
@@ -316,6 +307,137 @@ function FilaZona({ z, valor, onChange }) {
         />
       </div>
       {malo && <div className="mt-2">{avisoPrecioMalo}</div>}
+    </div>
+  )
+}
+
+// Una burger de la carta: cerrada muestra sus precios; abierta deja cambiarlos
+function TarjetaBurger({ b, c, onChange }) {
+  const [abierta, setAbierta] = useState(false)
+  const precioDe = (s) => c.prices?.[s.key] ?? b.prices[s.key]
+  const modificada = SIZES.some((s) => c.prices?.[s.key] != null && c.prices[s.key] !== b.prices[s.key]) ||
+    (c.description && c.description !== b.description)
+  return (
+    <div
+      className="rounded-xl mb-3"
+      style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: `1px solid ${modificada ? 'rgba(240,200,50,0.4)' : 'rgba(255,255,255,0.08)'}` }}
+    >
+      <button
+        type="button"
+        onClick={() => setAbierta((a) => !a)}
+        aria-expanded={abierta}
+        className="w-full flex items-center justify-between gap-3 p-4 text-left min-h-[64px]"
+      >
+        <span className="min-w-0">
+          <span className="flex items-center gap-2">
+            <span className="text-white uppercase truncate" style={anton}>{b.name}</span>
+            {modificada && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0" style={{ ...font, color: '#000', backgroundColor: ORO }}>
+                cambiada
+              </span>
+            )}
+            {c.soldOut && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0" style={{ ...font, color: '#F87171', border: '1px solid rgba(248,113,113,0.5)' }}>
+                sin stock
+              </span>
+            )}
+          </span>
+          <span className="block text-white/45 text-[12px] mt-1" style={font}>
+            {SIZES.map((s) => `${s.label} ${money(precioDe(s))}`).join(' · ')}
+          </span>
+        </span>
+        <ChevronDown size={18} className={`shrink-0 text-white/40 transition-transform ${abierta ? 'rotate-180' : ''}`} />
+      </button>
+      {abierta && (
+        <div className="px-4 pb-4">
+          {SIZES.map((s) => (
+            <EntradaPrecio
+              key={s.key}
+              etiqueta={s.label}
+              defecto={b.prices[s.key]}
+              valor={c.prices?.[s.key]}
+              onChange={(v) => onChange({ prices: { ...(c.prices || {}), [s.key]: v == null ? undefined : v } })}
+            />
+          ))}
+          <label className="flex flex-col gap-1.5 mt-3">
+            <span className={labelCls}>Descripción</span>
+            <textarea
+              rows={3}
+              className={inputCls + ' resize-y'}
+              placeholder={b.description}
+              value={c.description || ''}
+              onChange={(e) => onChange({ description: e.target.value })}
+            />
+            <span className="text-white/30 text-[11px]">Vacía = se usa la descripción de la carta.</span>
+          </label>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Resumen de la noche: estado del local y lo que va facturado hoy
+function ResumenHoy({ cfg, stats, sinStock, sinGuardar, onVerNumeros }) {
+  const s = getStatus(new Date(), todayOverride(cfg))
+  const color = s.open ? '#4ADE80' : '#F87171'
+  const hoy = hoyART()
+  const pedidos = (stats?.orders || []).filter((o) => o.d === hoy)
+  const k = kpis(pedidos)
+  const ultimo = pedidos[0]?.at ? horaCorta(new Date(pedidos[0].at)) : null
+  return (
+    <div className="rounded-2xl p-5 mb-4" style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <span
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[12px]"
+          style={{ ...font, color, backgroundColor: s.open ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)', border: `1px solid ${color}55` }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }} />
+          {s.open ? `Abierto · hasta ${s.closesAt}` : s.opensAt ? `Cerrado · abre ${s.opensLabel} ${s.opensAt}` : 'Cerrado'}
+        </span>
+        {sinStock > 0 && (
+          <span className="px-3 py-1.5 rounded-full text-[12px]" style={{ ...font, color: '#F87171', border: '1px solid rgba(248,113,113,0.4)' }}>
+            {sinStock} sin stock
+          </span>
+        )}
+        {cfg.today.deliveryOff && todayOverride(cfg) && (
+          <span className="px-3 py-1.5 rounded-full text-[12px] text-white/70" style={{ ...font, border: '1px solid rgba(255,255,255,0.2)' }}>
+            Hoy sin envíos
+          </span>
+        )}
+      </div>
+      {sinGuardar && (
+        <p className="text-[11px] mb-3" style={{ ...font, color: ORO }}>Esto refleja tus cambios, todavía sin guardar.</p>
+      )}
+
+      {MOSTRAR_NUMEROS && (
+        stats ? (
+          <>
+            <div className="grid grid-cols-3 gap-2.5">
+              {[['Pedidos hoy', String(k.pedidos)], ['Facturado hoy', money(k.ventas)], ['Ticket prom.', k.pedidos ? money(k.ticket) : '—']].map(([et, v]) => (
+                <div key={et} className="rounded-xl px-3 py-3" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
+                  <p className="text-white/45 text-[10px] tracking-[0.12em] uppercase" style={font}>{et}</p>
+                  <p className="text-white text-[19px] leading-none mt-1.5 tabular-nums" style={anton}>{v}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between gap-3 mt-3">
+              <span className="text-white/40 text-[11px]" style={font}>
+                {ultimo ? `Último pedido a las ${ultimo}` : 'Todavía no entró ningún pedido hoy'}
+              </span>
+              <button
+                type="button"
+                onClick={onVerNumeros}
+                className="inline-flex items-center gap-1.5 min-h-[44px] text-[12px]"
+                style={{ ...font, color: ORO }}
+              >
+                Ver todo el detalle <ArrowRight size={13} />
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-white/35 text-[12px]" style={font}>Cargando los pedidos de hoy…</p>
+        )
+      )}
     </div>
   )
 }
@@ -337,22 +459,73 @@ const normalizar = (c) => ({
 const claveDePromos = (lista) =>
   JSON.stringify((lista || []).map((p) => { const r = validatePromo(p); return r.ok ? r.promo : p }))
 
+// ─── ¿Qué cambió desde lo último guardado? ───────────────────────────────
+// Se compara una versión "limpia" (sin vacíos, sin `false`, claves ordenadas): tocar un
+// interruptor y volver a dejarlo como estaba NO cuenta como cambio.
+const limpiar = (v) => {
+  if (Array.isArray(v)) return v.map(limpiar)
+  if (v && typeof v === 'object') {
+    const o = {}
+    for (const k of Object.keys(v).sort()) {
+      const x = limpiar(v[k])
+      const vacio = x === undefined || x === false || x === '' || x === null ||
+        (x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).length === 0)
+      if (!vacio) o[k] = x
+    }
+    return o
+  }
+  return v
+}
+// Las excepciones de hoy sin nada cargado equivalen a "ninguna", aunque tengan la fecha puesta
+const hoyEfectivo = (t) => (t && (t.closed || t.opensAt || t.closesAt || t.deliveryOff || t.note) ? t : {})
+const sinStockDe = (burgers) => limpiar(Object.fromEntries(Object.entries(burgers || {}).map(([id, b]) => [id, !!b?.soldOut])))
+const sinSoldOut = (burgers) => limpiar(Object.fromEntries(Object.entries(burgers || {}).map(([id, b]) => [id, { ...b, soldOut: undefined }])))
+// Una huella por pestaña, para marcar cuál tiene cambios sin guardar
+const huellas = (c) => ({
+  hoy: JSON.stringify(limpiar([hoyEfectivo(c.today), c.stock, c.ticker, sinStockDe(c.burgers)])),
+  promos: JSON.stringify(limpiar(c.promos)),
+  menu: JSON.stringify(limpiar([sinSoldOut(c.burgers), c.prices])),
+  envios: JSON.stringify(limpiar(c.zones)),
+})
+
 export default function Admin() {
   const [logueado, setLogueado] = useState(panel.estaLogueado())
+  const [avisoLogin, setAvisoLogin] = useState('')
   const [cfg, setCfg] = useState(null)
+  const [base, setBase] = useState(null)     // la config como está guardada (para saber qué cambió)
   const [sha, setSha] = useState(null)
   const [tab, setTab] = useState('hoy')
   const [estado, setEstado] = useState('')   // '', 'guardando', 'ok', o el mensaje de error
-  const [historial, setHistorial] = useState([])
+  const [intento, setIntento] = useState(0)  // sube con "Reintentar"
+  const [confirmaDescartar, setConfirmaDescartar] = useState(false)
   const [stats, setStats] = useState(null)
-  const [backend, setBackend] = useState(null) // nombre del almacén si guarda el servidor (al instante); null = modo token
+  const [statsError, setStatsError] = useState('')
+  const [statsAt, setStatsAt] = useState(null)
   const [recargando, setRecargando] = useState(false)
   const [promosBase, setPromosBase] = useState('[]')      // las promos como están guardadas
   const [verErroresPromos, setVerErroresPromos] = useState(false) // marcar en rojo lo que falta
+  const ultimaCarga = useRef(0)
+
+  // Si la clave ya no sirve (la cambiaron), vuelve a la pantalla de entrada
+  const clavePerdida = useCallback((e) => {
+    if (e?.status !== 401) return false
+    panel.salir()
+    setAvisoLogin('La clave cambió o venció. Volvé a entrar.')
+    setLogueado(false)
+    return true
+  }, [])
 
   const traerStats = useCallback(async () => {
-    try { setStats(await panel.readStats()) } catch { /* se queda con lo que tenía */ }
-  }, [])
+    ultimaCarga.current = Date.now()
+    try {
+      setStats(await panel.readStats())
+      setStatsError('')
+      setStatsAt(new Date())
+    } catch (e) {
+      if (clavePerdida(e)) return
+      setStatsError(e.message) // se queda con lo que tenía
+    }
+  }, [clavePerdida])
 
   // El botón de actualizar: igual que la carga inicial, pero mostrando que está trabajando
   const recargarStats = useCallback(async () => {
@@ -373,22 +546,70 @@ export default function Admin() {
         setSha(version)
         const inicial = normalizar(content)
         setCfg(inicial)
+        setBase(inicial)
+        setEstado('')
         setPromosBase(claveDePromos(inicial.promos))
-        panel.history().then((h) => vivo && setHistorial(h)).catch(() => {})
-        panel.dondeGuarda().then((b) => vivo && setBackend(b))
         if (MOSTRAR_NUMEROS) traerStats()
       } catch (e) {
-        if (vivo) setEstado(e.message)
+        if (!vivo || clavePerdida(e)) return
+        setEstado(e.message)
       }
     })()
     return () => { vivo = false }
-  }, [logueado, traerStats])
+  }, [logueado, intento, traerStats, clavePerdida])
 
-  if (!logueado) return <Login onOk={() => setLogueado(true)} />
+  // Mientras el panel está a la vista (pestañas Hoy y Números) los pedidos se refrescan
+  // solos; al volver a abrir la pantalla del celular, también si pasó más de un minuto.
+  const verStats = MOSTRAR_NUMEROS && logueado && !!cfg && (tab === 'hoy' || tab === 'stats')
+  useEffect(() => {
+    if (!verStats) return undefined
+    const t = setInterval(() => { if (document.visibilityState === 'visible') traerStats() }, REFRESCO_MS)
+    const alVolver = () => {
+      if (document.visibilityState === 'visible' && Date.now() - ultimaCarga.current > 60_000) traerStats()
+    }
+    document.addEventListener('visibilitychange', alVolver)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', alVolver) }
+  }, [verStats, traerStats])
+
+  // ¿Hay algo sin guardar? Avisa también si intentan cerrar la página.
+  const cambios = cfg && base ? (() => {
+    const a = huellas(cfg)
+    const b = huellas(base)
+    return Object.fromEntries(Object.keys(a).map((k) => [k, a[k] !== b[k]]))
+  })() : {}
+  const hayCambios = Object.values(cambios).some(Boolean)
+  useEffect(() => {
+    if (!hayCambios) return undefined
+    const avisar = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', avisar)
+    return () => window.removeEventListener('beforeunload', avisar)
+  }, [hayCambios])
+
+  if (!logueado) return <Login aviso={avisoLogin} onOk={() => { setAvisoLogin(''); setLogueado(true) }} />
   if (!cfg) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center px-6 text-center" style={font}>
-        <p className={estado ? 'text-red-300 text-sm' : 'text-white/60'}>{estado || 'Cargando…'}</p>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4 px-6 text-center" style={font}>
+        <p className={estado ? 'text-red-300 text-sm max-w-sm' : 'text-white/60'}>{estado || 'Cargando…'}</p>
+        {estado && (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => { setEstado(''); setIntento((n) => n + 1) }}
+              className="px-6 min-h-[44px] rounded-full text-black text-sm tracking-widest uppercase"
+              style={{ ...anton, backgroundColor: ORO }}
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              onClick={() => { panel.salir(); setLogueado(false) }}
+              className="px-6 min-h-[44px] rounded-full text-sm uppercase tracking-wide text-white/65"
+              style={{ border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              Salir
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -433,40 +654,54 @@ export default function Admin() {
       const nuevoSha = await panel.saveConfig(nuevo, sha, mensaje)
       setSha(nuevoSha)
       setCfg(nuevo)
+      setBase(nuevo)
       setPromosBase(claveDePromos(nuevo.promos))
       setVerErroresPromos(false)
+      setConfirmaDescartar(false)
       setEstado('ok')
-      setTimeout(() => setEstado(''), 3500)
-      panel.history().then(setHistorial).catch(() => {})
+      setTimeout(() => setEstado((e) => (e === 'ok' ? '' : e)), 3500)
     } catch (e) {
+      if (clavePerdida(e)) return
       setEstado(e.message)
     }
   }
 
-  const alInstante = backend != null // hay un servidor guardando: los cambios son inmediatos
+  const descartar = () => {
+    setCfg(base)
+    setVerErroresPromos(false)
+    setConfirmaDescartar(false)
+    setEstado('')
+  }
+
+  const burgersSin = Object.values(cfg.burgers || {}).filter((b) => b?.soldOut).length
+  const extrasSin = EXTRAS.filter((e) => cfg.stock[extraKey(e)]).length
+  const sinStock = burgersSin + Object.keys(cfg.stock || {}).length
+  const sinStockDrinks = DRINKS.flatMap((d) => d.sizes.map((s) => drinkKey(d, s))).filter((k) => cfg.stock[k]).length
+  const sinStockSabores = DRINKS.flatMap((d) => (d.flavors || []).map(flavorKey)).filter((k) => cfg.stock[k]).length
   const TABS = [['hoy', 'Hoy'], ['promos', 'Promos'], ['menu', 'Menú'], ['envios', 'Envíos'], ...(MOSTRAR_NUMEROS ? [['stats', 'Números']] : [])]
+  const primeraConCambios = TABS.find(([k]) => cambios[k])?.[0]
+  const irA = (k) => { setTab(k); window.scrollTo({ top: 0 }) }
 
   return (
-    <div className="min-h-screen bg-black px-4 md:px-8 py-6" style={font}>
+    <div className="min-h-screen bg-black px-4 md:px-8 pb-6" style={font}>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <div>
+        <div className="flex items-center justify-between gap-3 pt-6 mb-4">
+          <div className="min-w-0">
             <h1 className="text-3xl text-white uppercase leading-none" style={anton}>
               Mr. White <span className="text-[#F0C832]">Panel</span>
             </h1>
-            <p
-              className="inline-flex items-center gap-1.5 text-[11px] mt-2"
-              style={{ color: alInstante ? '#4ADE80' : 'rgba(255,255,255,0.4)' }}
-            >
-              {alInstante ? <Zap size={12} /> : <Timer size={12} />}
-              {alInstante ? 'Los cambios se ven en la web en segundos' : 'Los cambios tardan ~1 minuto en verse'}
+            <p className="inline-flex items-center gap-1.5 text-[11px] mt-2" style={{ color: '#4ADE80' }}>
+              <Zap size={12} /> Los cambios se ven en la web en segundos
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <a href="/" className="inline-flex items-center min-h-[44px] text-sm text-white/55 hover:text-white">Ver sitio →</a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a href="/" className="inline-flex items-center min-h-[44px] px-2 text-sm text-white/55 hover:text-white">Ver sitio →</a>
             <button
-              onClick={() => { panel.salir(); setLogueado(false) }}
+              onClick={() => {
+                if (hayCambios && !window.confirm('Tenés cambios sin guardar. Si salís se pierden. ¿Salir igual?')) return
+                panel.salir(); setLogueado(false)
+              }}
               className="px-4 py-2 min-h-[44px] rounded-full text-sm uppercase tracking-wide text-white/65 hover:text-white"
               style={{ border: '1px solid rgba(255,255,255,0.15)' }}
             >
@@ -475,33 +710,55 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-5 flex-wrap">
-          {TABS.map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className="px-4 py-2 min-h-[44px] rounded-full text-sm tracking-widest uppercase"
-              style={{
-                ...anton,
-                backgroundColor: tab === k ? '#F0C832' : 'transparent',
-                color: tab === k ? '#000' : 'rgba(255,255,255,0.6)',
-                border: tab === k ? 'none' : '1px solid rgba(255,255,255,0.15)',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Pestañas: quedan fijas arriba para cambiar de sección sin volver al principio */}
+        <div
+          className="sticky top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 py-2.5 mb-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.94)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))` }} role="tablist">
+            {TABS.map(([k, label]) => (
+              <button
+                key={k}
+                role="tab"
+                aria-selected={tab === k}
+                onClick={() => irA(k)}
+                className="relative px-1 py-2 min-h-[44px] rounded-full text-[12px] sm:text-sm tracking-wider uppercase"
+                style={{
+                  ...anton,
+                  backgroundColor: tab === k ? ORO : 'transparent',
+                  color: tab === k ? '#000' : 'rgba(255,255,255,0.6)',
+                  border: tab === k ? '1px solid transparent' : '1px solid rgba(255,255,255,0.15)',
+                }}
+              >
+                {label}
+                {cambios[k] && (
+                  <span
+                    className="absolute top-1 right-2 w-2 h-2 rounded-full"
+                    style={{ backgroundColor: tab === k ? '#DC2626' : ORO }}
+                    title="Cambios sin guardar"
+                  />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ─── HOY ─────────────────────────────────────────────── */}
         {tab === 'hoy' && (
           <>
+            <ResumenHoy
+              cfg={cfg}
+              stats={stats}
+              sinStock={sinStock}
+              sinGuardar={!!cambios.hoy}
+              onVerNumeros={() => irA('stats')}
+            />
+
             <Seccion
               titulo="Hoy"
               nota={`Excepciones solo para hoy. Mañana vuelve solo al horario de siempre (${scheduleSummary().find((h) => !h.closed)?.hours || '—'}).`}
             >
-              <label className="flex items-center gap-3 mb-4 cursor-pointer">
+              <label className="flex items-center gap-3 mb-2 min-h-[44px] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={!!cfg.today.closed}
@@ -513,7 +770,7 @@ export default function Admin() {
                 </span>
               </label>
 
-              <label className="flex items-center gap-3 mb-5 cursor-pointer">
+              <label className="flex items-center gap-3 mb-4 min-h-[44px] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={!!cfg.today.deliveryOff}
@@ -545,7 +802,7 @@ export default function Admin() {
               </div>
 
               <label className="flex flex-col gap-1.5 mb-4">
-                <span className={labelCls}>Aviso (opcional)</span>
+                <span className={labelCls}>Aviso para los clientes (opcional)</span>
                 <input
                   value={cfg.today.note || ''}
                   onChange={(e) => setHoy({ note: e.target.value })}
@@ -556,7 +813,7 @@ export default function Admin() {
 
               <button
                 onClick={() => setCfg((c) => ({ ...c, today: { ...DEFAULT_CONFIG.today } }))}
-                className="text-xs text-white/40 hover:text-white/70"
+                className="min-h-[44px] text-xs text-white/45 hover:text-white/80"
               >
                 Limpiar excepciones de hoy
               </button>
@@ -564,53 +821,58 @@ export default function Admin() {
 
             <Seccion
               titulo="Sin stock"
+              extra={sinStock > 0 ? <span className="text-xs" style={{ ...font, color: '#F87171' }}>{sinStock} marcado{sinStock === 1 ? '' : 's'}</span> : null}
               nota="Lo que marques acá aparece como “Sin stock” en la web y no se puede pedir. Tocá de nuevo para volver a habilitarlo."
             >
-              <Grupo>Burgers</Grupo>
-              {BURGERS.map((b) => (
-                <Interruptor
-                  key={b.id}
-                  nombre={b.name}
-                  sinStock={!!cfg.burgers?.[b.id]?.soldOut}
-                  onToggle={() => setBurger(b.id, { soldOut: !cfg.burgers?.[b.id]?.soldOut })}
-                />
-              ))}
-
-              <Grupo>Extras</Grupo>
-              {EXTRAS.map((e) => (
-                <Interruptor
-                  key={e.id}
-                  nombre={e.name}
-                  detalle={e.desc}
-                  sinStock={!!cfg.stock[extraKey(e)]}
-                  onToggle={() => setStock(extraKey(e), !cfg.stock[extraKey(e)])}
-                />
-              ))}
-
-              <Grupo>Bebidas (por tamaño)</Grupo>
-              {DRINKS.flatMap((d) =>
-                d.sizes.map((s) => (
+              <Plegable titulo="Burgers" badge={burgersSin ? `${burgersSin} sin stock` : ''} abierto0>
+                {BURGERS.map((b) => (
                   <Interruptor
-                    key={drinkKey(d, s)}
-                    nombre={`${d.name} · ${s.label}`}
-                    sinStock={!!cfg.stock[drinkKey(d, s)]}
-                    onToggle={() => setStock(drinkKey(d, s), !cfg.stock[drinkKey(d, s)])}
+                    key={b.id}
+                    nombre={b.name}
+                    sinStock={!!cfg.burgers?.[b.id]?.soldOut}
+                    onToggle={() => setBurger(b.id, { soldOut: !cfg.burgers?.[b.id]?.soldOut })}
                   />
-                )),
-              )}
+                ))}
+              </Plegable>
 
-              <Grupo>Sabores</Grupo>
-              {DRINKS.flatMap((d) =>
-                (d.flavors || []).map((f) => (
+              <Plegable titulo="Extras" badge={extrasSin ? `${extrasSin} sin stock` : ''} abierto0>
+                {EXTRAS.map((e) => (
                   <Interruptor
-                    key={flavorKey(f)}
-                    nombre={f.label}
-                    detalle="Todos los tamaños"
-                    sinStock={!!cfg.stock[flavorKey(f)]}
-                    onToggle={() => setStock(flavorKey(f), !cfg.stock[flavorKey(f)])}
+                    key={e.id}
+                    nombre={e.name}
+                    detalle={e.desc}
+                    sinStock={!!cfg.stock[extraKey(e)]}
+                    onToggle={() => setStock(extraKey(e), !cfg.stock[extraKey(e)])}
                   />
-                )),
-              )}
+                ))}
+              </Plegable>
+
+              <Plegable titulo="Bebidas (por tamaño)" badge={sinStockDrinks ? `${sinStockDrinks} sin stock` : ''} abierto0={sinStockDrinks > 0}>
+                {DRINKS.flatMap((d) =>
+                  d.sizes.map((s) => (
+                    <Interruptor
+                      key={drinkKey(d, s)}
+                      nombre={`${d.name} · ${s.label}`}
+                      sinStock={!!cfg.stock[drinkKey(d, s)]}
+                      onToggle={() => setStock(drinkKey(d, s), !cfg.stock[drinkKey(d, s)])}
+                    />
+                  )),
+                )}
+              </Plegable>
+
+              <Plegable titulo="Sabores" badge={sinStockSabores ? `${sinStockSabores} sin stock` : ''} abierto0={sinStockSabores > 0}>
+                {DRINKS.flatMap((d) =>
+                  (d.flavors || []).map((f) => (
+                    <Interruptor
+                      key={flavorKey(f)}
+                      nombre={f.label}
+                      detalle="Todos los tamaños"
+                      sinStock={!!cfg.stock[flavorKey(f)]}
+                      onToggle={() => setStock(flavorKey(f), !cfg.stock[flavorKey(f)])}
+                    />
+                  )),
+                )}
+              </Plegable>
             </Seccion>
 
             <Seccion
@@ -646,40 +908,10 @@ export default function Admin() {
         {/* ─── MENÚ ────────────────────────────────────────────── */}
         {tab === 'menu' && (
           <>
-            <Seccion titulo="Burgers" nota="Si dejás un precio vacío se usa el de la carta (el que figura en gris).">
-              {BURGERS.map((b) => {
-                const c = cfg.burgers?.[b.id] || {}
-                return (
-                  <div
-                    key={b.id}
-                    className="rounded-xl p-4 mb-3"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  >
-                    <p className="text-white uppercase mb-3" style={anton}>{b.name}</p>
-                    {SIZES.map((s) => (
-                      <EntradaPrecio
-                        key={s.key}
-                        etiqueta={s.label}
-                        defecto={b.prices[s.key]}
-                        valor={c.prices?.[s.key]}
-                        onChange={(v) =>
-                          setBurger(b.id, { prices: { ...(c.prices || {}), [s.key]: v == null ? undefined : v } })
-                        }
-                      />
-                    ))}
-                    <label className="flex flex-col gap-1.5 mt-3">
-                      <span className={labelCls}>Descripción</span>
-                      <textarea
-                        rows={2}
-                        className={inputCls + ' resize-y'}
-                        placeholder={b.description}
-                        value={c.description || ''}
-                        onChange={(e) => setBurger(b.id, { description: e.target.value })}
-                      />
-                    </label>
-                  </div>
-                )
-              })}
+            <Seccion titulo="Burgers" nota="Tocá una burger para cambiarle el precio o la descripción. Si dejás un precio vacío se usa el de la carta (el que figura en gris).">
+              {BURGERS.map((b) => (
+                <TarjetaBurger key={b.id} b={b} c={cfg.burgers?.[b.id] || {}} onChange={(patch) => setBurger(b.id, patch)} />
+              ))}
             </Seccion>
 
             <Seccion titulo="Extras">
@@ -735,37 +967,83 @@ export default function Admin() {
 
         {/* ─── NÚMEROS ─────────────────────────────────────────── */}
         {MOSTRAR_NUMEROS && tab === 'stats' && (
-          <AdminStats
-            stats={stats}
-            onReload={recargarStats}
-            recargando={recargando}
-            puedeBorrar={alInstante}
-            onDelete={async (id) => {
-              await panel.deleteOrder(id)
-              await traerStats()
-            }}
-          />
+          stats ? (
+            <AdminStats
+              stats={stats}
+              onReload={recargarStats}
+              recargando={recargando}
+              actualizado={statsAt}
+              errorRecarga={statsError}
+              puedeBorrar
+              onDelete={async (id) => {
+                await panel.deleteOrder(id)
+                await traerStats()
+              }}
+            />
+          ) : (
+            <div className="rounded-2xl p-5 mb-4 text-center" style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)' }}>
+              {statsError ? (
+                <>
+                  <p className="text-red-300 text-sm mb-3" role="alert">{statsError}</p>
+                  <button
+                    type="button"
+                    onClick={recargarStats}
+                    className="px-6 min-h-[44px] rounded-full text-black text-sm tracking-widest uppercase"
+                    style={{ ...anton, backgroundColor: ORO }}
+                  >
+                    Reintentar
+                  </button>
+                </>
+              ) : (
+                <p className="text-white/55 text-sm">Cargando los pedidos…</p>
+              )}
+            </div>
+          )
         )}
 
         {/* Guardar */}
         {tab !== 'stats' && (
-          <div className="sticky bottom-4 mt-6">
+          <div className="sticky bottom-0 mt-6 z-20 -mx-4 md:-mx-8 px-4 md:px-8 pt-8 pb-4 bg-gradient-to-t from-black via-black/95 to-transparent">
+            {hayCambios && estado !== 'guardando' && estado !== 'ok' && (
+              <div className="flex items-center justify-between gap-3 mb-2 px-1">
+                <span className="inline-flex items-center gap-2 text-[12px]" style={{ ...font, color: ORO }}>
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ORO }} /> Tenés cambios sin guardar
+                </span>
+                {confirmaDescartar ? (
+                  <span className="flex items-center gap-1.5" style={font}>
+                    <button type="button" onClick={descartar} className="px-3 min-h-[36px] rounded-full text-[11px] text-white" style={{ backgroundColor: '#DC2626' }}>
+                      Sí, descartar
+                    </button>
+                    <button type="button" onClick={() => setConfirmaDescartar(false)} className="px-3 min-h-[36px] rounded-full text-[11px] text-white/70" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                      No
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setConfirmaDescartar(true)} className="min-h-[36px] px-2 text-[12px] text-white/55 hover:text-white" style={font}>
+                    Descartar
+                  </button>
+                )}
+              </div>
+            )}
             <button
               onClick={() => guardar(`chore(config): cambios desde el panel (${tab})`)}
-              disabled={estado === 'guardando'}
-              className="w-full py-4 rounded-full text-black text-sm tracking-widest uppercase disabled:opacity-60 flex items-center justify-center gap-2"
+              disabled={estado === 'guardando' || (!hayCambios && estado !== 'ok')}
+              className="w-full py-4 min-h-[52px] rounded-full text-sm tracking-widest uppercase flex items-center justify-center gap-2 transition-colors"
               style={{
                 ...anton,
-                backgroundColor: estado === 'ok' ? '#4ADE80' : '#F0C832',
-                boxShadow: '0 12px 32px -10px rgba(240,200,50,0.5)',
+                color: hayCambios || estado === 'ok' || estado === 'guardando' ? '#000' : 'rgba(255,255,255,0.4)',
+                backgroundColor: estado === 'ok' ? '#4ADE80' : hayCambios || estado === 'guardando' ? ORO : '#1c1c1c',
+                boxShadow: hayCambios ? '0 12px 32px -10px rgba(240,200,50,0.5)' : 'none',
               }}
             >
               {estado === 'guardando' ? (
                 <><RefreshCw size={15} className="animate-spin" /> Guardando…</>
               ) : estado === 'ok' ? (
-                <><Check size={16} strokeWidth={3} /> {alInstante ? 'Guardado — ya está en la web' : 'Guardado — se ve en ~1 min'}</>
-              ) : (
+                <><Check size={16} strokeWidth={3} /> Guardado — ya está en la web</>
+              ) : hayCambios ? (
                 'Guardar cambios'
+              ) : (
+                <><Check size={16} strokeWidth={3} /> Todo guardado</>
               )}
             </button>
             {estado && !['ok', 'guardando'].includes(estado) && (
@@ -792,21 +1070,24 @@ export default function Admin() {
           </div>
         )}
 
-        {/* Historial de cambios (solo con GitHub) */}
-        {historial.length > 0 && (
-          <div className="mt-8">
-            <p className="text-white/40 text-[11px] tracking-[0.16em] uppercase mb-2 flex items-center gap-2">
-              <Clock size={12} /> Últimos cambios
-            </p>
-            {historial.map((h, i) => (
-              <div key={i} className="flex items-baseline justify-between py-1 text-xs">
-                <span className="text-white/55 truncate pr-3">{h.mensaje}</span>
-                <span className="text-white/30 shrink-0">
-                  {h.fecha ? new Date(h.fecha).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
-                </span>
-              </div>
-            ))}
+        {/* Estando en Números con cambios sin guardar: recordatorio para volver a guardarlos */}
+        {tab === 'stats' && hayCambios && primeraConCambios && (
+          <div className="sticky bottom-0 mt-4 z-20 -mx-4 md:-mx-8 px-4 md:px-8 pt-8 pb-4 bg-gradient-to-t from-black via-black/95 to-transparent">
+            <button
+              type="button"
+              onClick={() => irA(primeraConCambios)}
+              className="w-full min-h-[48px] rounded-full text-[13px] flex items-center justify-center gap-2"
+              style={{ ...font, color: '#000', backgroundColor: ORO, fontWeight: 600 }}
+            >
+              Tenés cambios sin guardar · Ir a guardarlos <ArrowRight size={14} />
+            </button>
           </div>
+        )}
+
+        {cfg.updatedAt && (
+          <p className="text-white/30 text-[11px] mt-8 text-center">
+            Último cambio guardado: {fechaHora(cfg.updatedAt)}
+          </p>
         )}
       </div>
     </div>

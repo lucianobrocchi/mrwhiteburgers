@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2, ExternalLink, AlertTriangle, Tag, Info, ArrowUp } from 'lucide-react'
-import { SIZES } from '../context/CartContext'
-import { BURGERS } from '../lib/menu'
+import { SIZES } from '../lib/sizes'
+import { BURGERS_BASE as BURGERS } from '../lib/menuBase'
 import { SCHEDULE } from '../lib/schedule'
 import { leerPrecio, textoDePrecio, muyBarato, mensajeMuyBarato } from '../lib/precio'
 import {

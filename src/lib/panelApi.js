@@ -1,102 +1,59 @@
-// Capa de acceso del panel. Prefiere la función del propio sitio (/api/panel):
-// no la bloquea ningún ad-blocker y el token vive en Vercel. Si esa función no
-// está configurada, cae al modo viejo: token de GitHub pegado en el navegador.
-
-import * as gh from './github'
+// Capa de acceso del panel: habla con la función del propio sitio (/api/panel), que
+// guarda en la base D1. La clave se queda en este navegador; ningún bloqueador de
+// anuncios corta la conexión porque es el mismo dominio.
 
 const KEY = 'mw_panel_key'
 export const getKey = () => { try { return localStorage.getItem(KEY) || '' } catch { return '' } }
 export const setKey = (v) => { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY) } catch { /* noop */ } }
 
-let modo = null // 'api' | 'token'
-
-// ¿Está la función disponible y configurada?
-export async function detectarModo() {
-  if (modo) return modo
-  try {
-    const r = await fetch('/api/panel?action=ping')
-    if (r.ok) {
-      const j = await r.json()
-      modo = j.configurado ? 'api' : 'token'
-    } else {
-      modo = 'token'
-    }
-  } catch {
-    modo = 'token'
+// Error con el código HTTP: 401 = la clave ya no sirve (se cambió) y hay que volver a entrar
+export class ErrorPanel extends Error {
+  constructor(mensaje, status) {
+    super(mensaje)
+    this.status = status
   }
-  return modo
 }
 
 const call = async (action, body) => {
-  const r = await fetch(`/api/panel?action=${action}`, {
-    method: body ? 'POST' : 'GET',
-    headers: { 'Content-Type': 'application/json', 'x-panel-key': getKey() },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  })
+  let r
+  try {
+    r = await fetch(`/api/panel?action=${action}`, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json', 'x-panel-key': getKey() },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    })
+  } catch {
+    throw new ErrorPanel('No hay conexión con el servidor. Revisá tu internet y probá de nuevo.', 0)
+  }
   const j = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(j.error || `Error ${r.status}`)
+  if (!r.ok) throw new ErrorPanel(j.error || `Error ${r.status}`, r.status)
   return j
 }
 
 export async function login(secreto) {
-  const m = await detectarModo()
-  if (m === 'api') {
-    setKey(secreto)
-    try {
-      await call('login')
-    } catch (e) { setKey(''); throw e }
-    return 'api'
+  setKey(secreto)
+  try {
+    await call('login')
+  } catch (e) {
+    setKey('')
+    throw e
   }
-  await gh.checkToken(secreto.trim())
-  gh.setToken(secreto.trim())
-  return 'token'
 }
 
-export const estaLogueado = () => !!(getKey() || gh.getToken())
-export const salir = () => { setKey(''); gh.setToken('') }
+export const estaLogueado = () => !!getKey()
+export const salir = () => setKey('')
 
 export async function readConfig() {
-  if ((await detectarModo()) === 'api') {
-    const j = await call('get-config')
-    return { sha: j.sha, content: j.config }
-  }
-  return gh.readConfigFile(gh.getToken())
-}
-
-// ¿Está guardando el servidor del sitio (almacén conectado + clave cargada)?
-// Devuelve el nombre del almacén ('blob') o null si no: en ese caso el panel
-// trabaja con el token de GitHub y los cambios tardan un minuto en verse.
-export async function dondeGuarda() {
-  try {
-    const r = await fetch('/api/panel?action=ping')
-    if (r.ok) {
-      const j = await r.json()
-      return j.configurado ? j.backend : null
-    }
-  } catch { /* noop */ }
-  return null
+  const j = await call('get-config')
+  return { sha: j.sha, content: j.config }
 }
 
 export async function saveConfig(config, sha, message) {
-  if ((await detectarModo()) === 'api') {
-    const j = await call('save-config', { config, sha, message })
-    return j.sha
-  }
-  return gh.saveConfigFile(gh.getToken(), config, sha, message)
+  const j = await call('save-config', { config, sha, message })
+  return j.sha
 }
 
-// Estadísticas de pedidos. Solo existen con el modo "clave" (Vercel Blob): en el
-// modo viejo con token de GitHub no se registran pedidos, así que devuelve null.
-export async function readStats(meses = 12) {
-  if ((await detectarModo()) === 'api') return call(`stats&months=${meses}`)
-  return null
-}
+// Pedidos y estadísticas de los últimos `meses` meses
+export const readStats = (meses = 12) => call(`stats&months=${meses}`)
 
-export async function deleteOrder(id) {
-  return call('delete-order', { id })
-}
-
-export async function history() {
-  if ((await detectarModo()) === 'token') return gh.configHistory(gh.getToken())
-  return []
-}
+export const deleteOrder = (id) => call('delete-order', { id })

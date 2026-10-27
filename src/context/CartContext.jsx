@@ -9,17 +9,14 @@ import { getConfig, todayOverride } from '../lib/config'
 import { extrasLabel } from '../lib/catalog'
 import { calcPromoDiscount, envioGratis } from '../lib/promos'
 import { usePromos } from '../lib/usePromos'
+import { SIZES } from '../lib/sizes'
 
 const CartContext = createContext()
 
 export const WHATSAPP_NUMBER = '5492213034143'
 export const WHATSAPP_DISPLAY = '221 303-4143'
 
-export const SIZES = [
-  { key: 'simple', label: 'Simple' },
-  { key: 'doble',  label: 'Doble' },
-  { key: 'triple', label: 'Triple' },
-]
+export { SIZES }
 
 const SIZE_LABEL = Object.fromEntries(SIZES.map(s => [s.key, s.label]))
 

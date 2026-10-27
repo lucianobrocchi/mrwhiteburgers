@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { Analytics } from '@vercel/analytics/react'
 import { CartProvider, useCart } from './context/CartContext'
 import { iniciarTracking, hito, gaVioMenu } from './lib/track'
-import Admin from './components/Admin'
 import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
 import HeroSection from './components/HeroSection'
@@ -90,27 +89,7 @@ function Inner() {
   )
 }
 
-// Panel en /#admin. Entra con un token de GitHub; los cambios se guardan en
-// public/config.json del repo (sin base de datos).
-const ADMIN_ENABLED = true
-
-function useIsAdmin() {
-  const [isAdmin, setIsAdmin] = useState(
-    () => window.location.hash.replace(/^#\/?/, '') === 'admin',
-  )
-  useEffect(() => {
-    const onHash = () => setIsAdmin(window.location.hash.replace(/^#\/?/, '') === 'admin')
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
-  }, [])
-  return isAdmin
-}
-
 export default function App() {
-  const isAdmin = useIsAdmin()
-
-  if (ADMIN_ENABLED && isAdmin) return <Admin />
-
   return (
     <CartProvider>
       <Inner />
