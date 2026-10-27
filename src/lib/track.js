@@ -48,6 +48,29 @@ export function hito(nombre) {
   registrar(`s:${nombre}`)
 }
 
+// Los scripts de medición (GA4 y Clarity) pesan y frenan la página: se bajan cuando ya cargó
+// todo lo importante, o apenas la persona toca o mueve algo, lo que pase primero. Los eventos
+// que ocurran antes quedan en cola (dataLayer / clarity.q) y se mandan en cuanto cargan.
+function cargarScript(src) {
+  const s = document.createElement('script')
+  s.async = true
+  s.src = src
+  document.head.appendChild(s)
+}
+function cuandoSePueda(fn) {
+  let hecho = false
+  const ir = () => {
+    if (hecho) return
+    hecho = true
+    fn()
+  }
+  const eventos = ['pointerdown', 'keydown', 'scroll', 'touchstart']
+  eventos.forEach((e) => window.addEventListener(e, ir, { once: true, passive: true }))
+  const alCargar = () => (window.requestIdleCallback ? window.requestIdleCallback(ir, { timeout: 4000 }) : window.setTimeout(ir, 3000))
+  if (document.readyState === 'complete') alCargar()
+  else window.addEventListener('load', alCargar, { once: true })
+}
+
 export function iniciarTracking() {
   if (typeof window === 'undefined' || activo) return
   activo = true
@@ -66,17 +89,11 @@ export function iniciarTracking() {
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
   })
-  const s = document.createElement('script')
-  s.async = true
-  s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
-  document.head.appendChild(s)
+  cuandoSePueda(() => cargarScript(`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`))
 
   // Microsoft Clarity: mapas de calor y grabaciones (oculta por defecto lo que se escribe en los campos)
   window.clarity = window.clarity || function clarity() { (window.clarity.q = window.clarity.q || []).push(arguments) }
-  const c = document.createElement('script')
-  c.async = true
-  c.src = `https://www.clarity.ms/tag/${CLARITY_ID}`
-  document.head.appendChild(c)
+  cuandoSePueda(() => cargarScript(`https://www.clarity.ms/tag/${CLARITY_ID}`))
 }
 
 // Marca en Clarity los momentos clave para poder filtrar las grabaciones ("los que pidieron")

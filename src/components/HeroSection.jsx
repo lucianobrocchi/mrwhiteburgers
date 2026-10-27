@@ -10,7 +10,7 @@ const ease = [0.16, 1, 0.3, 1]
 // HTML, y iOS mira el atributo para permitir el autoplay: sin él, Safari se
 // planta y deja el póster. Acá lo forzamos y, si igual lo bloquean (modo de
 // bajo consumo, ahorro de datos), reintentamos al primer toque del usuario.
-function HeroVideo({ className, style }) {
+function HeroVideo({ className, style, src }) {
   const ref = useRef(null)
 
   useEffect(() => {
@@ -27,7 +27,20 @@ function HeroVideo({ className, style }) {
       const p = v.play()
       if (p && p.catch) p.catch(() => {})
     }
-    intentar()
+    // El video pesa mucho más que todo el resto: se baja recién cuando la página terminó de
+    // cargar (mientras tanto se ve la foto de espera) y solo si este video se ve en pantalla
+    // (la versión de compu y la de celular existen las dos, una está oculta). Con "ahorro de
+    // datos" no se baja.
+    const arrancar = () => {
+      if (v.offsetParent === null || navigator.connection?.saveData) return
+      v.src = src
+      v.load()
+      intentar()
+    }
+    let idle
+    const alCargar = () => { idle = window.requestIdleCallback ? window.requestIdleCallback(arrancar, { timeout: 2500 }) : window.setTimeout(arrancar, 800) }
+    if (document.readyState === 'complete') alCargar()
+    else window.addEventListener('load', alCargar, { once: true })
 
     // Si quedó pausado, el primer gesto del usuario lo destraba.
     const alTocar = () => {
@@ -40,19 +53,22 @@ function HeroVideo({ className, style }) {
     }
     document.addEventListener('touchstart', alTocar, { passive: true })
     document.addEventListener('click', alTocar)
-    return quitar
-  }, [])
+    return () => {
+      quitar()
+      window.removeEventListener('load', alCargar)
+      if (idle != null) (window.cancelIdleCallback || window.clearTimeout)(idle)
+    }
+  }, [src])
 
   return (
     <video
       ref={ref}
-      src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
       poster={`${import.meta.env.BASE_URL}videos/hero-poster.webp`}
       autoPlay
       loop
       muted
       playsInline
-      preload="auto"
+      preload="none"
       className={className}
       style={style}
     />
@@ -107,6 +123,7 @@ export default function HeroSection() {
         transition={{ duration: 1.4, ease, delay: 0.4 }}
       >
         <HeroVideo
+          src={`${import.meta.env.BASE_URL}videos/hero.mp4`}
           className="w-full h-full object-cover"
           style={{ backgroundColor: '#000', objectPosition: '50% 35%' }}
         />
@@ -119,6 +136,7 @@ export default function HeroSection() {
       {/* Mobile: video top */}
       <div className="md:hidden absolute top-0 left-0 right-0 h-[500px] bg-black overflow-hidden">
         <HeroVideo
+          src={`${import.meta.env.BASE_URL}videos/hero-mobile.mp4`}
           className="w-full h-full object-cover"
           style={{ objectPosition: '50% 30%' }}
         />
