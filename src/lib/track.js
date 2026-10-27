@@ -6,6 +6,7 @@ import { track } from '@vercel/analytics'
 // (/api/panel?action=event). Los toques se juntan y salen en un solo envío
 // cuando la persona se va, así casi no se usa el almacenamiento.
 const GA_ID = 'G-6575KBW83F'
+const CLARITY_ID = 'z424kzquun'
 let gaListo = false
 let activo = false
 const buf = {}
@@ -71,6 +72,22 @@ export function iniciarTracking() {
   s.async = true
   s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
   document.head.appendChild(s)
+
+  // Microsoft Clarity: mapas de calor y grabaciones (oculta por defecto lo que se escribe en los campos)
+  window.clarity = window.clarity || function clarity() { (window.clarity.q = window.clarity.q || []).push(arguments) }
+  const c = document.createElement('script')
+  c.async = true
+  c.src = `https://www.clarity.ms/tag/${CLARITY_ID}`
+  document.head.appendChild(c)
+}
+
+// Marca en Clarity los momentos clave para poder filtrar las grabaciones ("los que pidieron")
+function clarityEvento(nombre) {
+  try {
+    if (gaListo && window.clarity) window.clarity('event', nombre)
+  } catch {
+    /* Clarity no disponible */
+  }
 }
 
 function ga(nombre, datos) {
@@ -111,8 +128,10 @@ let ultimo = { items: [], total: 0 }
 export const recordarCarrito = (items, total) => { ultimo = { items, total } }
 
 export const gaVioMenu = () => ga('view_item_list', { item_list_id: 'menu', item_list_name: 'Menú' })
-export const gaAgrego = (item) =>
+export const gaAgrego = (item) => {
+  clarityEvento('agrego_al_carrito')
   ga('add_to_cart', { currency: 'ARS', value: Math.round(item.price * item.qty), items: [gaItem(item)] })
+}
 export const gaSaco = (item) =>
   ga('remove_from_cart', { currency: 'ARS', value: Math.round(item.price * item.qty), items: [gaItem(item)] })
 export const gaVioCarrito = () => {
@@ -140,6 +159,7 @@ export const trackPedido = ({ id, items, total, shipping, zona, promo }) => {
     affiliation: 'WhatsApp',
     items: items.map(gaItem),
   })
+  clarityEvento('pedido_whatsapp')
   registrar('pedido')
   hito('pedido')
   volcar()
