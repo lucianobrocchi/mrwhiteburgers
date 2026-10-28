@@ -22,8 +22,8 @@ Es lo que aparece en Google Maps y en el recuadro lateral cuando buscan "hamburg
 | Dirección | Calle 27 esq. 80, Altos de San Lorenzo, La Plata. **Mové el pin al lugar exacto** del local |
 | Teléfono | +54 9 221 303-4143 |
 | Horarios | Miércoles a lunes 19:30 a 22:30 · Martes cerrado |
-| Sitio web | `https://mrwhiteburgers.pages.dev/?utm_source=perfil-google&utm_medium=organic&utm_campaign=ficha` (cuando esté el dominio propio, cambiar la parte inicial) |
-| Link de pedidos | `https://mrwhiteburgers.pages.dev/?utm_source=perfil-google&utm_medium=organic&utm_campaign=boton-pedir#menu` |
+| Sitio web | `https://mrwhiteburgers.com.ar/?utm_source=perfil-google&utm_medium=organic&utm_campaign=ficha` |
+| Link de pedidos | `https://mrwhiteburgers.com.ar/?utm_source=perfil-google&utm_medium=organic&utm_campaign=boton-pedir#menu` |
 | Atributos | Marcá solo lo que es cierto: envío a domicilio, para llevar, retiro en el local |
 
 Con ese `utm_source=perfil-google`, en el panel (Números → "De dónde llegan") vas a ver **cuántos pedidos vienen del perfil de Google**, separados del resto.
@@ -37,7 +37,7 @@ Con ese `utm_source=perfil-google`, en el panel (Números → "De dónde llegan"
 - Videos cortos de la plancha (smash) funcionan muy bien.
 
 ### Productos / menú
-Cargá las 6 burgers como "Productos", con foto, descripción y precio. Los textos y precios están listos en `https://mrwhiteburgers.pages.dev/llms.txt`. Si cambian precios desde el panel, actualizarlos también acá.
+Cargá las 6 burgers como "Productos", con foto, descripción y precio. Los textos y precios están listos en `https://mrwhiteburgers.com.ar/llms.txt`. Si cambian precios desde el panel, actualizarlos también acá.
 
 ### Publicaciones (1 o 2 por semana, duran 7 días)
 Ejemplos para copiar:
@@ -67,14 +67,14 @@ Instagram (bio: dirección + link con `?utm_source=instagram&utm_medium=bio`), F
 
 ## 2. Search Console (cómo ve Google la web)
 
-Esperá a tener el **dominio definitivo** (así no se parten las señales entre dos direcciones). Cuando esté:
+Con el dominio oficial ya conectado:
 1. <https://search.google.com/search-console> → agregar propiedad "Dominio" (se verifica con un registro DNS en Cloudflare).
 2. Enviar el sitemap: `https://TU-DOMINIO/sitemap.xml`.
 3. En **Inspección de URL**, pegar la home y tocar **"Solicitar indexación"**.
 4. Vincularlo con Analytics: Admin → Vinculaciones de Search Console.
 5. Revisar cada tanto **Rendimiento**: con qué búsquedas aparecen y cuántos clics.
 
-Cuando llegue el dominio, avisame: cambio **una línea** (`url` en `src/lib/negocio.js`) y se actualizan solos canonical, sitemap, robots y datos de Google; además dejo una redirección permanente desde la dirección `pages.dev`.
+El dominio oficial ya está en `src/lib/negocio.js` (una sola línea): de ahí salen canonical, sitemap, robots y datos de Google. La dirección vieja `pages.dev` redirige sola, con redirección permanente (`functions/_middleware.js`).
 
 ---
 

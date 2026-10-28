@@ -5,7 +5,7 @@
 
 export const NEGOCIO = {
   nombre: 'Mr. White Burgers',
-  url: 'https://mrwhiteburgers.pages.dev',
+  url: 'https://mrwhiteburgers.com.ar',
   telefono: '+54 9 221 303-4143',
   whatsapp: '5492213034143',
   instagram: 'https://www.instagram.com/mr.whiteburgers/',

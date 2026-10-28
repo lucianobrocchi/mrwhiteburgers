@@ -1,7 +1,7 @@
 name: Publicar en Cloudflare
 
 # Cada vez que se sube algo a main: se prueba, se arma y se publica en Cloudflare Pages
-# (https://mrwhiteburgers.pages.dev). Para que publique hace falta UN secreto en este repo:
+# (https://mrwhiteburgers.com.ar). Para que publique hace falta UN secreto en este repo:
 #   CLOUDFLARE_API_TOKEN  → token de Cloudflare con permiso "Cloudflare Pages: Edit"
 # Mientras no esté, el flujo avisa y no publica (no falla).
 

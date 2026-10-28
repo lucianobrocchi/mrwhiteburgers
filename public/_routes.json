@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "include": ["/", "/envios/*", "/panel/*", "/api/*", "/sitemap.xml", "/robots.txt", "/llms.txt"],
+  "exclude": []
+}
