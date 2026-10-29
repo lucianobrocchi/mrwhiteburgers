@@ -71,6 +71,17 @@ function cuandoSePueda(fn) {
   else window.addEventListener('load', alCargar, { once: true })
 }
 
+// ¿Es una persona de la zona y no un robot? GA4 ya descarta los robots conocidos, pero no los navegadores
+// automáticos de centros de datos (EE. UU., Europa) que inflaban las visitas. Este negocio reparte en La Plata:
+// solo se mide a quien tiene huso horario de Sudamérica y no es un navegador automático.
+const HUSOS_OK = /^America\/(Argentina\/|Buenos_Aires|Montevideo|Santiago|Asuncion|Sao_Paulo|La_Paz|Lima|Bogota|Guayaquil|Caracas)/
+const ROBOTS = /bot|crawl|spider|slurp|headless|lighthouse|gtmetrix|pagespeed|pingdom|preview|facebookexternalhit|python|curl|wget|node-fetch/i
+export function visitaReal({ ua = '', tz = '', webdriver = false } = {}) {
+  if (webdriver || ROBOTS.test(ua)) return false
+  if (tz && !HUSOS_OK.test(tz)) return false
+  return true
+}
+
 export function iniciarTracking() {
   if (typeof window === 'undefined' || activo) return
   activo = true
@@ -80,6 +91,9 @@ export function iniciarTracking() {
 
   const host = window.location.hostname
   if (host === 'localhost' || host === '127.0.0.1') return
+  let tz = ''
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { /* sin Intl: se mide igual */ }
+  if (!visitaReal({ ua: navigator.userAgent, tz, webdriver: navigator.webdriver === true })) return
   gaListo = true
   window.dataLayer = window.dataLayer || []
   window.gtag = function gtag() { window.dataLayer.push(arguments) }
