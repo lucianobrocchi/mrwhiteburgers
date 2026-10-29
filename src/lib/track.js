@@ -150,6 +150,9 @@ export const gaVioCarrito = () => {
 export const gaEligioZona = (zona) =>
   ga('add_shipping_info', { currency: 'ARS', value: Math.round(ultimo.total), shipping_tier: zona, items: ultimo.items.map(gaItem) })
 
+// Tocó "Dejar reseña" en la pantalla de pedido enviado
+export const gaResena = () => ga('click_resena', { origen: 'pedido_enviado' })
+
 // Tocó "Pedir por WhatsApp": es lo más parecido a una venta que vemos desde el sitio
 export const trackPedido = ({ id, items, total, shipping, promo }) => {
   ga('purchase', {

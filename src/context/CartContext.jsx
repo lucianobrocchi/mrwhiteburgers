@@ -27,6 +27,7 @@ export function CartProvider({ children }) {
   const [isOpen, setIsOpen]   = useState(false)
   const [toast, setToast]     = useState(null) // { name, id }
   const [zone, setZoneState]  = useState(null) // zona de envío elegida
+  const [enviado, setEnviado] = useState(false) // el pedido ya se mandó: el carrito muestra el agradecimiento
   // La promo de hoy sale de la config del panel (se actualiza sola al cargar)
   const { active: promoDeHoy } = usePromos()
 
@@ -46,6 +47,7 @@ export function CartProvider({ children }) {
     ;(nuevo.extras || []).forEach(e => registrar('agrego_extra', e.name))
     hito('agrego')
     gaAgrego(nuevo)
+    setEnviado(false)
     setItems(prev => {
       const existing = prev.find(i => i.key === nuevo.key)
       if (existing) return prev.map(i => i.key === nuevo.key ? { ...i, qty: i.qty + nuevo.qty } : i)
@@ -115,7 +117,7 @@ export function CartProvider({ children }) {
     )
   }
 
-  const clear = () => setItems([])
+  const clear = () => { setItems([]); setEnviado(false) }
 
   const totalItems = items.reduce((acc, i) => acc + i.qty, 0)
   const subtotal   = items.reduce((acc, i) => acc + i.price * i.qty, 0)
@@ -174,6 +176,7 @@ export function CartProvider({ children }) {
       `Hola! Quiero hacer un pedido:\n\n${lines}\n${promoLine}${zoneLine}\n` +
       `Total: ${formatPrice(totalPrice)}${tail}${closedLine}`
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank')
+    setEnviado(true)
   }
 
   return (
@@ -181,7 +184,7 @@ export function CartProvider({ children }) {
       items, addItem, addDrink, removeItem, updateQty,
       totalItems, subtotal, discount, shipping, envioBonificado, totalPrice,
       zone, setZone,
-      isOpen, setIsOpen, clear, sendToWhatsApp, toast,
+      isOpen, setIsOpen, clear, sendToWhatsApp, toast, enviado, setEnviado,
     }}>
       {children}
     </CartContext.Provider>

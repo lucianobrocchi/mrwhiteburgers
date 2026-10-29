@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Minus, ShoppingBag, Trash2, Clock, CupSoda, GlassWater, Droplets } from 'lucide-react'
+import { X, Plus, Minus, ShoppingBag, Trash2, Clock, CupSoda, GlassWater, Droplets, Star, CheckCircle2 } from 'lucide-react'
 import { useCart, formatPrice } from '../context/CartContext'
 import { usePromos } from '../lib/usePromos'
 import { DRINKS, drinkPrice, sizeOut, flavorOut } from '../lib/catalog'
 import { formatZonePrice } from '../lib/zones'
-import { registrar } from '../lib/track'
+import { registrar, gaResena } from '../lib/track'
+import { NEGOCIO } from '../lib/negocio'
 import { getStatus } from '../lib/schedule'
 import { useConfig, todayOverride } from '../lib/config'
 import ZonePicker from './ZonePicker'
@@ -40,7 +41,7 @@ function opcionesDeBebida(cfg) {
 const ease = [0.16, 1, 0.3, 1]
 
 export default function CartDrawer() {
-  const { items, addDrink, zone, envioBonificado, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, sendToWhatsApp, clear } = useCart()
+  const { items, addDrink, zone, envioBonificado, isOpen, setIsOpen, updateQty, removeItem, totalItems, subtotal, discount, totalPrice, sendToWhatsApp, clear, enviado, setEnviado } = useCart()
   const cfg = useConfig()
   const { active: promo } = usePromos()
   const status = getStatus(new Date(), todayOverride(cfg))
@@ -121,7 +122,78 @@ export default function CartDrawer() {
 
             {/* Items */}
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-6 py-4">
-              {items.length === 0 ? (
+              {enviado && items.length > 0 ? (
+                <motion.div
+                  className="flex flex-col items-center justify-center h-full gap-4 text-center px-2"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease }}
+                >
+                  <motion.span
+                    className="w-20 h-20 rounded-full flex items-center justify-center text-[#25D366]"
+                    style={{ backgroundColor: 'rgba(37, 211, 102, 0.1)', border: '1px solid rgba(37, 211, 102, 0.3)' }}
+                    initial={{ scale: 0.5 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.1 }}
+                  >
+                    <CheckCircle2 size={38} strokeWidth={2} />
+                  </motion.span>
+                  <p className="text-white text-2xl uppercase" style={{ fontFamily: 'Anton, sans-serif', letterSpacing: '-0.01em' }}>
+                    ¡Pedido enviado!
+                  </p>
+                  <p className="text-white/60 text-sm leading-relaxed max-w-[280px]" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                    Se abrió WhatsApp con tu pedido. Tocá <b className="text-white">Enviar</b> ahí para que lo recibamos.
+                  </p>
+                  <div
+                    className="w-full mt-3 px-4 py-5 rounded-2xl"
+                    style={{ backgroundColor: 'rgba(240, 200, 50, 0.07)', border: '1px solid rgba(240, 200, 50, 0.22)' }}
+                  >
+                    <div className="flex justify-center gap-1 text-[#F0C832] mb-2" aria-hidden="true">
+                      {[0, 1, 2, 3, 4].map((n) => (
+                        <motion.span
+                          key={n}
+                          initial={{ opacity: 0, scale: 0.3, rotate: -30 }}
+                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 12, delay: 0.5 + n * 0.09 }}
+                        >
+                          <Star size={22} fill="currentColor" strokeWidth={0} />
+                        </motion.span>
+                      ))}
+                    </div>
+                    <p className="text-white text-sm" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                      ¿Te gustó pedir en Mr. White?
+                    </p>
+                    <p className="text-white/55 text-xs mt-1 mb-4" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                      Una reseña en Google nos ayuda un montón y te lleva 20 segundos.
+                    </p>
+                    <a
+                      href={NEGOCIO.resenaGoogle}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => { registrar('click_resena'); gaResena() }}
+                      className="inline-flex items-center justify-center gap-2 w-full py-3.5 rounded-full text-sm tracking-widest uppercase text-black"
+                      style={{ fontFamily: 'Anton, sans-serif', backgroundColor: '#F0C832', boxShadow: '0 12px 32px -10px rgba(240, 200, 50, 0.5)' }}
+                    >
+                      <Star size={16} fill="currentColor" strokeWidth={0} />
+                      Dejar mi reseña
+                    </a>
+                  </div>
+                  <button
+                    onClick={clear}
+                    className="mt-2 text-sm text-white/70 hover:text-white underline underline-offset-4 py-2 px-4"
+                    style={{ fontFamily: 'DM Sans, sans-serif' }}
+                  >
+                    Listo, cerrar
+                  </button>
+                  <button
+                    onClick={() => setEnviado(false)}
+                    className="text-xs text-white/50 hover:text-white/70 py-1 px-4"
+                    style={{ fontFamily: 'DM Sans, sans-serif' }}
+                  >
+                    Volver a mi pedido
+                  </button>
+                </motion.div>
+              ) : items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-5 text-center">
                   <div
                     className="w-20 h-20 rounded-full flex items-center justify-center"
@@ -358,8 +430,8 @@ export default function CartDrawer() {
               )}
             </div>
 
-            {/* Footer: total + pedir, siempre a la vista */}
-            {items.length > 0 && (
+            {/* Footer: total + pedir, siempre a la vista (se esconde en la pantalla de pedido enviado) */}
+            {items.length > 0 && !enviado && (
               <div
                 className="px-5 sm:px-6 pt-4 pb-5 flex flex-col gap-2.5"
                 style={{

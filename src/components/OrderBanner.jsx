@@ -11,37 +11,28 @@ const chips = [
 
 export default function OrderBanner() {
   return (
-    <section className="relative bg-black py-14 px-6 md:px-12 lg:px-24">
+    <section className="relative bg-black py-8 md:py-14 px-6 md:px-12 lg:px-24">
       {/* Decorative top/bottom hairlines with fade */}
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-8">
 
-        {/* Glass chips */}
-        <div className="flex flex-wrap justify-center lg:justify-start gap-3 md:gap-4">
+        {/* Datos del servicio: texto simple (sin forma de botón, no se toca) */}
+        <ul className="flex flex-wrap justify-center lg:justify-start gap-x-6 gap-y-3 md:gap-x-8">
           {chips.map(({ Icon, label, sub }, i) => (
-            <motion.div
+            <motion.li
               key={label}
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ duration: 0.6, ease, delay: i * 0.08 }}
-              className="flex items-center gap-3 pl-4 pr-5 py-3 rounded-full"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(12px)',
-              }}
+              className="flex items-center gap-2.5 select-none"
             >
               <span
-                className="w-9 h-9 rounded-full flex items-center justify-center text-[#F0C832]"
-                style={{
-                  backgroundColor: 'rgba(240, 200, 50, 0.1)',
-                  border: '1px solid rgba(240, 200, 50, 0.18)',
-                }}
+                className="flex items-center justify-center text-[#F0C832]"
               >
-                <Icon size={16} strokeWidth={2.2} />
+                <Icon size={18} strokeWidth={2.2} />
               </span>
               <div className="text-left">
                 <p
@@ -57,14 +48,14 @@ export default function OrderBanner() {
                   {sub}
                 </p>
               </div>
-            </motion.div>
+            </motion.li>
           ))}
-        </div>
+        </ul>
 
-        {/* CTA pill */}
+        {/* CTA pill (en celular ya está el de la portada, justo arriba) */}
         <motion.a
           href="#menu"
-          className="group flex items-center gap-2 px-8 py-4 rounded-full text-sm tracking-widest uppercase whitespace-nowrap"
+          className="group btn-brillo hidden lg:flex items-center gap-2 px-8 py-4 rounded-full text-sm tracking-widest uppercase whitespace-nowrap"
           style={{
             fontFamily: 'Anton, sans-serif',
             backgroundColor: '#F0C832',

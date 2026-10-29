@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700&family=DM+Sans:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -90,4 +89,29 @@ body {
 @keyframes marquee {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
+}
+
+/* Animaciones suaves (solo transform/opacity: no cargan la página). Se apagan con "reducir movimiento". */
+@keyframes brillo {
+  0%, 55% { transform: translateX(-130%) skewX(-20deg); }
+  100%    { transform: translateX(330%) skewX(-20deg); }
+}
+.btn-brillo { position: relative; overflow: hidden; }
+.btn-brillo::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: translateX(-130%) skewX(-20deg);
+  animation: brillo 3.8s ease-in-out 2.2s infinite;
+  pointer-events: none;
+}
+@keyframes latido {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.8); opacity: 0.5; }
+}
+.punto-vivo { animation: latido 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .btn-brillo::after, .punto-vivo { animation: none; }
 }

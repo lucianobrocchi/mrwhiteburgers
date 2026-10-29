@@ -35,12 +35,17 @@ export default function CartFab() {
         >
           <span className="relative flex items-center justify-center">
             <ShoppingBag size={20} strokeWidth={2.5} />
-            <span
+            {/* "key" nuevo en cada cambio de cantidad: el globito salta al sumar algo */}
+            <motion.span
+              key={totalItems}
               className="absolute -top-2 -right-2 bg-black text-[#F0C832] text-[10px] w-5 h-5 rounded-full flex items-center justify-center"
               style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 700 }}
+              initial={{ scale: 1.9 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 14 }}
             >
               {totalItems}
-            </span>
+            </motion.span>
           </span>
           <span className="flex flex-col items-start leading-tight">
             <span className="text-[10px] tracking-[0.18em] uppercase opacity-75" style={{ fontFamily: 'DM Sans, sans-serif' }}>

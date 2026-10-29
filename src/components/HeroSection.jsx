@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 const logoFull = `${import.meta.env.BASE_URL}img/logo_full.webp`
 import { getStatus } from '../lib/schedule'
@@ -12,6 +12,7 @@ const ease = [0.16, 1, 0.3, 1]
 // bajo consumo, ahorro de datos), reintentamos al primer toque del usuario.
 function HeroVideo({ className, style, src }) {
   const ref = useRef(null)
+  const [sonando, setSonando] = useState(false)
 
   useEffect(() => {
     const v = ref.current
@@ -60,18 +61,32 @@ function HeroVideo({ className, style, src }) {
     }
   }, [src])
 
+  // La foto de espera es una imagen común (la misma que ya está en el HTML y se ve al instante) y el video
+  // se pone encima recién cuando arranca. Así lo más grande de la pantalla no se vuelve a crear con el
+  // JavaScript y la página se da por "cargada" apenas aparece la foto.
   return (
-    <video
-      ref={ref}
-      poster={`${import.meta.env.BASE_URL}videos/hero-poster.webp`}
-      autoPlay
-      loop
-      muted
-      playsInline
-      preload="none"
-      className={className}
-      style={style}
-    />
+    <div className="relative w-full h-full">
+      <img
+        src={`${import.meta.env.BASE_URL}videos/hero-poster.webp`}
+        alt=""
+        width={900}
+        height={820}
+        decoding="async"
+        className={`absolute inset-0 ${className}`}
+        style={style}
+      />
+      <video
+        ref={ref}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="none"
+        onPlaying={() => setSonando(true)}
+        className={`absolute inset-0 ${className}`}
+        style={{ ...style, opacity: sonando ? 1 : 0, transition: 'opacity 0.5s ease' }}
+      />
+    </div>
   )
 }
 
@@ -94,7 +109,7 @@ function StatusChip() {
       transition={{ duration: 0.7, ease, delay: 0.28 }}
     >
       <span
-        className="w-1.5 h-1.5 rounded-full"
+        className={`w-1.5 h-1.5 rounded-full${s.open ? ' punto-vivo' : ''}`}
         style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }}
       />
       <p
@@ -113,7 +128,7 @@ function StatusChip() {
 
 export default function HeroSection() {
   return (
-    <section className="relative w-full min-h-screen bg-black overflow-hidden flex items-center">
+    <section className="relative w-full md:min-h-screen bg-black overflow-hidden flex items-center">
 
       {/* Desktop: product video — right 55% */}
       <motion.div
@@ -134,7 +149,7 @@ export default function HeroSection() {
       </motion.div>
 
       {/* Mobile: video top */}
-      <div className="md:hidden absolute top-0 left-0 right-0 h-[500px] bg-black overflow-hidden">
+      <div className="md:hidden absolute top-0 left-0 right-0 h-[380px] bg-black overflow-hidden">
         <HeroVideo
           src={`${import.meta.env.BASE_URL}videos/hero-mobile.mp4`}
           className="w-full h-full object-cover"
@@ -143,11 +158,11 @@ export default function HeroSection() {
         {/* Vignette top for navbar contrast */}
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/85 via-black/40 to-transparent pointer-events-none" />
         {/* Bottom fade into page */}
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-[460px] md:pt-0 pb-14 md:pb-0 text-center md:text-left">
+      <div className="relative z-10 w-full md:w-[48%] px-6 md:px-12 lg:px-24 pt-[310px] md:pt-0 pb-8 md:pb-0 text-center md:text-left">
 
         {/* Label */}
         <motion.div
@@ -182,7 +197,7 @@ export default function HeroSection() {
               width={880}
               height={587}
             alt="Mr. White Burgers — Smash burgers en La Plata"
-            className="w-full max-w-[340px] md:max-w-[440px] h-auto mx-auto md:mx-0 select-none"
+            className="w-full max-w-[250px] md:max-w-[440px] h-auto mx-auto md:mx-0 select-none"
             draggable={false}
             initial={{ y: 40, opacity: 0, scale: 0.96 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -192,7 +207,7 @@ export default function HeroSection() {
 
         {/* Divider */}
         <motion.div
-          className="w-20 h-[2px] bg-gradient-to-r from-[#F0C832] to-transparent my-4 md:my-8 mx-auto md:mx-0 rounded-full"
+          className="w-20 h-[2px] bg-gradient-to-r from-[#F0C832] to-transparent my-3 md:my-8 mx-auto md:mx-0 rounded-full"
           initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
           style={{ originX: 0 }}
@@ -209,7 +224,7 @@ export default function HeroSection() {
           {/* PRIMARY pill */}
           <motion.a
             href="#menu"
-            className="group relative w-full sm:w-auto px-8 py-4 md:px-9 md:py-5 rounded-full text-base tracking-widest uppercase text-black flex items-center justify-center gap-3"
+            className="group btn-brillo relative w-full sm:w-auto px-8 py-4 md:px-9 md:py-5 rounded-full text-base tracking-widest uppercase text-black flex items-center justify-center gap-3"
             style={{
               fontFamily: 'Anton, sans-serif',
               backgroundColor: '#F0C832',

@@ -608,7 +608,7 @@ export default function MenuSection() {
   const isOdd = burgers.length % 2 !== 0
 
   return (
-    <section id="menu" className="relative bg-black pt-20 pb-10 md:pt-40 md:pb-16 px-6 md:px-12 lg:px-24 overflow-hidden">
+    <section id="menu" className="relative bg-black pt-12 pb-10 md:pt-40 md:pb-16 px-6 md:px-12 lg:px-24 overflow-hidden">
       {/* Decorative ambient glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] pointer-events-none"

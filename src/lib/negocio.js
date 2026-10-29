@@ -11,6 +11,8 @@ export const NEGOCIO = {
   instagram: 'https://www.instagram.com/mr.whiteburgers/',
   // Ficha de Google Maps ("Mr White Burgers La Plata"). La web la usa en "Cómo llegar" y en los datos para Google.
   perfilGoogle: 'https://www.google.com/maps?cid=11826860148380739577',
+  // Abre directo el formulario para dejar una reseña (el Place ID sale del identificador de la ficha)
+  resenaGoogle: 'https://search.google.com/local/writereview?placeid=ChIJBSpIKHfpopUR-Sd1wKRyIaQ',
   // Coordenadas y dirección: salen de ADDRESS en schedule.js
 }
 

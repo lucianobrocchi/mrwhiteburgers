@@ -1,9 +1,8 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { CartProvider, useCart } from './context/CartContext'
 import { iniciarTracking, hito, gaVioMenu } from './lib/track'
-import CartDrawer from './components/CartDrawer'
 import Navbar from './components/Navbar'
 import HeroSection from './components/HeroSection'
 import OrderBanner from './components/OrderBanner'
@@ -18,6 +17,11 @@ import Footer from './components/Footer'
 import CartFab from './components/CartFab'
 import BackToTop from './components/BackToTop'
 import DiscountTicker from './components/DiscountTicker'
+
+// El carrito (con el mapa de zonas) es lo más pesado de la página y no se ve hasta que alguien pide:
+// va en un archivo aparte que se baja cuando el navegador está libre, o antes si abren el carrito.
+const cargarCarrito = () => import('./components/CartDrawer')
+const CartDrawer = lazy(cargarCarrito)
 
 function AddedToast() {
   const { toast, setIsOpen } = useCart()
@@ -52,6 +56,16 @@ function AddedToast() {
 }
 
 function Inner() {
+  const { isOpen } = useCart()
+  const [carritoListo, setCarritoListo] = useState(false)
+  if (isOpen && !carritoListo) setCarritoListo(true) // se abrió antes de que terminara de bajar: se monta ya
+  useEffect(() => {
+    const traer = () => { cargarCarrito(); setCarritoListo(true) }
+    const arrancar = () => (window.requestIdleCallback ? window.requestIdleCallback(traer, { timeout: 4000 }) : window.setTimeout(traer, 2500))
+    if (document.readyState === 'complete') arrancar()
+    else window.addEventListener('load', arrancar, { once: true })
+    return () => window.removeEventListener('load', arrancar)
+  }, [])
   useEffect(() => {
     iniciarTracking()
     // Qué partes de la página llegan a verse (una vez por visita)
@@ -72,7 +86,7 @@ function Inner() {
     <main className="bg-black min-h-screen pt-9">
       <DiscountTicker />
       <Navbar />
-      <CartDrawer />
+      {carritoListo && <Suspense fallback={null}><CartDrawer /></Suspense>}
       <CartFab />
       <BackToTop />
       <AddedToast />
