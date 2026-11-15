@@ -3,7 +3,8 @@
 // calcularon aparte, sin pasar por el código.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { calcular, frases, aCSV, sumarDias, listarDias, hoyART, diaSemanaDe, variacion } from './statsCalc.js'
+import { calcular, frases, aCSV, sumarDias, listarDias, hoyART, diaSemanaDe, variacion, cruzarOrigenes } from './statsCalc.js'
+import { detectarOrigen, partirOrigen, sourceLabel, campLabel } from './source.js'
 
 // "Ahora" = sábado 10/10/2026, 15:00 en Argentina
 const AHORA = new Date('2026-10-10T18:00:00Z')
@@ -290,4 +291,43 @@ test('desglose: productos − descuentos + envíos = total, y promos por nombre'
   assert.deepEqual(S.extremos, { max: 22000, min: 10000 })
   assert.equal(S.zonas.find((z) => z.nombre === 'Zona 1').envios, 4000)
   assert.deepEqual(S.burgers.find((x) => x.id === 1).tam, { simple: 0, doble: 3, triple: 0 })
+})
+
+// ─── Origen y campañas (para medir anuncios) ─────────────────────────────
+test('origen: canal y campaña salen de las etiquetas del link', () => {
+  const host = 'mrwhiteburgers.com.ar'
+  assert.equal(detectarOrigen({ search: '?utm_source=instagram&utm_medium=bio&utm_campaign=mrwhite', host }), 'instagram__bio')
+  assert.equal(detectarOrigen({ search: '?utm_source=instagram&utm_medium=paid_social&utm_campaign=Promo-2x1', host }), 'instagram__promo-2x1')
+  assert.equal(detectarOrigen({ search: '?utm_source=ig&utm_medium=social', host }), 'instagram__social') // etiqueta propia de Instagram
+  assert.equal(detectarOrigen({ search: '?utm_source=perfil-google', host }), 'perfil-google')
+  assert.equal(detectarOrigen({ referrer: 'https://l.instagram.com/?u=x', host }), 'instagram')
+  assert.equal(detectarOrigen({ referrer: 'https://mrwhiteburgers.com.ar/envios/', host }), 'directo')
+  assert.equal(detectarOrigen({ host }), 'directo')
+  assert.deepEqual(partirOrigen('instagram__promo-2x1'), { canal: 'instagram', camp: 'promo-2x1' })
+  assert.equal(sourceLabel('instagram__promo-2x1'), 'Instagram')
+  assert.equal(campLabel('instagram__promo-2x1'), 'Instagram · promo-2x1')
+})
+
+test('pedidos por canal y por campaña, cruzados con las visitas', () => {
+  const b = (q) => [{ k: 'b', id: 1, n: 'OBRERA', s: 'doble', sl: 'Doble', q, u: 10000, x: [] }]
+  const orders = [
+    pedido('2026-10-09', 21, 10000, b(1), { src: 'instagram__promo-2x1' }),
+    pedido('2026-10-09', 21, 20000, b(2), { src: 'instagram__promo-2x1' }),
+    pedido('2026-10-09', 22, 10000, b(1), { src: 'instagram__bio' }),
+    pedido('2026-10-09', 22, 10000, b(1), { src: 'directo' }),
+  ]
+  const S = calcular(orders, '7', AHORA)
+  const ig = S.origenes.find((o) => o.src === 'instagram')
+  assert.equal(ig.pedidos, 3)            // las dos campañas suman al canal
+  assert.equal(ig.ventas, 40000)
+  assert.deepEqual(S.campanas.map((c) => [c.src, c.pedidos, c.ventas]), [['instagram__promo-2x1', 2, 30000], ['instagram__bio', 1, 10000]])
+
+  const R = recorrido({ '2026-10-09': { 's:visita': 60, 'src:instagram': 40, 'src:directo': 20, 'camp:instagram__promo-2x1': 25, 'camp:instagram__historias': 5 } }, '2026-10-04', '2026-10-10')
+  const f = cruzarOrigenes(S.origenes, R.fuentes)
+  assert.deepEqual(f.map((x) => [x.src, x.visitas, x.pedidos, Math.round(x.conv * 10) / 10]), [['instagram', 40, 3, 7.5], ['directo', 20, 1, 5]])
+  const c = cruzarOrigenes(S.campanas, R.campanas)
+  assert.equal(c[0].src, 'instagram__promo-2x1')
+  assert.equal(c[0].conv, 8)             // 2 pedidos de 25 visitas
+  assert.equal(c.find((x) => x.src === 'instagram__bio').conv, null)        // pedidos sin visitas contadas: sin porcentaje
+  assert.deepEqual(c.find((x) => x.src === 'instagram__historias'), { src: 'instagram__historias', pedidos: 0, ventas: 0, visitas: 5, conv: 0 })
 })

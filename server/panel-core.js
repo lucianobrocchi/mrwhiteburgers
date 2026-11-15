@@ -82,7 +82,8 @@ export function sanitizeOrder(b, now = new Date()) {
     promo: str(b.promo, 40),
     zoneId: str(b.zoneId, 12),
     zone: str(b.zone, 30),
-    src: str(b.src, 24).toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'directo',
+    // "canal" o "canal__campaña" (ver src/lib/source.js)
+    src: str(b.src, 44).toLowerCase().replace(/[^a-z0-9._-]/g, '') || 'directo',
     items,
   }
 }

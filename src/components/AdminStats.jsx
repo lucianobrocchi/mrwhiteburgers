@@ -3,10 +3,10 @@ import {
   TrendingUp, TrendingDown, Download, RefreshCw, Trash2, Sparkles, ExternalLink, Info,
 } from 'lucide-react'
 import {
-  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART, porMes, recorrido, detalleDiario, DIAS_LARGO, envioDe,
+  calcular, frases, aCSV, RANGOS, DIAS_CORTO, hoyART, porMes, recorrido, detalleDiario, DIAS_LARGO, envioDe, cruzarOrigenes,
 } from '../lib/statsCalc'
 import { generarDemo } from '../lib/statsDemo'
-import { sourceLabel } from '../lib/source'
+import { sourceLabel, campLabel } from '../lib/source'
 import { BURGERS_BASE as BURGERS } from '../lib/menuBase'
 import { EXTRAS, DRINKS } from '../lib/catalog'
 
@@ -198,7 +198,9 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
   const meses = useMemo(() => porMes(orders), [orders])
   const detalle = useMemo(() => detalleDiario(orders, S.rango.desde, S.rango.hasta), [orders, S])
   const [diaAbierto, setDiaAbierto] = useState('')
-  const R = useMemo(() => recorrido(stats?.events, S.rango.desde, S.rango.hasta), [stats, S])
+  const R = useMemo(() => recorrido(demo ? {} : stats?.events, S.rango.desde, S.rango.hasta), [stats, S, demo])
+  const fuentes = useMemo(() => cruzarOrigenes(S.origenes, R.fuentes), [S, R])
+  const campanas = useMemo(() => cruzarOrigenes(S.campanas, R.campanas), [S, R])
 
   const hayDatos = orders.length > 0
 
@@ -577,16 +579,42 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
             </div>
           </Tarjeta>
 
-          <Tarjeta titulo="De dónde llegan" subtitulo="El canal por el que entró el cliente a la web">
-            {S.origenes.map((o) => (
+          <Tarjeta titulo="De dónde llegan" subtitulo="Por cada canal: cuántos entraron a la web, cuántos pidieron y cuánto dejaron">
+            {fuentes.map((o) => (
               <Ranking
                 key={o.src}
                 nombre={sourceLabel(o.src)}
                 valor={o.pedidos}
-                max={S.origenes[0].pedidos}
-                derecha={`${o.pedidos} · ${Math.round(o.pct)}%`}
-                detalle={`${money(o.ventas)} en ventas`}
+                max={Math.max(1, ...fuentes.map((f) => f.pedidos))}
+                derecha={`${o.pedidos} ${o.pedidos === 1 ? 'pedido' : 'pedidos'} · ${money(o.ventas)}`}
+                detalle={o.visitas > 0
+                  ? `${num(o.visitas)} ${o.visitas === 1 ? 'visita' : 'visitas'} · pidió el ${o.conv < 10 ? o.conv.toFixed(1).replace('.', ',') : Math.round(o.conv)}%`
+                  : 'Sin visitas contadas todavía en este período'}
                 color={o.src === 'instagram' ? '#E1306C' : o.src === 'facebook' ? '#4C8BF5' : ORO}
+              />
+            ))}
+          </Tarjeta>
+
+          <Tarjeta
+            titulo="Anuncios y links con etiqueta"
+            subtitulo="Cada anuncio, la bio y las historias por separado: cuál trae visitas y cuál trae pedidos"
+          >
+            {campanas.length === 0 ? (
+              <p className="text-white/55 text-[13px] leading-relaxed" style={font}>
+                Todavía no entró nadie por un link con etiqueta. Usá los links de <b className="text-white/80">docs/links-instagram.md</b> en
+                la bio, las historias y cada anuncio, y acá vas a ver cuál rinde.
+              </p>
+            ) : campanas.map((o) => (
+              <Ranking
+                key={o.src}
+                nombre={campLabel(o.src)}
+                valor={o.pedidos || 0.0001}
+                max={Math.max(1, ...campanas.map((f) => f.pedidos))}
+                derecha={`${o.pedidos} ${o.pedidos === 1 ? 'pedido' : 'pedidos'} · ${money(o.ventas)}`}
+                detalle={o.visitas > 0
+                  ? `${num(o.visitas)} ${o.visitas === 1 ? 'visita' : 'visitas'} · pidió el ${o.conv < 10 ? o.conv.toFixed(1).replace('.', ',') : Math.round(o.conv)}%`
+                  : undefined}
+                color={VERDE}
               />
             ))}
           </Tarjeta>
@@ -637,7 +665,7 @@ export default function AdminStats({ stats, onReload, onDelete, puedeBorrar, rec
         >
           {!R.hayDatos ? (
             <p className="text-white/55 text-[13px] leading-relaxed" style={font}>
-              El recorrido de las visitas (cuántos entran, agregan al carrito y piden) se mide en Google Analytics: Explorar → Exploración de embudo.
+              Todavía no hay visitas contadas en este período. El recorrido (cuántos entran, llegan al menú, agregan al carrito y piden) se empieza a llenar solo con las próximas visitas.
             </p>
           ) : (
             <>

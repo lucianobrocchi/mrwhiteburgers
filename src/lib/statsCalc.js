@@ -98,6 +98,8 @@ export function recorrido(events, desde, hasta) {
   return {
     pasos,
     hayDatos: pasos[0].n > 0,
+    fuentes: top('src'),
+    campanas: top('camp'),
     agregados: top('agrego_burger'),
     bebidas: top('agrego_bebida'),
     extras: top('agrego_extra'),
@@ -280,7 +282,11 @@ export function calcular(orders, rangoId, now = new Date()) {
   }
 
   // De dónde vienen
-  const origenes = agrupar(act, (o) => o.src || 'directo')
+  const canalDe = (o) => String(o.src || 'directo').split('__')[0]
+  const campanas = agrupar(act.filter((o) => String(o.src || '').includes('__')), (o) => o.src)
+    .sort((a, b) => b.pedidos - a.pedidos)
+    .map((g) => ({ src: g.clave, pedidos: g.pedidos, ventas: g.ventas }))
+  const origenes = agrupar(act, canalDe)
     .sort((a, b) => b.pedidos - a.pedidos)
     .map((g) => ({ src: g.clave, pedidos: g.pedidos, ventas: g.ventas, pct: pct(g.pedidos, act.length) }))
 
@@ -342,7 +348,7 @@ export function calcular(orders, rangoId, now = new Date()) {
     },
     porDia, porSemana, porHora,
     burgers, tamanos, extras, bebidas,
-    entrega, zonas, origenes, ticket, promos, desglose, extremos,
+    entrega, zonas, origenes, campanas, ticket, promos, desglose, extremos,
     mejor: { diaSemana: mejorDiaSemana, hora: mejorHora, dia: mejorDia, diasConPedidos },
     acumulado: { ...todos, desde: primero, diasActivos, porDiaActivo: diasActivos ? todos.ventas / diasActivos : 0 },
     vacio: act.length === 0,
@@ -396,6 +402,21 @@ export function frases(s, nombreOrigen = (x) => x) {
 }
 
 // ─── Exportar a CSV (una fila por ítem, para abrir en Excel / Sheets) ────
+// Junta los pedidos por origen con las visitas por origen (del recorrido): cuántos entraron,
+// cuántos pidieron y qué porcentaje. Es lo que dice si un canal o un anuncio rinde.
+export function cruzarOrigenes(pedidos = [], visitas = []) {
+  const m = new Map()
+  for (const p of pedidos) m.set(p.src, { src: p.src, pedidos: p.pedidos, ventas: p.ventas, visitas: 0 })
+  for (const v of visitas) {
+    const f = m.get(v.nombre) || { src: v.nombre, pedidos: 0, ventas: 0, visitas: 0 }
+    f.visitas += v.n
+    m.set(v.nombre, f)
+  }
+  return [...m.values()]
+    .map((f) => ({ ...f, conv: f.visitas > 0 ? Math.min(100, (f.pedidos / f.visitas) * 100) : null }))
+    .sort((a, b) => b.pedidos - a.pedidos || b.visitas - a.visitas)
+}
+
 export function aCSV(orders) {
   const esc = (v) => {
     const t = String(v ?? '')

@@ -3,6 +3,8 @@
 // personales; no carga en localhost) y los contadores propios del panel
 // (/api/panel?action=event). Los toques se juntan y salen en un solo envío
 // cuando la persona se va, así casi no se usa el almacenamiento.
+import { getSource, partirOrigen } from './source.js'
+
 const GA_ID = 'G-6575KBW83F'
 const CLARITY_ID = 'z424kzquun'
 let gaListo = false
@@ -25,14 +27,13 @@ function volcar() {
 }
 
 // registrar('agrego_burger', 'OBRERA') suma 1 a "agrego_burger:OBRERA" en el día de hoy
-// Los contadores propios gastan almacenamiento de Vercel Blob (cada visita = una escritura).
-// Pausados para no pasarse del límite gratis; el recorrido se ve en Google Analytics.
-// Con true vuelven a anotarse en el panel (Números → Recorrido de la web).
-const EVENTOS_PROPIOS = false
+// Los contadores propios alimentan el panel (Números → Recorrido de la web y De dónde llegan).
+// Se guardan en la base D1: un renglón chico por mes. Solo cuentan visitas reales (ver visitaReal).
+let medir = false
 
 export function registrar(nombre, detalle) {
-  if (!activo || !EVENTOS_PROPIOS) return
-  const k = detalle ? `${nombre}:${String(detalle).slice(0, 36)}` : nombre
+  if (!activo || !medir) return
+  const k = detalle ? `${nombre}:${String(detalle).slice(0, 42)}` : nombre
   buf[k] = (buf[k] || 0) + 1
   clearTimeout(timer)
   timer = setTimeout(volcar, 20000)
@@ -42,10 +43,11 @@ export function registrar(nombre, detalle) {
 export function hito(nombre) {
   try {
     const key = `mw_h_${nombre}`
-    if (sessionStorage.getItem(key)) return
+    if (sessionStorage.getItem(key)) return false
     sessionStorage.setItem(key, '1')
   } catch { /* sin sessionStorage: cuenta igual */ }
   registrar(`s:${nombre}`)
+  return true
 }
 
 // Los scripts de medición (GA4 y Clarity) pesan y frenan la página: se bajan cuando ya cargó
@@ -85,15 +87,21 @@ export function visitaReal({ ua = '', tz = '', webdriver = false } = {}) {
 export function iniciarTracking() {
   if (typeof window === 'undefined' || activo) return
   activo = true
-  hito('visita')
+  let tz = ''
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { /* sin Intl: se mide igual */ }
+  medir = visitaReal({ ua: navigator.userAgent, tz, webdriver: navigator.webdriver === true })
+  // Una vez por visita: la visita, por qué canal entró y con qué campaña (para comparar con los pedidos)
+  if (hito('visita')) {
+    const origen = getSource()
+    registrar('src', partirOrigen(origen).canal)
+    if (partirOrigen(origen).camp) registrar('camp', origen)
+  }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') volcar() })
   window.addEventListener('pagehide', volcar)
 
   const host = window.location.hostname
   if (host === 'localhost' || host === '127.0.0.1') return
-  let tz = ''
-  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { /* sin Intl: se mide igual */ }
-  if (!visitaReal({ ua: navigator.userAgent, tz, webdriver: navigator.webdriver === true })) return
+  if (!medir) return
   gaListo = true
   window.dataLayer = window.dataLayer || []
   window.gtag = function gtag() { window.dataLayer.push(arguments) }
