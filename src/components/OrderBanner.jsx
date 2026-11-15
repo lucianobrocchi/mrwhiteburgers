@@ -4,9 +4,9 @@ import { Package, Bike, UtensilsCrossed, ArrowRight } from 'lucide-react'
 const ease = [0.16, 1, 0.3, 1]
 
 const chips = [
-  { Icon: Package,          label: 'Retiro en local',     sub: 'Listo en 15 min' },
-  { Icon: Bike,             label: 'Envíos a domicilio',  sub: 'Zona La Plata' },
-  { Icon: UtensilsCrossed,  label: 'Con papas',           sub: 'Todas las burger' },
+  { Icon: Package,          label: 'Retiro en local',     sub: 'Listo en 15 min · ver dirección', href: '#horarios' },
+  { Icon: Bike,             label: 'Envíos a domicilio',  sub: 'Ver zonas y precios',             href: '/envios/' },
+  { Icon: UtensilsCrossed,  label: 'Con papas',           sub: 'Todas las burger',                href: '#menu' },
 ]
 
 export default function OrderBanner() {
@@ -18,17 +18,17 @@ export default function OrderBanner() {
 
       <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-8">
 
-        {/* Datos del servicio: texto simple (sin forma de botón, no se toca) */}
+        {/* Datos del servicio: cada uno lleva a su detalle (en Clarity se ve que la gente los toca) */}
         <ul className="flex flex-wrap justify-center lg:justify-start gap-x-6 gap-y-3 md:gap-x-8">
-          {chips.map(({ Icon, label, sub }, i) => (
+          {chips.map(({ Icon, label, sub, href }, i) => (
             <motion.li
               key={label}
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-50px' }}
               transition={{ duration: 0.6, ease, delay: i * 0.08 }}
-              className="flex items-center gap-2.5 select-none"
             >
+              <a href={href} className="flex items-center gap-2.5 py-1">
               <span
                 className="flex items-center justify-center text-[#F0C832]"
               >
@@ -42,12 +42,13 @@ export default function OrderBanner() {
                   {label}
                 </p>
                 <p
-                  className="text-white/50 text-[11px] leading-tight mt-0.5"
+                  className="text-white/55 text-[11px] leading-tight mt-0.5 underline decoration-white/20 underline-offset-2"
                   style={{ fontFamily: 'DM Sans, sans-serif' }}
                 >
                   {sub}
                 </p>
               </div>
+              </a>
             </motion.li>
           ))}
         </ul>

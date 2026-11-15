@@ -174,7 +174,7 @@ export default function Navbar() {
         {mobileOpen && (
           <>
             <motion.div
-              className="fixed inset-0 bg-black/70 z-50 backdrop-blur-md"
+              className="fixed inset-0 bg-black/80 md:bg-black/70 z-50 md:backdrop-blur-md"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

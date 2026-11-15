@@ -16,7 +16,7 @@ import {
 const ease = [0.16, 1, 0.3, 1]
 
 
-function SizeSelector({ cardId, size, setSize }) {
+function SizeSelector({ size, setSize }) {
   return (
     <div
       className="grid grid-cols-3 gap-1 p-1 rounded-full"
@@ -31,19 +31,11 @@ function SizeSelector({ cardId, size, setSize }) {
           <button
             key={s.key}
             onClick={() => setSize(s.key)}
-            className="relative py-2 rounded-full text-[11px] tracking-[0.12em] uppercase transition-colors duration-200"
+            aria-pressed={active}
+            className={`py-2 rounded-full text-[11px] tracking-[0.12em] uppercase transition-colors duration-200 ${active ? 'bg-[#F0C832] text-black font-semibold' : 'text-white/55'}`}
             style={{ fontFamily: 'DM Sans, sans-serif' }}
           >
-            {active && (
-              <motion.span
-                layoutId={`size-pill-${cardId}-${s.key}-active`}
-                className="absolute inset-0 rounded-full bg-[#F0C832]"
-                transition={{ duration: 0.25, ease }}
-              />
-            )}
-            <span className={`relative z-10 ${active ? 'text-black font-semibold' : 'text-white/55'}`}>
-              {s.label}
-            </span>
+            {s.label}
           </button>
         )
       })}
@@ -359,12 +351,13 @@ function BurgerCard({ burger, index }) {
   return (
     <motion.div
       ref={ref}
+      id={`burger-${burger.id}`}
       variants={fadeUp}
       initial="hidden"
       animate={inView ? 'visible' : 'hidden'}
       transition={{ delay: index * 0.1 }}
       whileHover={{ y: -8 }}
-      className="group relative overflow-hidden flex flex-col h-full rounded-[28px] transition-shadow duration-500"
+      className="group relative overflow-hidden flex flex-col h-full rounded-[28px] transition-shadow duration-500 scroll-mt-28"
       style={{
         backgroundColor: '#111111',
         border: '1px solid rgba(255,255,255,0.06)',
@@ -527,7 +520,7 @@ function BurgerCard({ burger, index }) {
         </div>
 
         {/* Size selector */}
-        <SizeSelector cardId={burger.id} size={size} setSize={setSize} />
+        <SizeSelector size={size} setSize={setSize} />
 
         {/* Extras */}
         {!burger.soldOut && <ExtrasPicker picked={picked} setPicked={setPicked} cfg={cfg} />}

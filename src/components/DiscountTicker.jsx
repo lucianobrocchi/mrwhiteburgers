@@ -11,9 +11,9 @@ export default function DiscountTicker() {
   const message = propio
     ? `★  ${propio.toUpperCase()}`
     : active
-      ? `★  SOLO HOY  ·  ${active.ticker}  ·  PEDÍ POR WHATSAPP`
+      ? `★  SOLO HOY  ·  ${active.ticker}  ·  PEDILA ACÁ, EN EL MENÚ`
       : preview
-        ? `★  MAÑANA  ·  ${preview.ticker}  ·  PEDÍ POR WHATSAPP`
+        ? `★  MAÑANA  ·  ${preview.ticker}`
         : BRAND
 
   return (

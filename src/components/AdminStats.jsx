@@ -744,18 +744,26 @@ const fechaCorta = (ds) =>
 
 function Pie() {
   return (
-    <div className="text-white/30 text-[11px] leading-relaxed mt-2 mb-2" style={font}>
+    <div className="text-white/55 text-[12px] leading-relaxed mt-2 mb-2" style={font}>
       <p>
         Los números cuentan los pedidos que los clientes <b>envían por WhatsApp</b> desde la web.
         No confirman si el pedido se concretó ni se pagó.
       </p>
       <a
-        href="https://analytics.google.com/"
+        href="https://analytics.google.com/analytics/web/#/p560076989/reports/intelligenthome"
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 mt-2 text-[#F0C832]/70 hover:text-[#F0C832]"
+        className="flex items-center gap-1.5 mt-3 py-1 text-[#F0C832]/80 hover:text-[#F0C832]"
       >
-        Ver las visitas a la web (Google Analytics) <ExternalLink size={11} />
+        Visitas y de dónde llegan (Google Analytics) <ExternalLink size={12} />
+      </a>
+      <a
+        href="https://clarity.microsoft.com/projects/view/z424kzquun/dashboard"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 py-1 text-[#F0C832]/80 hover:text-[#F0C832]"
+      >
+        Qué tocan y hasta dónde bajan (Microsoft Clarity) <ExternalLink size={12} />
       </a>
     </div>
   )

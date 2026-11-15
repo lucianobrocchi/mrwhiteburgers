@@ -55,7 +55,9 @@ function AddedToast() {
   )
 }
 
-function Inner() {
+// Vive aparte de Inner a propósito: lee el carrito, y si Inner lo leyera, cada cambio del carrito
+// redibujaría la página entera (portada, menú, bebidas…) y los botones responderían lento.
+function CarritoDiferido() {
   const { isOpen } = useCart()
   const [carritoListo, setCarritoListo] = useState(false)
   if (isOpen && !carritoListo) setCarritoListo(true) // se abrió antes de que terminara de bajar: se monta ya
@@ -66,6 +68,10 @@ function Inner() {
     else window.addEventListener('load', arrancar, { once: true })
     return () => window.removeEventListener('load', arrancar)
   }, [])
+  return carritoListo ? <Suspense fallback={null}><CartDrawer /></Suspense> : null
+}
+
+function Inner() {
   useEffect(() => {
     iniciarTracking()
     // Qué partes de la página llegan a verse (una vez por visita)
@@ -86,7 +92,7 @@ function Inner() {
     <main className="bg-black min-h-screen pt-9">
       <DiscountTicker />
       <Navbar />
-      {carritoListo && <Suspense fallback={null}><CartDrawer /></Suspense>}
+      <CarritoDiferido />
       <CartFab />
       <BackToTop />
       <AddedToast />

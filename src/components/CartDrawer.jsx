@@ -56,7 +56,7 @@ export default function CartDrawer() {
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/70 z-50 backdrop-blur-md"
+            className="fixed inset-0 bg-black/80 md:bg-black/70 z-50 md:backdrop-blur-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -67,9 +67,7 @@ export default function CartDrawer() {
           <motion.div
             className="fixed top-3 bottom-3 left-3 right-3 sm:top-4 sm:bottom-4 sm:right-4 sm:left-auto sm:w-full sm:max-w-md z-50 flex flex-col rounded-3xl overflow-hidden"
             style={{
-              backgroundColor: 'rgba(13, 13, 13, 0.92)',
-              backdropFilter: 'blur(24px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+              backgroundColor: 'rgb(13, 13, 13)',
               border: '1px solid rgba(255,255,255,0.08)',
               boxShadow: '0 30px 80px -20px rgba(0,0,0,0.8)',
             }}
