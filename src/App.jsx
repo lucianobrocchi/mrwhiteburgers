@@ -36,13 +36,13 @@ function bebidaSugerida(cfg) {
 }
 
 function AddedToast() {
-  const { toast, setIsOpen, items, addDrink } = useCart()
+  const { toast, isOpen, setIsOpen, items, addDrink } = useCart()
   const cfg = useConfig()
   const sinBebida = !items.some((i) => i.kind === 'drink')
   const oferta = toast?.burger && sinBebida ? bebidaSugerida(cfg) : null
   return (
     <AnimatePresence>
-      {toast && (
+      {toast && !isOpen && ( /* con el carrito abierto no tapa el botón de pedir */
         <motion.div
           key={toast.id}
           className="fixed bottom-[88px] md:bottom-6 left-1/2 z-[60] flex items-center gap-3 w-max max-w-[calc(100vw-2rem)] bg-[#111] px-4 md:px-5 py-3.5 md:py-4 cursor-pointer"

@@ -112,6 +112,31 @@ export function CartProvider({ children }) {
     setItems(prev => prev.filter(i => i.key !== key))
   }
 
+// Suma 1 de un extra a una línea del carrito ("+ Cheddar" desde el carrito). La línea cambia de
+  // clave, porque cada combinación de extras es su propia línea; si ya había una igual, se juntan.
+  const sumarExtra = (key, extra) => {
+    registrar('agrego_extra', extra.name)
+    registrar('extra_desde_carrito', extra.name)
+    setItems(prev => {
+      const it = prev.find(i => i.key === key)
+      if (!it || it.kind === 'drink') return prev
+      const ya = it.extras.find(e => e.id === extra.id)
+      const extras = ya
+        ? it.extras.map(e => e.id === extra.id ? { ...e, qty: e.qty + 1 } : e)
+        : [...it.extras, { id: extra.id, name: extra.name, price: extra.price, qty: 1 }]
+      const sig = extras.map(e => `${e.id}x${e.qty}`).sort().join('+')
+      const nueva = {
+        ...it,
+        key: `b${it.id}-${it.size}-${sig}`,
+        extras,
+        price: it.basePrice + extras.reduce((s, e) => s + e.price * e.qty, 0),
+      }
+      const igual = prev.find(i => i.key === nueva.key)
+      if (igual) return prev.filter(i => i.key !== key).map(i => i.key === nueva.key ? { ...i, qty: i.qty + it.qty } : i)
+      return prev.map(i => i.key === key ? nueva : i)
+    })
+  }
+
   const updateQty = (key, delta) => {
     setItems(prev =>
       prev
@@ -184,7 +209,7 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider value={{
-      items, addItem, addDrink, removeItem, updateQty,
+      items, addItem, addDrink, removeItem, updateQty, sumarExtra,
       totalItems, subtotal, discount, shipping, envioBonificado, totalPrice,
       zone, setZone,
       isOpen, setIsOpen, clear, sendToWhatsApp, toast, enviado, setEnviado,
