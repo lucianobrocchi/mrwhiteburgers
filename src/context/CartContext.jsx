@@ -54,8 +54,11 @@ export function CartProvider({ children }) {
       return [...prev, nuevo]
     })
     const suffix = nuevo.qty > 1 ? ` × ${nuevo.qty}` : ''
-    setToast({ name: `${toastName}${suffix}`, id: Date.now() })
-    setTimeout(() => setToast(null), 2200)
+    // Si es una burger, el aviso queda más tiempo: ofrece sumar una bebida en un toque
+    const esBurger = nuevo.kind !== 'drink'
+    const id = Date.now()
+    setToast({ name: `${toastName}${suffix}`, id, burger: esBurger })
+    setTimeout(() => setToast((t) => (t?.id === id ? null : t)), esBurger ? 5000 : 2200)
   }, [])
 
   // `extras` = [{ id, name, price, qty }] ya resueltos con el precio vigente.

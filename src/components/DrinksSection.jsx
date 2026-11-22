@@ -5,7 +5,8 @@ import { fadeUp } from '../styles/tokens'
 import { useCart, formatPrice } from '../context/CartContext'
 import { useConfig } from '../lib/config'
 import { flyToCart, popCartBadge } from '../lib/flyToCart'
-import { DRINKS, drinkPrice, sizeOut, flavorOut } from '../lib/catalog'
+import { DRINKS, drinkPrice, sizeOut, flavorOut, drinkImg } from '../lib/catalog'
+import { AnimatePresence } from 'framer-motion'
 
 const ease = [0.16, 1, 0.3, 1]
 const ICONS = { soda: CupSoda, water: GlassWater, drops: Droplets }
@@ -43,6 +44,7 @@ function DrinkCard({ drink, index }) {
     : elegido
   const price = drinkPrice(drink, size, cfg)
   const tint = flavor?.tint || drink.tint
+  const foto = drinkImg(drink, size.id, flavor?.id)
 
   const sinStock = sizeOut(drink, size, cfg) || (flavor && flavorOut(flavor, cfg))
   const todoAgotado = sizes.every((s) => sizeOut(drink, s, cfg))
@@ -75,10 +77,10 @@ function DrinkCard({ drink, index }) {
         boxShadow: '0 20px 50px -20px rgba(0,0,0,0.6)',
       }}
     >
-      {/* Cabecera: burbuja con el ícono y un brillo del color de la bebida */}
+      {/* Cabecera: la foto de la bebida elegida (o un ícono si no hay foto) y un brillo de su color */}
       <div
         className="relative flex items-center justify-center overflow-hidden"
-        style={{ height: 150, background: 'linear-gradient(160deg, #161616, #0B0B0B)' }}
+        style={{ height: foto ? 210 : 150, background: foto ? '#000' : 'linear-gradient(160deg, #161616, #0B0B0B)' }}
       >
         {/* Un brillo por sabor; el activo se muestra, el resto queda invisible */}
         {(flavors ? flavors.map((f) => f.tint) : [drink.tint]).map((t) => (
@@ -92,6 +94,26 @@ function DrinkCard({ drink, index }) {
           />
         ))}
 
+        {foto ? (
+          <div ref={iconRef} className="relative h-full aspect-square">
+            <AnimatePresence initial={false}>
+              <motion.img
+                key={foto}
+                src={foto}
+                alt={`${flavor?.label || drink.name} ${size.label}`}
+                width={400}
+                height={400}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 w-full h-full object-contain"
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35, ease }}
+              />
+            </AnimatePresence>
+          </div>
+        ) : (
         <div
           ref={iconRef}
           className="relative flex items-center justify-center"
@@ -110,6 +132,7 @@ function DrinkCard({ drink, index }) {
         >
           <Icon size={34} strokeWidth={1.8} />
         </div>
+        )}
 
         {todoAgotado && (
           <div

@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus, Minus, ShoppingBag, Trash2, Clock, CupSoda, GlassWater, Droplets, Star, CheckCircle2 } from 'lucide-react'
 import { useCart, formatPrice } from '../context/CartContext'
 import { usePromos } from '../lib/usePromos'
-import { DRINKS, drinkPrice, sizeOut, flavorOut } from '../lib/catalog'
+import { DRINKS, drinkPrice, sizeOut, flavorOut, drinkImg } from '../lib/catalog'
 import { formatZonePrice } from '../lib/zones'
 import { registrar, gaResena } from '../lib/track'
 import { NEGOCIO } from '../lib/negocio'
@@ -33,6 +33,7 @@ function opcionesDeBebida(cfg) {
       drink, size, flavor,
       nombre: flavor ? flavor.label : drink.name,
       tint: flavor?.tint || drink.tint,
+      img: drinkImg(drink, size.id, flavor?.id),
       precio: drinkPrice(drink, size, cfg),
     }
   }).filter(Boolean)
@@ -359,7 +360,7 @@ export default function CartDrawer() {
                         className="text-white/60 text-[11px] tracking-[0.18em] uppercase"
                         style={{ fontFamily: 'DM Sans, sans-serif' }}
                       >
-                        ¿Algo para tomar?
+                        ¿Le sumás algo para tomar?
                       </span>
                       <a
                         href="#bebidas"
@@ -380,18 +381,22 @@ export default function CartDrawer() {
                           type="button"
                           onClick={() => { registrar('sugerencia_bebida', o.nombre); addDrink(o.drink, { ...o.size, price: o.precio }, o.flavor, 1) }}
                           whileTap={{ scale: 0.96 }}
-                          className="shrink-0 flex items-center gap-2.5 pl-2.5 pr-3 py-2 rounded-2xl text-left"
+                          className="shrink-0 flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-2xl text-left"
                           style={{
                             backgroundColor: 'rgba(255,255,255,0.03)',
                             border: '1px solid rgba(255,255,255,0.08)',
                           }}
                         >
+                          {o.img ? (
+                            <img src={o.img} alt="" width={52} height={52} className="w-[52px] h-[52px] rounded-xl shrink-0 bg-black object-contain" />
+                          ) : (
                           <span
                             className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                             style={{ backgroundColor: `${o.tint}22`, color: o.tint, border: `1px solid ${o.tint}44` }}
                           >
                             {(() => { const I = ICONS[o.drink.icon] || CupSoda; return <I size={17} strokeWidth={2} /> })()}
                           </span>
+                          )}
                           <span className="flex flex-col leading-tight">
                             <span className="text-white text-[12px]" style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
                               {o.nombre}

@@ -399,6 +399,16 @@ function BurgerCard({ burger, index }) {
             </span>
           </div>
         )}
+        {burger.masPedida && !burger.soldOut && (
+          <div
+            className="absolute top-3 right-3 z-20 inline-flex items-center px-2.5 py-1 rounded-full pointer-events-none"
+            style={{ backgroundColor: 'rgba(0,0,0,0.65)', border: '1px solid rgba(240,200,50,0.6)' }}
+          >
+            <span className="text-[10px] tracking-[0.12em] uppercase text-[#F0C832]" style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 700 }}>
+              ★ La más pedida
+            </span>
+          </div>
+        )}
         {itemPromo && !burger.soldOut && (
           <div
             className="absolute top-3 left-3 z-20 inline-flex items-center px-2.5 py-1 rounded-full pointer-events-none"

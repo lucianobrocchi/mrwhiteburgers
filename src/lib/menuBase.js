@@ -23,6 +23,7 @@ export const BURGERS_BASE = [
   {
     id: 4,
     name: 'LA CHEESE JOA',
+    masPedida: true, // 43% de las burgers vendidas entre el 28/10 y el 21/11
     description: 'Pan de papa, medallón de carne, queso cheddar y salsa Big White.',
     tag: 'La Bestia',
 

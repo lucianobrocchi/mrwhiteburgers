@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check } from 'lucide-react'
-import { CartProvider, useCart } from './context/CartContext'
-import { iniciarTracking, hito, gaVioMenu } from './lib/track'
+import { CartProvider, useCart, formatPrice } from './context/CartContext'
+import { useConfig } from './lib/config'
+import { DRINKS, drinkPrice, sizeOut, flavorOut, drinkImg } from './lib/catalog'
+import { iniciarTracking, hito, gaVioMenu, registrar } from './lib/track'
 import Navbar from './components/Navbar'
 import HeroSection from './components/HeroSection'
 import OrderBanner from './components/OrderBanner'
@@ -23,8 +25,21 @@ import DiscountTicker from './components/DiscountTicker'
 const cargarCarrito = () => import('./components/CartDrawer')
 const CartDrawer = lazy(cargarCarrito)
 
+// La bebida que se ofrece al agregar una burger: Coca lata (o Sprite lata si no hay Coca)
+function bebidaSugerida(cfg) {
+  const coca = DRINKS.find((d) => d.id === 'coca')
+  const lata = coca?.sizes.find((s) => s.id === 'lata')
+  if (!lata || sizeOut(coca, lata, cfg)) return null
+  const flavor = coca.flavors.find((f) => !flavorOut(f, cfg))
+  if (!flavor) return null
+  return { drink: coca, size: lata, flavor, precio: drinkPrice(coca, lata, cfg), img: drinkImg(coca, 'lata', flavor.id) }
+}
+
 function AddedToast() {
-  const { toast, setIsOpen } = useCart()
+  const { toast, setIsOpen, items, addDrink } = useCart()
+  const cfg = useConfig()
+  const sinBebida = !items.some((i) => i.kind === 'drink')
+  const oferta = toast?.burger && sinBebida ? bebidaSugerida(cfg) : null
   return (
     <AnimatePresence>
       {toast && (
@@ -49,6 +64,25 @@ function AddedToast() {
               Tocá para ver el carrito →
             </p>
           </div>
+          {oferta && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                registrar('sugerencia_bebida_aviso', oferta.flavor.label)
+                addDrink(oferta.drink, { ...oferta.size, price: oferta.precio }, oferta.flavor, 1)
+              }}
+              className="flex items-center gap-1.5 ml-1 pl-1 pr-2.5 py-1 rounded-xl shrink-0"
+              style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)' }}
+              aria-label={`Sumar ${oferta.flavor.label} lata por ${formatPrice(oferta.precio)}`}
+            >
+              {oferta.img && <img src={oferta.img} alt="" width={34} height={34} className="w-[34px] h-[34px] rounded-lg bg-black object-contain" />}
+              <span className="flex flex-col leading-tight text-left">
+                <span className="text-white text-[11px]" style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>+ {oferta.flavor.label}</span>
+                <span className="text-white/55 text-[10px]" style={{ fontFamily: 'DM Sans, sans-serif' }}>lata {formatPrice(oferta.precio)}</span>
+              </span>
+            </button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -84,7 +118,7 @@ function Inner() {
         if (e.target.id === 'menu') gaVioMenu()
         io.unobserve(e.target)
       })
-    }, { threshold: 0.2 })
+    }, { threshold: 0, rootMargin: '0px 0px -40% 0px' }) // cuenta cuando el borde de arriba de la sección llega a la mitad de la pantalla
     Object.keys(vistas).forEach((id) => { const el = document.getElementById(id); if (el) io.observe(el) })
     return () => io.disconnect()
   }, [])

@@ -55,6 +55,18 @@ export const DRINKS = [
   },
 ]
 
+// Foto de cada bebida según sabor y tamaño (fondo negro, 400×400, en public/img/bebidas).
+// Lo que no tiene foto (Goyeneche) se muestra con su ícono.
+const FOTOS = {
+  'coca:coca:225': 'coca-cola-225', 'coca:coca:15': 'coca-cola-1-5l', 'coca:coca:lata': 'coca-cola-lata',
+  'coca:sprite:225': 'sprite-225', 'coca:sprite:15': 'sprite-15', 'coca:sprite:lata': 'sprite-lata',
+  'aquarius::225': 'aquarius-225', 'aquarius::15': 'aquarius-15',
+}
+export const drinkImg = (drink, sizeId, flavorId) => {
+  const f = FOTOS[`${drink.id}:${flavorId || ''}:${sizeId}`]
+  return f ? `${import.meta.env?.BASE_URL ?? '/'}img/bebidas/${f}.webp` : null
+}
+
 // ─── Lectura de la config del panel ──────────────────────────────────────
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
