@@ -3,6 +3,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generarDemo } from './statsDemo.js'
+import { SCHEDULE } from './schedule.js'
 import { calcular, frases } from './statsCalc.js'
 
 const catalogo = {
@@ -38,7 +39,7 @@ test('genera pedidos de ejemplo coherentes', () => {
     const items = o.items.reduce((s, i) => s + i.q * (i.u + i.x.reduce((t, e) => t + e.p * e.q, 0)), 0)
     assert.equal(o.total, items + envio, `total mal en ${o.id}`)
     assert.ok(o.h >= 19 && o.h <= 22)
-    assert.notEqual(o.w, 2, 'el martes no se abre')
+    assert.ok(SCHEDULE[o.w].length > 0, `pedido en un día que el local no abre (${o.w})`)
   }
 })
 
