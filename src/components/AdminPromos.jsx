@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2, ExternalLink, AlertTriangle, Tag, Info, ArrowUp } from 'lucide-react'
 import { SIZES } from '../lib/sizes'
 import { BURGERS_BASE as BURGERS } from '../lib/menuBase'
-import { SCHEDULE } from '../lib/schedule'
+import { scheduleOf } from '../lib/schedule'
 import { leerPrecio, textoDePrecio, muyBarato, mensajeMuyBarato } from '../lib/precio'
 import {
   MAX_PROMOS, DAY_SHORT, DAY_NAMES, WEEK_ORDER,
@@ -25,8 +25,8 @@ const anton = { fontFamily: 'Anton, sans-serif' }
 const SIZE_LABEL = Object.fromEntries(SIZES.map((s) => [s.key, s.label]))
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
-// Días que el local no abre (hoy: ninguno), sacados del horario del sitio
-const DIAS_CERRADOS = [0, 1, 2, 3, 4, 5, 6].filter((d) => !(SCHEDULE[d] || []).length)
+// Días que el local no abre, según el horario de la semana (el que está cargado en el panel)
+const diasCerrados = (cfg) => { const h = scheduleOf(cfg); return [0, 1, 2, 3, 4, 5, 6].filter((d) => !h[d].length) }
 
 // "Hoy", "Mañana", "Mar 13/10" o "Todos los viernes y sábados" (los días con su nombre
 // completo: Joaco no tiene por qué leer "vie y sáb")
@@ -396,7 +396,7 @@ function Promo({ clave, promo: p, indice, lista, cfg, hoy, sinGuardar, verErrore
 
   if (v.ok) {
     const dias = v.promo.date ? [weekdayOf(v.promo.date)] : v.promo.weekdays
-    const cerrados = dias.filter((d) => DIAS_CERRADOS.includes(d))
+    const cerrados = dias.filter((d) => diasCerrados(cfg).includes(d))
     if (cerrados.length) {
       const nombres = cerrados.map((d) => DAY_NAMES[d]).join(' y ')
       avisos.push(

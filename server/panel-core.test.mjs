@@ -402,3 +402,33 @@ test('eventos: se descartan nombres raros y cantidades absurdas, y 30 a la vez n
   assert.equal(dia['s:pedido'], 30)
   assert.equal(dia['<script>'], undefined)
 })
+
+// ─── Horario de la semana en la config ───────────────────────────────────
+test('guarda el horario de la semana que carga Joaco y lo limpia', async () => {
+  const { h } = nuevo()
+  const g = (await llamar(h, { action: 'get-config', key: CLAVE })).body
+  const schedule = { 0: [{ from: '19:00', to: '23:00' }], 1: [], 2: [], 3: [{ from: '20:00', to: '00:30', extra: 'x' }], 4: [], 5: [], 6: [] }
+  const r = await llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config: { schedule }, sha: g.sha } })
+  assert.equal(r.code, 200)
+  const pub = (await llamar(h, { action: 'public-config' })).body
+  assert.deepEqual(pub.schedule[3], [{ from: '20:00', to: '00:30' }]) // sin campos de más
+  assert.deepEqual(pub.schedule[1], [])
+})
+
+test('no guarda un horario roto (la web diría abierto/cerrado mal)', async () => {
+  for (const schedule of [
+    { 3: [{ from: '19:00', to: '' }] },            // falta la hora de cierre
+    { 3: [{ from: '25:00', to: '23:00' }] },       // hora que no existe
+    { 3: [{ from: '19:00', to: '19:00' }] },       // abre y cierra a la misma hora
+    { 3: 'todo el día' },                          // formato raro
+    [1, 2, 3],
+  ]) {
+    const { h } = nuevo()
+    const r = await llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config: { schedule } } })
+    assert.equal(r.code, 400, JSON.stringify(schedule))
+    assert.ok(r.body.error)
+  }
+  // null = volver al horario por defecto: vale
+  const { h } = nuevo()
+  assert.equal((await llamar(h, { action: 'save-config', method: 'POST', key: CLAVE, body: { config: { schedule: null } } })).code, 200)
+})

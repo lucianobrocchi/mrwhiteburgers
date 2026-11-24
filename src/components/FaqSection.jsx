@@ -2,6 +2,8 @@ import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { faqList } from '../lib/faq'
+import { scheduleOf } from '../lib/schedule'
+import { useConfig } from '../lib/config'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -10,7 +12,8 @@ const ease = [0.16, 1, 0.3, 1]
 export default function FaqSection() {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-80px' })
-  const preguntas = faqList()
+  const cfg = useConfig()
+  const preguntas = faqList(scheduleOf(cfg)) // el horario, como lo dejó Joaco en el panel
 
   return (
     <section

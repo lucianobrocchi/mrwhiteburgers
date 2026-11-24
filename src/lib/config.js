@@ -20,6 +20,10 @@ export const DEFAULT_CONFIG = {
     deliveryOff: false, // hoy solo retiro
     note: '',          // aviso libre que se muestra en el sitio
   },
+  // Horario de la semana (pestaña Hoy → "Horario de la semana"). null = el por defecto del
+  // código (src/lib/schedule.js). Si no, { 0..6: [{ from: 'HH:MM', to: 'HH:MM' }] } (0 = domingo,
+  // lista vacía = ese día no abre). Se valida al guardar (validateSchedule).
+  schedule: null,
   zones: {},     // { [id]: { price } }
   ticker: '',    // texto del cartel de arriba (vacío = el de siempre)
   stock: {},     // { 'extra:bacon': true, 'flavor:sprite': true, 'drink:coca:lata': true } = sin stock

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { recordOrder } from '../lib/orders'
 import { trackPedido, registrar, hito, gaAgrego, gaSaco, gaVioCarrito, gaEligioZona, recordarCarrito } from '../lib/track'
 import { findZone } from '../lib/zones'
-import { getStatus } from '../lib/schedule'
+import { getStatus, scheduleOf } from '../lib/schedule'
 import { getConfig, todayOverride } from '../lib/config'
 import { extrasLabel } from '../lib/catalog'
 import { calcPromoDiscount, envioGratis, promoRige, minutosAR } from '../lib/promos'
@@ -193,7 +193,8 @@ export function CartProvider({ children }) {
           ? `\nEnvío ${zone.name}: ${formatPrice(zone.price)}`
           : `\n${zone.name}`
     // Si está cerrado, se avisa que el pedido es para cuando abran.
-    const st = getStatus(new Date(), todayOverride(getConfig()))
+    const cfgAhora = getConfig()
+    const st = getStatus(new Date(), todayOverride(cfgAhora), scheduleOf(cfgAhora))
     const closedLine = st.open
       ? ''
       : `\n\n(Sé que están cerrados — lo dejo pedido para cuando abran${

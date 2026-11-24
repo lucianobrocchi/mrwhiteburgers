@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { Clock, MapPin, Bike } from 'lucide-react'
-import { ADDRESS, scheduleSummary, getStatus } from '../lib/schedule'
+import { ADDRESS, scheduleSummary, getStatus, scheduleOf } from '../lib/schedule'
 import { ZONES, formatZonePrice, zonePrice } from '../lib/zones'
 import { useConfig, todayOverride } from '../lib/config'
 import { linkMapa } from '../lib/negocio'
@@ -13,8 +13,9 @@ export default function HoursSection() {
   const inView = useInView(ref, { once: true, margin: '-80px' })
   const cfg = useConfig()
   const hoy = todayOverride(cfg)
-  const status = getStatus(new Date(), hoy)
-  const horarios = scheduleSummary()
+  const semana = scheduleOf(cfg)
+  const status = getStatus(new Date(), hoy, semana)
+  const horarios = scheduleSummary(semana)
 
   return (
     <section

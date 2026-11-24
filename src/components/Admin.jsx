@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  Check, AlertTriangle, RefreshCw, Ban, Zap, ChevronDown, RotateCcw, Eye, EyeOff, ArrowRight,
+  Check, AlertTriangle, RefreshCw, Ban, Zap, ChevronDown, RotateCcw, Eye, EyeOff, ArrowRight, Moon,
 } from 'lucide-react'
 import * as panel from '../lib/panelApi'
 import { DEFAULT_CONFIG, todayOverride } from '../lib/config'
-import { scheduleSummary, getStatus } from '../lib/schedule'
+import { scheduleSummary, getStatus, scheduleOf, validateSchedule, DEFAULT_SCHEDULE, DAY_NAMES } from '../lib/schedule'
 import { ZONES, formatZonePrice } from '../lib/zones'
 import { SIZES } from '../lib/sizes'
 import { EXTRAS, DRINKS, extraKey, drinkKey, flavorKey } from '../lib/catalog'
@@ -376,9 +376,137 @@ function TarjetaBurger({ b, c, onChange }) {
   )
 }
 
+// ─── Horario de la semana ────────────────────────────────────────────────
+// Un renglón por día (de lunes a domingo): se toca para abrir o cerrar ese día y se
+// eligen la hora de apertura y la de cierre. Se guarda con el botón de siempre.
+const ORDEN_SEMANA = [1, 2, 3, 4, 5, 6, 0]
+const HORA_OK = /^([01]\d|2[0-3]):[0-5]\d$/
+const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1)
+const resumenTexto = (h) => scheduleSummary(h).map((g) => `${g.label} ${g.hours}`).join(' · ')
+const problemaTurno = (t) =>
+  !HORA_OK.test(t?.from || '') || !HORA_OK.test(t?.to || '')
+    ? 'Completá la hora de apertura y la de cierre.'
+    : t.from === t.to
+      ? 'Abre y cierra a la misma hora.'
+      : ''
+
+function HorarioSemana({ schedule, onChange }) {
+  // null = todavía no se tocó: se muestra (y se edita a partir de) el horario por defecto
+  const actual = schedule || DEFAULT_SCHEDULE
+  const turnoDe = (d) => actual[d]?.[0] || null
+  // Al abrir un día cerrado se le pone el horario de otro día que abre (o 19 a 23)
+  const turnoModelo = () => ORDEN_SEMANA.map(turnoDe).find((t) => t && !problemaTurno(t)) || { from: '19:00', to: '23:00' }
+  const setDia = (d, turnos) => onChange({ ...actual, [d]: turnos })
+  const valido = validateSchedule(actual)
+  const abiertos = ORDEN_SEMANA.filter((d) => turnoDe(d)).length
+  const esOriginal = valido.ok && JSON.stringify(valido.schedule) === JSON.stringify(DEFAULT_SCHEDULE)
+
+  return (
+    <div id="horario-semana">
+      {ORDEN_SEMANA.map((d) => {
+        const t = turnoDe(d)
+        const problema = t ? problemaTurno(t) : ''
+        const cruza = t && !problema && t.to < t.from
+        const dia = capital(DAY_NAMES[d])
+        return (
+          <div
+            key={d}
+            className="rounded-xl px-3 py-2.5 mb-2"
+            style={{
+              backgroundColor: t ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.015)',
+              border: `1px solid ${problema ? 'rgba(248,113,113,0.55)' : 'rgba(255,255,255,0.08)'}`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className={`text-sm uppercase ${t ? 'text-white' : 'text-white/40'}`} style={anton}>{dia}</span>
+              <button
+                type="button"
+                onClick={() => setDia(d, t ? [] : [{ ...turnoModelo() }])}
+                aria-pressed={!!t}
+                aria-label={`${dia}: ${t ? 'abre (tocá para cerrarlo)' : 'cerrado (tocá para abrirlo)'}`}
+                className="text-xs px-4 min-h-[40px] rounded-full shrink-0"
+                style={{
+                  ...font,
+                  color: t ? '#4ADE80' : '#F87171',
+                  border: `1px solid ${t ? 'rgba(74,222,128,0.45)' : 'rgba(248,113,113,0.45)'}`,
+                  backgroundColor: t ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)',
+                }}
+              >
+                {t ? 'Abre' : 'Cerrado'}
+              </button>
+            </div>
+            {t && (
+              <>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <label className="flex flex-col gap-1">
+                    <span className={labelCls}>Abre</span>
+                    <input
+                      type="time"
+                      value={t.from || ''}
+                      onChange={(e) => setDia(d, [{ ...t, from: e.target.value }])}
+                      className={inputCls}
+                      aria-label={`${dia}: hora de apertura`}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className={labelCls}>Cierra</span>
+                    <input
+                      type="time"
+                      value={t.to || ''}
+                      onChange={(e) => setDia(d, [{ ...t, to: e.target.value }])}
+                      className={inputCls}
+                      aria-label={`${dia}: hora de cierre`}
+                    />
+                  </label>
+                </div>
+                {problema && (
+                  <p className="text-red-300 text-xs mt-2 flex items-start gap-1.5" style={font} role="alert">
+                    <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {problema}
+                  </p>
+                )}
+                {cruza && (
+                  <p className="text-white/45 text-[11px] mt-2 flex items-center gap-1.5" style={font}>
+                    <Moon size={12} /> Cierra pasada la medianoche ({t.to} del día siguiente).
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })}
+
+      {abiertos === 0 && (
+        <p className="text-red-300 text-xs mt-1 mb-2 flex items-start gap-1.5" style={font} role="alert">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" /> Con todos los días cerrados, la web va a decir siempre “Cerrado”.
+        </p>
+      )}
+
+      {valido.ok && (
+        <div className="mt-3">
+          <p className={labelCls} style={font}>Así se ve en la web</p>
+          <p className="text-white/70 text-[13px] mt-1 leading-relaxed" style={font}>
+            {resumenTexto(valido.schedule)}
+          </p>
+        </div>
+      )}
+
+      {!esOriginal && (
+        <button
+          type="button"
+          onClick={() => onChange({ ...DEFAULT_SCHEDULE })}
+          className="mt-2 min-h-[44px] text-left text-xs text-white/45 hover:text-white/80"
+          style={font}
+        >
+          Volver al horario original ({resumenTexto(DEFAULT_SCHEDULE).toLowerCase()})
+        </button>
+      )}
+    </div>
+  )
+}
+
 // Resumen de la noche: estado del local y lo que va facturado hoy
 function ResumenHoy({ cfg, stats, sinStock, sinGuardar, onVerNumeros }) {
-  const s = getStatus(new Date(), todayOverride(cfg))
+  const s = getStatus(new Date(), todayOverride(cfg), scheduleOf(cfg))
   const color = s.open ? '#4ADE80' : '#F87171'
   const hoy = hoyART()
   const pedidos = (stats?.orders || []).filter((o) => o.d === hoy)
@@ -452,6 +580,7 @@ const normalizar = (c) => ({
   stock: { ...(c?.stock || {}) },
   prices: { ...(c?.prices || {}) },
   promos: Array.isArray(c?.promos) ? [...c.promos] : [],
+  schedule: c?.schedule ?? null,
 })
 
 // Las promos como las va a guardar el servidor (limpias): sirve para saber si hay
@@ -482,7 +611,7 @@ const sinStockDe = (burgers) => limpiar(Object.fromEntries(Object.entries(burger
 const sinSoldOut = (burgers) => limpiar(Object.fromEntries(Object.entries(burgers || {}).map(([id, b]) => [id, { ...b, soldOut: undefined }])))
 // Una huella por pestaña, para marcar cuál tiene cambios sin guardar
 const huellas = (c) => ({
-  hoy: JSON.stringify(limpiar([hoyEfectivo(c.today), c.stock, c.ticker, sinStockDe(c.burgers)])),
+  hoy: JSON.stringify(limpiar([hoyEfectivo(c.today), c.stock, c.ticker, sinStockDe(c.burgers), c.schedule || DEFAULT_SCHEDULE])),
   promos: JSON.stringify(limpiar(c.promos)),
   menu: JSON.stringify(limpiar([sinSoldOut(c.burgers), c.prices])),
   envios: JSON.stringify(limpiar(c.zones)),
@@ -648,9 +777,19 @@ export default function Admin() {
       }, 80)
       return
     }
+    // El horario decide si la web dice "abierto" o "cerrado": no se guarda uno incompleto
+    const horario = validateSchedule(cfg.schedule)
+    if (!horario.ok) {
+      setTab('hoy')
+      setEstado(`${horario.error} Corregilo en “Horario de la semana” para poder guardar.`)
+      setTimeout(() => {
+        document.querySelector('#horario-semana [role="alert"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }, 80)
+      return
+    }
     setEstado('guardando')
     try {
-      const nuevo = { ...cfg, promos: promos.promos, updatedAt: new Date().toISOString() }
+      const nuevo = { ...cfg, promos: promos.promos, schedule: horario.schedule, updatedAt: new Date().toISOString() }
       const nuevoSha = await panel.saveConfig(nuevo, sha, mensaje)
       setSha(nuevoSha)
       setCfg(nuevo)
@@ -756,7 +895,7 @@ export default function Admin() {
 
             <Seccion
               titulo="Hoy"
-              nota={`Excepciones solo para hoy. Mañana vuelve solo al horario de siempre (${scheduleSummary().find((h) => !h.closed)?.hours || '—'}).`}
+              nota="Excepciones solo para hoy. Mañana vuelve solo al horario de la semana (más abajo)."
             >
               <label className="flex items-center gap-3 mb-2 min-h-[44px] cursor-pointer">
                 <input
@@ -885,6 +1024,13 @@ export default function Admin() {
                 className={inputCls}
                 placeholder="Ej: HOY 2X1 EN SIMPLES · PEDÍ POR WHATSAPP"
               />
+            </Seccion>
+
+            <Seccion
+              titulo="Horario de la semana"
+              nota="El horario de siempre. Tocá cada día para abrirlo o cerrarlo y elegí a qué hora abre y cierra. Para un cambio de un solo día (un feriado, abrir más tarde) usá “Hoy”, arriba. Si lo cambiás, acordate de cambiarlo también en Google Maps."
+            >
+              <HorarioSemana schedule={cfg.schedule} onChange={(schedule) => set({ schedule })} />
             </Seccion>
           </>
         )}

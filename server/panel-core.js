@@ -14,6 +14,7 @@
 
 import { randomUUID, createHash, timingSafeEqual } from 'node:crypto'
 import { validatePromoList, cheapPromoError } from '../src/lib/promos.js'
+import { validateSchedule } from '../src/lib/schedule.js'
 
 export const TZ = 'America/Argentina/Buenos_Aires'
 const PATH_CONFIG = 'config.json'
@@ -295,6 +296,12 @@ export function createPanel({ store, env = {} }) {
           const barata = cheapPromoError(p.promos)
           if (barata) return json(400, { error: barata })
           aGuardar = { ...config, promos: p.promos }
+        }
+        // El horario decide si la web dice "abierto" o "cerrado": tampoco se guarda uno roto
+        if ('schedule' in config) {
+          const h = validateSchedule(config.schedule)
+          if (!h.ok) return json(400, { error: h.error })
+          aGuardar = { ...aGuardar, schedule: h.schedule }
         }
         let nuevoSha = null
         try {
