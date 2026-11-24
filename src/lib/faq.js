@@ -10,10 +10,11 @@ import { ZONES } from './zones.js'
 
 const minus = (s) => s.charAt(0).toLowerCase() + s.slice(1)
 
-// "Miércoles a lunes de 19:30 a 22:30; los martes cerramos"
+// "Abrimos todos los días, de 19:00 a 23:00" o "Abrimos de miércoles a lunes, de 19:30 a 22:30 y los martes cerramos"
 export function horariosEnFrase() {
   const grupos = scheduleSummary()
-  const abre = grupos.filter((g) => !g.closed).map((g) => `${g.label.includes(' a ') ? 'de ' : 'los '}${minus(g.label)}, de ${g.hours}`)
+  const prefijo = (l) => (l === 'Todos los días' ? '' : l.includes(' a ') ? 'de ' : 'los ')
+  const abre = grupos.filter((g) => !g.closed).map((g) => `${prefijo(g.label)}${minus(g.label)}, de ${g.hours}`)
   const cierra = grupos.filter((g) => g.closed).map((g) => minus(g.label))
   const cerrado = cierra.length ? ` y ${cierra.length === 1 ? 'los ' + cierra[0] + ' cerramos' : 'cerramos ' + cierra.join(' y ')}` : ''
   return `Abrimos ${abre.join(' y ')}${cerrado}`

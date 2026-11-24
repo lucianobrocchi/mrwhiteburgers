@@ -25,7 +25,7 @@ const anton = { fontFamily: 'Anton, sans-serif' }
 const SIZE_LABEL = Object.fromEntries(SIZES.map((s) => [s.key, s.label]))
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
-// Días que el local no abre (hoy: el martes), sacados del horario del sitio
+// Días que el local no abre (hoy: ninguno), sacados del horario del sitio
 const DIAS_CERRADOS = [0, 1, 2, 3, 4, 5, 6].filter((d) => !(SCHEDULE[d] || []).length)
 
 // "Hoy", "Mañana", "Mar 13/10" o "Todos los viernes y sábados" (los días con su nombre

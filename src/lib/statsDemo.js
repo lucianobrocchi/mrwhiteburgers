@@ -26,8 +26,8 @@ const elegir = (rnd, opciones) => {
   return opciones[opciones.length - 1][0]
 }
 
-// Pedidos por día según el día de la semana (el martes no se abre)
-const BASE_POR_DIA = { 0: 10, 1: 6, 2: 0, 3: 5, 4: 7, 5: 12, 6: 15 }
+// Pedidos por día según el día de la semana
+const BASE_POR_DIA = { 0: 10, 1: 6, 2: 5, 3: 5, 4: 7, 5: 12, 6: 15 }
 const HORAS = [[19, 0.12], [20, 0.30], [21, 0.38], [22, 0.20]]
 const ZONAS = [
   [{ id: 'retiro', nombre: 'Retiro en el local', envio: 0 }, 0.34],
