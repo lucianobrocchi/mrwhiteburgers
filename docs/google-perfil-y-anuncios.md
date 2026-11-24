@@ -21,7 +21,7 @@ Es lo que aparece en Google Maps y en el recuadro lateral cuando buscan "hamburg
 | Categorías adicionales | Restaurante de comida rápida · Comida para llevar · Servicio de entrega de comidas (los nombres pueden variar un poco en tu pantalla) |
 | Dirección | Calle 27 esq. 80, Altos de San Lorenzo, La Plata. **Mové el pin al lugar exacto** del local |
 | Teléfono | +54 9 221 303-4143 |
-| Horarios | Todos los días de 19:00 a 23:00 |
+| Horarios | Miércoles a domingo 19:00 a 23:00 · Lunes y martes cerrado |
 | Sitio web | `https://mrwhiteburgers.com.ar/?utm_source=perfil-google&utm_medium=organic&utm_campaign=ficha` |
 | Link de pedidos | `https://mrwhiteburgers.com.ar/?utm_source=perfil-google&utm_medium=organic&utm_campaign=boton-pedir#menu` |
 | Atributos | Marcá solo lo que es cierto: envío a domicilio, para llevar, retiro en el local |
@@ -29,7 +29,7 @@ Es lo que aparece en Google Maps y en el recuadro lateral cuando buscan "hamburg
 Con ese `utm_source=perfil-google`, en el panel (Números → "De dónde llegan") vas a ver **cuántos pedidos vienen del perfil de Google**, separados del resto.
 
 ### Descripción (máx. 750 caracteres) — copiar y pegar
-> Mr. White Burgers es una hamburguesería de smash burgers premium en La Plata. Hacemos nuestras hamburguesas en pan de papa, con la carne aplastada en plancha bien caliente, cheddar, bacon y nuestras salsas, y todas vienen con papas fritas. Elegí simple, doble o triple. Armá tu pedido en nuestra web y mandalo por WhatsApp: hacemos envíos a domicilio en La Plata o retirás en Calle 27 esq. 80 (Altos de San Lorenzo). Abrimos todos los días de 19:00 a 23:00.
+> Mr. White Burgers es una hamburguesería de smash burgers premium en La Plata. Hacemos nuestras hamburguesas en pan de papa, con la carne aplastada en plancha bien caliente, cheddar, bacon y nuestras salsas, y todas vienen con papas fritas. Elegí simple, doble o triple. Armá tu pedido en nuestra web y mandalo por WhatsApp: hacemos envíos a domicilio en La Plata o retirás en Calle 27 esq. 80 (Altos de San Lorenzo). Abrimos de miércoles a domingo de 19:00 a 23:00.
 
 ### Fotos (suben mucho las visitas y los pedidos)
 - Mínimo 10 al principio, y **1 o 2 nuevas por semana**.
@@ -57,6 +57,7 @@ Cargá vos mismo las preguntas más comunes con su respuesta (ya están redactad
 - No ofrecer descuentos a cambio de reseñas ni elegir a quién pedírselas (Google lo prohíbe). No comprar reseñas.
 
 ### Mantenimiento
+- **Horario de la semana**: se cambia en el panel (pestaña Hoy → “Horario de la semana”) y la web lo toma al instante. Google Maps no: hay que cambiarlo también en el perfil.
 - **Feriados / días que cierran**: cargar "horarios especiales" en el perfil. Cuando usen "Hoy cerramos" en el panel, acordate de reflejarlo también en el perfil.
 - Revisá una vez por semana: **Rendimiento** (llamadas, cómo llegar, visitas al sitio).
 

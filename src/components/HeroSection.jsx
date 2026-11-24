@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 const logoFull = `${import.meta.env.BASE_URL}img/logo_full.webp`
-import { getStatus } from '../lib/schedule'
+import { getStatus, scheduleOf } from '../lib/schedule'
 import { useConfig, todayOverride } from '../lib/config'
 
 const ease = [0.16, 1, 0.3, 1]
@@ -93,7 +93,7 @@ function HeroVideo({ className, style, src }) {
 // Chip de abierto/cerrado. Si está cerrado, dice cuándo abre y lleva a los horarios.
 function StatusChip() {
   const cfg = useConfig()
-  const s = getStatus(new Date(), todayOverride(cfg))
+  const s = getStatus(new Date(), todayOverride(cfg), scheduleOf(cfg))
   const color = s.open ? '#4ADE80' : '#F87171'
   return (
     <motion.a

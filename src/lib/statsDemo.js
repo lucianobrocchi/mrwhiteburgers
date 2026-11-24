@@ -7,6 +7,7 @@
 // cambian cada vez que se abre.
 
 import { hoyART, sumarDias, diaSemanaDe, listarDias } from './statsCalc.js'
+import { DEFAULT_SCHEDULE } from './schedule.js'
 
 function prng(seed) {
   let a = seed >>> 0
@@ -26,8 +27,9 @@ const elegir = (rnd, opciones) => {
   return opciones[opciones.length - 1][0]
 }
 
-// Pedidos por día según el día de la semana
+// Pedidos por día según el día de la semana (los días que el local no abre, ninguno)
 const BASE_POR_DIA = { 0: 10, 1: 6, 2: 5, 3: 5, 4: 7, 5: 12, 6: 15 }
+const abre = (w) => DEFAULT_SCHEDULE[w].length > 0
 const HORAS = [[19, 0.12], [20, 0.30], [21, 0.38], [22, 0.20]]
 const ZONAS = [
   [{ id: 'retiro', nombre: 'Retiro en el local', envio: 0 }, 0.34],
@@ -57,7 +59,7 @@ export function generarDemo({ burgers, extras, bebidas, dias = 35, now = new Dat
   lista.forEach((d, idx) => {
     const w = diaSemanaDe(d)
     const tendencia = 0.75 + 0.4 * (idx / Math.max(1, lista.length - 1)) // sube de a poco
-    const cantidad = Math.round(BASE_POR_DIA[w] * tendencia * (0.7 + rnd() * 0.6))
+    const cantidad = abre(w) ? Math.round(BASE_POR_DIA[w] * tendencia * (0.7 + rnd() * 0.6)) : 0
     for (let n = 0; n < cantidad; n++) {
       const h = elegir(rnd, HORAS)
       const minuto = Math.floor(rnd() * 60)

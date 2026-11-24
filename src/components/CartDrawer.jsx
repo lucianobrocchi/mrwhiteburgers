@@ -7,7 +7,7 @@ import { useRef, useState } from 'react'
 import { formatZonePrice } from '../lib/zones'
 import { registrar, gaResena } from '../lib/track'
 import { NEGOCIO } from '../lib/negocio'
-import { getStatus } from '../lib/schedule'
+import { getStatus, scheduleOf } from '../lib/schedule'
 import { useConfig, todayOverride } from '../lib/config'
 import ZonePicker from './ZonePicker'
 
@@ -60,7 +60,7 @@ export default function CartDrawer() {
   const pedirSinZona = () => { registrar('pidio_sin_zona'); sendToWhatsApp() }
   const cfg = useConfig()
   const { active: promo } = usePromos()
-  const status = getStatus(new Date(), todayOverride(cfg))
+  const status = getStatus(new Date(), todayOverride(cfg), scheduleOf(cfg))
   const hayBurgers = items.some((i) => (i.kind ?? 'burger') === 'burger')
   const hayBebida = items.some((i) => i.kind === 'drink')
   const sugerencias = hayBurgers && !hayBebida ? opcionesDeBebida(cfg) : []

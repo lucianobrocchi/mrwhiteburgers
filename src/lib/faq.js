@@ -3,26 +3,36 @@
 // llms.txt. Salen de los datos reales (horarios, dirección, carta): si cambian, se actualizan.
 // Solo se afirma lo que el sitio ya hace; no se promete nada que no esté confirmado.
 
-import { ADDRESS, scheduleSummary } from './schedule.js'
+import { ADDRESS, scheduleSummary, DEFAULT_SCHEDULE } from './schedule.js'
 import { BURGERS_BASE } from './menuBase.js'
 import { NEGOCIO } from './negocio.js'
 import { ZONES } from './zones.js'
 
 const minus = (s) => s.charAt(0).toLowerCase() + s.slice(1)
 
-// "Abrimos todos los días, de 19:00 a 23:00" o "Abrimos de miércoles a lunes, de 19:30 a 22:30 y los martes cerramos"
-export function horariosEnFrase() {
-  const grupos = scheduleSummary()
-  const prefijo = (l) => (l === 'Todos los días' ? '' : l.includes(' a ') ? 'de ' : 'los ')
-  const abre = grupos.filter((g) => !g.closed).map((g) => `${prefijo(g.label)}${minus(g.label)}, de ${g.hours}`)
-  const cierra = grupos.filter((g) => g.closed).map((g) => minus(g.label))
-  const cerrado = cierra.length ? ` y ${cierra.length === 1 ? 'los ' + cierra[0] + ' cerramos' : 'cerramos ' + cierra.join(' y ')}` : ''
+// "Abrimos de miércoles a domingo, de 19:00 a 23:00 y los lunes y martes cerramos".
+// `schedule`: el horario que rige (el del panel); sin pasarlo, el por defecto.
+const plural = (dia) => (dia.endsWith('s') ? dia : `${dia}s`) // sábado → sábados, lunes → lunes
+const enPlural = (label) => label.split(' y ').map(plural).join(' y ') // "sábado y domingo" → "sábados y domingos"
+
+export function horariosEnFrase(schedule = DEFAULT_SCHEDULE) {
+  const grupos = scheduleSummary(schedule)
+  const tramo = (g) => {
+    const l = minus(g.label)
+    if (g.days.length === 7) return l          // "todos los días"
+    if (g.days.length > 2) return `de ${l}`    // "de miércoles a domingo"
+    return `los ${enPlural(l)}`                // "los sábados", "los viernes y sábados"
+  }
+  const abre = grupos.filter((g) => !g.closed).map((g) => `${tramo(g)}, de ${g.hours}`)
+  const cierra = grupos.filter((g) => g.closed).map((g) => (g.days.length > 2 ? `de ${minus(g.label)}` : `los ${enPlural(minus(g.label))}`))
+  if (!abre.length) return 'Por ahora no tenemos días fijos de apertura: consultanos por WhatsApp'
+  const cerrado = cierra.length ? ` y ${cierra.join(' y ')} cerramos` : ''
   return `Abrimos ${abre.join(' y ')}${cerrado}`
 }
 
 export const direccionCompleta = () => `Calle ${ADDRESS.label}, ${ADDRESS.barrio}, ${ADDRESS.city}`
 
-export function faqList() {
+export function faqList(schedule = DEFAULT_SCHEDULE) {
   const nombres = BURGERS_BASE.map((b) => b.name).join(', ')
   return [
     {
@@ -31,7 +41,7 @@ export function faqList() {
     },
     {
       q: '¿Qué días y horarios abren?',
-      a: `${horariosEnFrase()}. Podés dejar el pedido armado desde la web y lo seguimos por WhatsApp.`,
+      a: `${horariosEnFrase(schedule)}. Podés dejar el pedido armado desde la web y lo seguimos por WhatsApp.`,
     },
     {
       q: '¿Hacen envíos a domicilio en La Plata?',
