@@ -1,7 +1,7 @@
 // ─── Horarios del local ──────────────────────────────────────────────────
 // Editá SOLO este bloque para cambiar los horarios. Formato 24hs.
-// Un turno que cruza la medianoche se escribe { from: '19:30', to: '22:30' }
-// y se entiende que cierra a las 00:00 del día siguiente.
+// Un turno que cruza la medianoche se escribe { from: '20:00', to: '01:00' }
+// y se entiende que cierra a la 01:00 del día siguiente.
 // Días: 0 = domingo, 1 = lunes … 6 = sábado.
 
 export const ADDRESS = {
@@ -14,13 +14,13 @@ export const ADDRESS = {
 }
 
 export const SCHEDULE = {
-  0: [{ from: '19:30', to: '22:30' }], // domingo
-  1: [{ from: '19:30', to: '22:30' }], // lunes
-  2: [],                               // martes — CERRADO
-  3: [{ from: '19:30', to: '22:30' }], // miércoles
-  4: [{ from: '19:30', to: '22:30' }], // jueves
-  5: [{ from: '19:30', to: '22:30' }], // viernes
-  6: [{ from: '19:30', to: '22:30' }], // sábado
+  0: [{ from: '19:00', to: '23:00' }], // domingo
+  1: [{ from: '19:00', to: '23:00' }], // lunes
+  2: [{ from: '19:00', to: '23:00' }], // martes
+  3: [{ from: '19:00', to: '23:00' }], // miércoles
+  4: [{ from: '19:00', to: '23:00' }], // jueves
+  5: [{ from: '19:00', to: '23:00' }], // viernes
+  6: [{ from: '19:00', to: '23:00' }], // sábado
 }
 
 const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -44,7 +44,9 @@ export function scheduleSummary() {
   return out.map((g) => {
     const first = DAY_NAMES[g.days[0]]
     const lastD = DAY_NAMES[g.days[g.days.length - 1]]
-    const label = cap(g.days.length === 1 ? first : `${first} a ${lastD}`)
+    const label = g.days.length === 7
+      ? 'Todos los días'
+      : cap(g.days.length === 1 ? first : `${first} a ${lastD}`)
     const hours = g.turns.length
       ? g.turns.map((t) => `${t.from} a ${t.to}`).join(' y ')
       : 'cerrado'
@@ -104,7 +106,7 @@ export function getStatus(now = new Date(), override = null) {
       return { open: false, note: override.note || '', ...prox, day }
     }
     if (override.opensAt || override.closesAt) {
-      const base = SCHEDULE[day][0] || { from: '19:30', to: '22:30' }
+      const base = SCHEDULE[day][0] || { from: '19:00', to: '23:00' }
       const from = toMin(override.opensAt || base.from)
       let to = toMin(override.closesAt || base.to)
       if (to <= from) to += 1440

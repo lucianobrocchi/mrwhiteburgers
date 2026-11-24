@@ -23,7 +23,7 @@ const MAX_ORDERS_PER_MONTH = 8000
 const DUP_WINDOW_MS = 90_000   // el mismo pedido dos veces en 90 s = doble toque
 
 // ─── Fecha y hora de Argentina ───────────────────────────────────────────
-// El servidor corre en UTC. Con el local abierto de 19:30 a 22:30, los pedidos
+// El servidor corre en UTC. Con el local abierto de 19:00 a 23:00, los pedidos
 // de después de las 21:00 caerían en el día siguiente si usáramos UTC. Por eso
 // todo se cuenta con la hora de Buenos Aires.
 const WEEKDAYS = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }

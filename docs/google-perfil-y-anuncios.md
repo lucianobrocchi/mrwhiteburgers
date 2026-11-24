@@ -21,7 +21,7 @@ Es lo que aparece en Google Maps y en el recuadro lateral cuando buscan "hamburg
 | Categorías adicionales | Restaurante de comida rápida · Comida para llevar · Servicio de entrega de comidas (los nombres pueden variar un poco en tu pantalla) |
 | Dirección | Calle 27 esq. 80, Altos de San Lorenzo, La Plata. **Mové el pin al lugar exacto** del local |
 | Teléfono | +54 9 221 303-4143 |
-| Horarios | Miércoles a lunes 19:30 a 22:30 · Martes cerrado |
+| Horarios | Todos los días de 19:00 a 23:00 |
 | Sitio web | `https://mrwhiteburgers.com.ar/?utm_source=perfil-google&utm_medium=organic&utm_campaign=ficha` |
 | Link de pedidos | `https://mrwhiteburgers.com.ar/?utm_source=perfil-google&utm_medium=organic&utm_campaign=boton-pedir#menu` |
 | Atributos | Marcá solo lo que es cierto: envío a domicilio, para llevar, retiro en el local |
@@ -29,7 +29,7 @@ Es lo que aparece en Google Maps y en el recuadro lateral cuando buscan "hamburg
 Con ese `utm_source=perfil-google`, en el panel (Números → "De dónde llegan") vas a ver **cuántos pedidos vienen del perfil de Google**, separados del resto.
 
 ### Descripción (máx. 750 caracteres) — copiar y pegar
-> Mr. White Burgers es una hamburguesería de smash burgers premium en La Plata. Hacemos nuestras hamburguesas en pan de papa, con la carne aplastada en plancha bien caliente, cheddar, bacon y nuestras salsas, y todas vienen con papas fritas. Elegí simple, doble o triple. Armá tu pedido en nuestra web y mandalo por WhatsApp: hacemos envíos a domicilio en La Plata o retirás en Calle 27 esq. 80 (Altos de San Lorenzo). Abrimos de miércoles a lunes de 19:30 a 22:30.
+> Mr. White Burgers es una hamburguesería de smash burgers premium en La Plata. Hacemos nuestras hamburguesas en pan de papa, con la carne aplastada en plancha bien caliente, cheddar, bacon y nuestras salsas, y todas vienen con papas fritas. Elegí simple, doble o triple. Armá tu pedido en nuestra web y mandalo por WhatsApp: hacemos envíos a domicilio en La Plata o retirás en Calle 27 esq. 80 (Altos de San Lorenzo). Abrimos todos los días de 19:00 a 23:00.
 
 ### Fotos (suben mucho las visitas y los pedidos)
 - Mínimo 10 al principio, y **1 o 2 nuevas por semana**.
@@ -41,7 +41,7 @@ Cargá las 6 burgers como "Productos", con foto, descripción y precio. Los text
 
 ### Publicaciones (1 o 2 por semana, duran 7 días)
 Ejemplos para copiar:
-1. `Smash burgers recién hechas 🍔 Pedí desde la web y mandalo por WhatsApp. Envíos en La Plata y retiro en 27 esq. 80. Abrimos hoy hasta las 22:30.` (botón: **Pedir**)
+1. `Smash burgers recién hechas 🍔 Pedí desde la web y mandalo por WhatsApp. Envíos en La Plata y retiro en 27 esq. 80. Abrimos hoy hasta las 23:00.` (botón: **Pedir**)
 2. Promo del día: copiar el texto de la promo que esté activa en el panel (pestaña Promos). Botón: **Pedir**.
 3. Producto: una burger por post (foto + descripción + "Simple / Doble / Triple").
 
@@ -97,7 +97,7 @@ El dominio oficial ya está en `src/lib/negocio.js` (una sola línea): de ahí s
 El panel muestra de dónde llegó cada pedido usando `utm_source`.
 
 ### Cuando arranquen los anuncios (resumen)
-- Con pocos pedidos por mes conviene **empezar simple**: Meta (Instagram) o Google Búsqueda con radio de 5–7 km alrededor del local y **horario de anuncios solo de 19:00 a 22:30**.
+- Con pocos pedidos por mes conviene **empezar simple**: Meta (Instagram) o Google Búsqueda con radio de 5–7 km alrededor del local y **horario de anuncios solo de 18:30 a 23:00**.
 - Necesito que me pases los IDs para dejar listo el seguimiento: **Pixel de Meta** y/o **ID de conversión de Google Ads**. Yo los conecto.
 
 ---

@@ -15,8 +15,9 @@ test('JSON-LD: es JSON válido con negocio, carta y preguntas, y usa la URL dada
   assert.equal(r.url, `${URL}/`)
   assert.equal(r.address.addressLocality, 'La Plata')
   assert.ok(r.geo.latitude < -34 && r.geo.longitude < -57)
-  assert.equal(r.openingHoursSpecification[0].opens, '19:30')
-  assert.ok(!r.openingHoursSpecification[0].dayOfWeek.includes('Tuesday')) // los martes se cierra
+  assert.equal(r.openingHoursSpecification[0].opens, '19:00')
+  assert.equal(r.openingHoursSpecification[0].closes, '23:00')
+  assert.equal(r.openingHoursSpecification[0].dayOfWeek.length, 7) // abre todos los días
   const items = g[2].hasMenuSection[0].hasMenuItem
   assert.equal(items.length, BURGERS_BASE.length)
   assert.equal(items[0].offers.length, 3) // simple, doble, triple
